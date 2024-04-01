@@ -234,7 +234,65 @@ app.post('/convertToWebP', upload.single('video'), (req, res) => {
 // To adjust GIF size, change scale values in the ffmpeg commands.
 // To alter compression, change the --lossy value in the gifsicle command.
 
-const execFile = require('child_process').execFile;
+// const execFile = require('child_process').execFile;
+
+// app.post('/convertToGif', upload.single('video'), (req, res) => {
+//     if (!req.file) {
+//         console.error('No file uploaded.');
+//         return res.status(400).send('No file uploaded.');
+//     }
+
+//     const videoPath = req.file.path;
+//     const framesDir = path.join(__dirname, `frames_${Date.now()}`);
+//     const outputPath = path.join(convertedDir, `converted_${Date.now()}.gif`);
+
+//     // Create a directory for the extracted frames
+//     fs.mkdirSync(framesDir, { recursive: true });
+
+//     // Extract frames from the video at 12 fps
+//     const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=12 "${path.join(framesDir, 'frame_%04d.png')}"`;
+
+//     exec(extractFramesCommand, (extractError) => {
+//         if (extractError) {
+//             console.error('Error extracting frames:', extractError);
+//             cleanup(videoPath, framesDir);
+//             return res.status(500).send('Error extracting frames.');
+//         }
+
+//         fs.readdir(framesDir, (err, files) => {
+//             if (err) {
+//                 console.error('Error reading frames directory:', err);
+//                 cleanup(videoPath, framesDir);
+//                 return res.status(500).send('Could not read frames directory.');
+//             }
+//             const frameFiles = files.map(file => path.join(framesDir, file));
+            
+//             // Use gifski to create a GIF from the extracted frames
+//             execFile('gifski', ['-o', outputPath, '--fps', '12', '--quality', '80', ...frameFiles], (gifskiError, stdout, stderr) => {
+//                 if (gifskiError) {
+//                     console.error('Error creating GIF with gifski:', gifskiError);
+//                     console.error('stderr:', stderr);
+//                     cleanup(videoPath, framesDir);
+//                     return res.status(500).send('Error creating GIF with gifski.');
+//                 }
+
+//                 // Send the created GIF to the client
+//                 res.download(outputPath, (downloadErr) => {
+//                     if (downloadErr) {
+//                         console.error('Error sending the GIF file:', downloadErr);
+//                     }
+//                     // cleanup(videoPath, framesDir); // We don't delete the output GIF as it's being sent to the client
+//                 });
+//             });
+//         });
+//     });
+// });
+
+
+//new
+
+const { execFile } = require('child_process');
+
 
 app.post('/convertToGif', upload.single('video'), (req, res) => {
     if (!req.file) {
@@ -244,7 +302,7 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
 
     const videoPath = req.file.path;
     const framesDir = path.join(__dirname, `frames_${Date.now()}`);
-    const outputPath = path.join(convertedDir, `converted_${Date.now()}.gif`);
+    const outputPath = path.join(__dirname, 'converted', `converted_${Date.now()}.gif`);
 
     // Create a directory for the extracted frames
     fs.mkdirSync(framesDir, { recursive: true });
@@ -259,12 +317,17 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
             return res.status(500).send('Error extracting frames.');
         }
 
+        // Read the directory of frames
         fs.readdir(framesDir, (err, files) => {
             if (err) {
                 console.error('Error reading frames directory:', err);
                 cleanup(videoPath, framesDir);
                 return res.status(500).send('Could not read frames directory.');
             }
+            
+            // Ensure files are sorted correctly
+            files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+            
             const frameFiles = files.map(file => path.join(framesDir, file));
             
             // Use gifski to create a GIF from the extracted frames
@@ -277,19 +340,29 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
                 }
 
                 // Send the created GIF to the client
-                res.download(outputPath, (downloadErr) => {
-                    if (downloadErr) {
-                        console.error('Error sending the GIF file:', downloadErr);
-                    }
-                    // cleanup(videoPath, framesDir); // We don't delete the output GIF as it's being sent to the client
+                res.download(outputPath, () => {
+                    cleanup(videoPath, framesDir, outputPath);
                 });
             });
         });
     });
 });
 
+const cleanup = (videoPath, framesDir, outputPath) => {
+    fs.unlink(videoPath, (err) => {
+        if (err) console.error(`Error deleting video file: ${videoPath}`, err);
+    });
+    
+    fs.rmdir(framesDir, { recursive: true }, (err) => {
+        if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
+    });
 
-
+    if(outputPath) {
+        fs.unlink(outputPath, (err) => {
+            if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
+        });
+    }
+};
 
 
 
