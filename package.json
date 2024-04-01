@@ -4,6 +4,7 @@
   "description": "",
   "main": "slicerServer.js",
   "scripts": {
+    "start": "node slicerServer.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
