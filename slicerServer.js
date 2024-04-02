@@ -435,5 +435,5 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
 
 });
 
-const port = 80;
+const port = 3000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
