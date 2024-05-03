@@ -10,51 +10,6 @@ const convertedDir = path.join(__dirname, 'converted');
 
 app.use(express.static('public'));
 
-
-
-app.post('/overlay', upload.single('video'), (req, res) => {
-    const videoPath = req.file.path;
-    const color = req.body.color.replace('#', ''); // Remove '#' from hex color for ImageMagick
-    const opacity = parseFloat(req.body.opacity);
-    const outputPath = path.join(__dirname, 'processed', `overlay_video_${Date.now()}.mp4`);
-
-    // Calculate video size
-    exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
-        if (error) {
-            console.error('Error getting video size:', error);
-            return res.status(500).send('Failed to get video size.');
-        }
-
-        const [width, height] = stdout.trim().split(',');
-        const overlayPath = path.join(__dirname, 'overlay', `overlay_${Date.now()}.png`);
-
-        // Create an overlay image using ImageMagick with the specified color and opacity
-        exec(`convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0,2), 16)},${parseInt(color.substring(2,4), 16)},${parseInt(color.substring(4,6), 16)},${opacity})" "${overlayPath}"`, (overlayError) => {
-            if (overlayError) {
-                console.error('Error creating overlay:', overlayError);
-                return res.status(500).send('Failed to create overlay.');
-            }
-
-            // Apply the overlay to the video using FFmpeg
-            exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
-                if (ffmpegError) {
-                    console.error('Error applying overlay:', ffmpegError);
-                    return res.status(500).send('Failed to apply overlay.');
-                }
-
-                res.download(outputPath, (downloadErr) => {
-                    if (downloadErr) {
-                        console.error('Error sending the overlay video:', downloadErr);
-                    }
-                    fs.unlinkSync(videoPath);
-                    fs.unlinkSync(overlayPath);
-                });
-            });
-        });
-    });
-});
-
-
 app.post('/slice', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const finalOutputPath = path.join(__dirname, 'processed', `final_output_${Date.now()}.mp4`);
@@ -95,15 +50,6 @@ app.post('/slice', upload.single('video'), (req, res) => {
         });
     });
 });
-
-
-
-
-
-
-
-
-// These are some sample dimensions for cropping the video. I can create/add ffmpeg commands to crop in other sizes if needed. 
 
 app.post('/crop', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
@@ -180,31 +126,144 @@ app.post('/crop', upload.single('video'), (req, res) => {
     }
 });
 
+//colored overlay
 
-
-app.post('/convertToWebP', upload.single('video'), (req, res) => {
+app.post('/overlay', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
-    const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
+    const color = req.body.color.replace('#', '');
+    const opacity = parseFloat(req.body.opacity);
+    const outputPath = path.join(__dirname, 'processed', `overlay_video_${Date.now()}.mp4`);
 
-    // Convert the video to a WebP image sequence
-    const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libwebp -lossless 1 -q:v 80 -loop 0 -preset picture -an -vsync 0 "${outputPath}"`;
-
-    exec(convertCommand, (error, stdout, stderr) => {
+    // Calculate video size
+    exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
         if (error) {
-            console.error('Error converting video to WebP:', stderr);
-            return res.status(500).send('Error converting video to WebP.');
+            console.error('Error getting video size:', error);
+            return res.status(500).send('Failed to get video size.');
         }
 
-        // Set the correct MIME type for WebP
-        res.setHeader('Content-Type', 'image/webp');
-        res.download(outputPath, 'video.webp', (downloadErr) => {
-            if (downloadErr) {
-                console.error('Error sending the WebP file:', downloadErr);
+        const [width, height] = stdout.trim().split(',');
+        const overlayPath = path.join(__dirname, 'overlay', `overlay_${Date.now()}.png`);
+
+        // Create overlay
+        exec(`convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0,2), 16)},${parseInt(color.substring(2,4), 16)},${parseInt(color.substring(4,6), 16)},${opacity})" "${overlayPath}"`, (overlayError) => {
+            if (overlayError) {
+                console.error('Error creating overlay:', overlayError);
+                return res.status(500).send('Failed to create overlay.');
             }
-            // Clean up the original video file after conversion
-            fs.unlinkSync(videoPath);
-            // Optionally, delete the WebP file after sending it to the client
-            // fs.unlinkSync(outputPath);
+
+            // Apply the overlay
+            exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+                if (ffmpegError) {
+                    console.error('Error applying overlay:', ffmpegError);
+                    return res.status(500).send('Failed to apply overlay.');
+                }
+
+                res.download(outputPath, (downloadErr) => {
+                    if (downloadErr) {
+                        console.error('Error sending the overlay video:', downloadErr);
+                    }
+                    fs.unlinkSync(videoPath);
+                    fs.unlinkSync(overlayPath);
+                });
+            });
+        });
+    });
+});
+
+// gradient overlay
+
+
+app.post('/gradientOverlay', upload.single('video'), (req, res) => {
+    const videoPath = req.file.path;
+    const gradientType = req.body.gradientType;
+    const gradientColor = req.body.gradientColor.replace('#', ''); // Ensure '#' is removed for consistency
+    const outputPath = path.join(__dirname, 'processed', `gradient_overlay_video_${Date.now()}.mp4`);
+
+    exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+        if (error) {
+            console.error('Error getting video size:', error);
+            return res.status(500).send('Failed to get video size.');
+        }
+
+        const [width, height] = stdout.trim().split(',');
+        const gradientPath = path.join(__dirname, 'overlay', `gradient_${Date.now()}.png`);
+        let gradientSize, overlayPosition;
+
+        switch (gradientType) {
+            case 'full':
+                gradientSize = `${width}x${height}`;
+                overlayPosition = '0:0';
+                break;
+            case 'half':
+                gradientSize = `${width}x${parseInt(height / 2)}`;
+                overlayPosition = `0:${parseInt(height / 2)}`;
+                break;
+            case 'quarter':
+                gradientSize = `${width}x${parseInt(height / 4)}`;
+                overlayPosition = `0:${3 * parseInt(height / 4)}`;
+                break;
+        }
+
+        const gradientCommand = `convert -size ${gradientSize} gradient:#00000000-#${gradientColor} "${gradientPath}"`;
+
+        exec(gradientCommand, (gradientError) => {
+            if (gradientError) {
+                console.error('Error creating gradient:', gradientError);
+                return res.status(500).send('Failed to create gradient.');
+            }
+
+            // Apply the gradient
+            const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition} [outv]" -map "[outv]" -map 0:a? -c:a copy "${outputPath}"`;
+
+            exec(ffmpegCommand, (ffmpegError) => {
+                if (ffmpegError) {
+                    console.error('Error applying gradient overlay:', ffmpegError);
+                    return res.status(500).send('Failed to apply gradient overlay.');
+                }
+
+                res.download(outputPath, (downloadErr) => {
+                    if (downloadErr) {
+                        console.error('Error sending the gradient overlay video:', downloadErr);
+                    }
+                    fs.unlinkSync(videoPath);
+                    fs.unlinkSync(gradientPath);
+                });
+            });
+        });
+    });
+});
+
+
+
+
+app.post('/slowVideo', upload.single('video'), (req, res) => {
+    const videoPath = req.file.path;
+    const slowFactor = parseFloat(req.body.slowFactor); 
+    const outputPath = path.join(__dirname, 'processed', `slowed_video_${Date.now()}.mp4`);
+
+    
+    exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+        let ffmpegCommand;
+
+        if (stdout) { // Audio stream
+            ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "[0:v]setpts=${slowFactor}*PTS[v];[0:a]atempo=1/${slowFactor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
+        } else { // No audio stream
+            ffmpegCommand = `ffmpeg -i "${videoPath}" -filter:v "setpts=${slowFactor}*PTS" "${outputPath}"`;
+        }
+
+        exec(ffmpegCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error('Error executing FFmpeg command:', stderr);
+                return res.status(500).send('Failed to slow down video.');
+            }
+
+            res.download(outputPath, (downloadErr) => {
+                if (downloadErr) {
+                    console.error('Error sending the slowed video:', downloadErr);
+                }
+            
+                fs.unlinkSync(videoPath);
+            });
         });
     });
 });
@@ -215,81 +274,39 @@ app.post('/convertToWebP', upload.single('video'), (req, res) => {
 
 
 
+app.post('/convertToWebP', upload.single('video'), (req, res) => {
+    const videoPath = req.file.path;
+    const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
 
-// original below
+    const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libwebp -lossless 1 -q:v 80 -loop 0 -preset picture -an -vsync 0 "${outputPath}"`;
 
-// //
+    exec(convertCommand, (error, stdout, stderr) => {
+        if (error) {
+            console.error('Error converting video to WebP:', stderr);
+            return res.status(500).send('Error converting video to WebP.');
+        }
 
-// First ffmpeg command generates a color palette to enhance GIF quality:
-// -vf fps=15,scale=640:-1:flags=lanczos,palettegen: Sets the frame rate to 15 FPS, scales the video to 640 pixels (with original aspect ratio), generates a palette.
-
-// Second ffmpeg command uses the generated palette for high-quality GIF conversion:
-// -filter_complex "fps=15,scale=640:-1:flags=lanczos[x];[x][1:v]paletteuse": Sets frame rate to 15 FPS, scales video to 640 pixels wide (with original aspect ratio), uses the palette for color information.
-// -f gif: Specifies the output format is GIF.
-
-// gifsicle command
-// -O2: medium level of optimization. -- can be between 1-3
-// --lossy=100: Applies lossy compression (range: 30-200).
-
-// To adjust GIF size, change scale values in the ffmpeg commands.
-// To alter compression, change the --lossy value in the gifsicle command.
-
-// const execFile = require('child_process').execFile;
-
-// app.post('/convertToGif', upload.single('video'), (req, res) => {
-//     if (!req.file) {
-//         console.error('No file uploaded.');
-//         return res.status(400).send('No file uploaded.');
-//     }
-
-//     const videoPath = req.file.path;
-//     const framesDir = path.join(__dirname, `frames_${Date.now()}`);
-//     const outputPath = path.join(convertedDir, `converted_${Date.now()}.gif`);
-
-//     // Create a directory for the extracted frames
-//     fs.mkdirSync(framesDir, { recursive: true });
-
-//     // Extract frames from the video at 12 fps
-//     const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=12 "${path.join(framesDir, 'frame_%04d.png')}"`;
-
-//     exec(extractFramesCommand, (extractError) => {
-//         if (extractError) {
-//             console.error('Error extracting frames:', extractError);
-//             cleanup(videoPath, framesDir);
-//             return res.status(500).send('Error extracting frames.');
-//         }
-
-//         fs.readdir(framesDir, (err, files) => {
-//             if (err) {
-//                 console.error('Error reading frames directory:', err);
-//                 cleanup(videoPath, framesDir);
-//                 return res.status(500).send('Could not read frames directory.');
-//             }
-//             const frameFiles = files.map(file => path.join(framesDir, file));
+        
+        res.setHeader('Content-Type', 'image/webp');
+        res.download(outputPath, 'video.webp', (downloadErr) => {
+            if (downloadErr) {
+                console.error('Error sending the WebP file:', downloadErr);
+            }
             
-//             // Use gifski to create a GIF from the extracted frames
-//             execFile('gifski', ['-o', outputPath, '--fps', '12', '--quality', '80', ...frameFiles], (gifskiError, stdout, stderr) => {
-//                 if (gifskiError) {
-//                     console.error('Error creating GIF with gifski:', gifskiError);
-//                     console.error('stderr:', stderr);
-//                     cleanup(videoPath, framesDir);
-//                     return res.status(500).send('Error creating GIF with gifski.');
-//                 }
-
-//                 // Send the created GIF to the client
-//                 res.download(outputPath, (downloadErr) => {
-//                     if (downloadErr) {
-//                         console.error('Error sending the GIF file:', downloadErr);
-//                     }
-//                     // cleanup(videoPath, framesDir); // We don't delete the output GIF as it's being sent to the client
-//                 });
-//             });
-//         });
-//     });
-// });
+            fs.unlinkSync(videoPath);
+            
+            // fs.unlinkSync(outputPath);
+        });
+    });
+});
 
 
-//new
+    
+
+
+
+
+
 
 const { execFile } = require('child_process');
 
@@ -304,10 +321,10 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
     const framesDir = path.join(__dirname, `frames_${Date.now()}`);
     const outputPath = path.join(__dirname, 'converted', `converted_${Date.now()}.gif`);
 
-    // Create a directory for the extracted frames
+   
     fs.mkdirSync(framesDir, { recursive: true });
 
-    // Extract frames from the video at 12 fps
+   
     const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=12 "${path.join(framesDir, 'frame_%04d.png')}"`;
 
     exec(extractFramesCommand, (extractError) => {
@@ -317,7 +334,7 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
             return res.status(500).send('Error extracting frames.');
         }
 
-        // Read the directory of frames
+        
         fs.readdir(framesDir, (err, files) => {
             if (err) {
                 console.error('Error reading frames directory:', err);
@@ -325,12 +342,12 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
                 return res.status(500).send('Could not read frames directory.');
             }
             
-            // Ensure files are sorted correctly
+            
             files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
             
             const frameFiles = files.map(file => path.join(framesDir, file));
             
-            // Use gifski to create a GIF from the extracted frames
+            
             execFile('gifski', ['-o', outputPath, '--fps', '12', '--quality', '80', ...frameFiles], (gifskiError, stdout, stderr) => {
                 if (gifskiError) {
                     console.error('Error creating GIF with gifski:', gifskiError);
@@ -339,7 +356,7 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
                     return res.status(500).send('Error creating GIF with gifski.');
                 }
 
-                // Send the created GIF to the client
+                
                 res.download(outputPath, () => {
                     cleanup(videoPath, framesDir, outputPath);
                 });
@@ -365,16 +382,6 @@ const cleanup = (videoPath, framesDir, outputPath) => {
 };
 
 
-
-// Convert to avif
-
-// -c:v libaom-av1: Use the AV1 codec for AVIF format.
-// -crf 40: Set the quality to 40. Lower = better quality/larger file size
-// -b:v 0: uses -crf value for quality, NOT bitrate
-// -cpu-used 8: For faster encoding
-// -row-mt 1: row-based multithreading for faster encoding.
-// To adjust output size, add -vf "scale=width:height" - now it's same as .mp4
-// To adjust quality, change the -crf value. Lower values result in higher quality.
 
 
 app.post('/convertToAvif', upload.single('video'), (req, res) => {
@@ -408,27 +415,6 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
             });
         });
     });
-
-
-
-    // -vcodec libwebp: Use the WebP codec.
-    // -lossless 1: Enable lossless compression
-    // -q:v 80: Set quality to 80. Lower for smaller file size, higher for better quality.
-    // -loop 0: Do not loop the image.
-    // -preset picture: Optimize for still picture quality.
-    // -an: Strip audio from the video.
-    // -vsync 0: Do not adjust frame sync.
-    // To adjust output size, add -vf "scale=width:height". - now it's same as .mp4
-    // To adjust quality, modify the -q:v value.
-
-
-   
-
-
-
-
-    
-
 
 
     

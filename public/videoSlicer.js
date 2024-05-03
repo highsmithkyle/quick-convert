@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const processedVideo = document.getElementById('processedVideo');
     const videoInput = document.querySelector('input[type="file"]');
     const notification = document.getElementById('processingNotification');
-    const createOverlayButton = document.getElementById('createOverlayButton'); // Added button for overlay creation
+    const createOverlayButton = document.getElementById('createOverlayButton'); 
 
     videoInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Failed to process video.');
             });
     });
+
+    // colored overlay
 
 
     document.getElementById('createOverlayButton').addEventListener('click', function() {
@@ -69,6 +71,49 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
 
+    // gradient overlay
+
+
+    document.getElementById('createGradientOverlayButton').addEventListener('click', function() {
+        const croppedVideoElement = document.getElementById('croppedVideo');
+        const gradientType = document.getElementById('gradientDirection').value;
+        const gradientColor = document.getElementById('gradientColor').value.replace('#', ''); // Remove the '#' for server processing
+        
+        if (!croppedVideoElement.src) {
+            console.log('No cropped video available.');
+            return;
+        }
+    
+        notification.style.display = 'block';
+    
+        fetch(croppedVideoElement.src)
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'cropped.mp4');
+                formData.append('gradientType', gradientType);
+                formData.append('gradientColor', gradientColor);
+    
+                return fetch('/gradientOverlay', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                const gradientOverlayVideo = document.getElementById('gradientOverlayVideo');
+                gradientOverlayVideo.src = URL.createObjectURL(blob);
+                gradientOverlayVideo.style.display = 'block';
+            })
+            .catch(() => {
+                notification.style.display = 'none';
+                console.error('Failed to create gradient overlay.');
+            });
+    });
+    
+
+
+
+    
+
 
     document.getElementById('convertToWebPButton').addEventListener('click', function() {
         const videoSource = document.getElementById('croppedVideo').getAttribute('src');
@@ -92,9 +137,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 webPImage.src = URL.createObjectURL(blob);
                 webPImage.style.display = 'block';
     
-                // Create and display the download button with file size in MB
+                
                 const downloadButtonContainer = document.getElementById('webpDownloadButtonContainer');
-                downloadButtonContainer.innerHTML = ''; // Clear any existing content
+                downloadButtonContainer.innerHTML = ''; 
     
                 const downloadButton = document.createElement('button');
                 downloadButton.textContent = 'Download WebP';
@@ -102,19 +147,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
                 const fileSizeInBytes = blob.size;
                 const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2); // Convert to MB
-                const fileSizeText = document.createTextNode(` (${fileSizeInMB} MB)`); // Display size in MB
+                const fileSizeText = document.createTextNode(` (${fileSizeInMB} MB)`);
     
                 downloadButton.addEventListener('click', function() {
                     const a = document.createElement('a');
                     a.href = webPImage.src;
-                    a.download = 'converted_image.webp'; // Set the default filename for the download
-                    document.body.appendChild(a); // Append the link to the body
-                    a.click(); // Programmatically click the link to trigger the download
-                    document.body.removeChild(a); // Remove the link from the body
+                    a.download = 'converted_image.webp'; 
+                    document.body.appendChild(a); 
+                    a.click(); 
+                    document.body.removeChild(a); 
                 });
     
                 downloadButtonContainer.appendChild(downloadButton);
-                downloadButtonContainer.appendChild(fileSizeText); // Append the file size text next to the button
+                downloadButtonContainer.appendChild(fileSizeText); 
             })
             .catch(error => {
                 notification.style.display = 'none';
@@ -123,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     
-
+    
     
     
 
@@ -186,27 +231,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 gifImage.src = URL.createObjectURL(blob);
                 gifImage.style.display = 'block';
     
-                // Display the download button with file size
+                
                 const downloadButtonContainer = document.getElementById('gifDownloadButtonContainer');
-                downloadButtonContainer.innerHTML = ''; // Clear existing content
+                downloadButtonContainer.innerHTML = ''; 
     
-                // Create and style the download button
+                
                 const downloadButton = document.createElement('button');
                 downloadButton.textContent = 'Download GIF';
                 downloadButton.className = 'download-button';
     
-                // Create a span for the file size
+                
                 const fileSizeSpan = document.createElement('span');
                 fileSizeSpan.className = 'file-size';
                 const fileSizeInBytes = blob.size;
                 const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
                 fileSizeSpan.textContent = `(${fileSizeInMB} MB)`;
     
-                // Append the file size element and the download button
+                
                 downloadButtonContainer.appendChild(downloadButton);
                 downloadButtonContainer.appendChild(fileSizeSpan);
     
-                // Set download functionality
                 downloadButton.addEventListener('click', function() {
                     const a = document.createElement('a');
                     a.href = gifImage.src;
@@ -246,9 +290,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 avifImage.src = URL.createObjectURL(blob);
                 avifImage.style.display = 'block';
     
-                // Create and display the download button with file size
+                
                 const downloadButtonContainer = document.getElementById('avifDownloadButtonContainer');
-                downloadButtonContainer.innerHTML = ''; // Clear any existing content
+                downloadButtonContainer.innerHTML = ''; 
     
                 const downloadButton = document.createElement('button');
                 downloadButton.textContent = 'Download AVIF';
@@ -261,14 +305,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 downloadButton.addEventListener('click', function() {
                     const a = document.createElement('a');
                     a.href = avifImage.src;
-                    a.download = 'converted_image.avif'; // Set the default filename for the download
-                    document.body.appendChild(a); // Append the link to the body
-                    a.click(); // Programmatically click the link to trigger the download
-                    document.body.removeChild(a); // Remove the link from the body
+                    a.download = 'converted_image.avif'; 
+                    document.body.appendChild(a); 
+                    a.click(); 
+                    document.body.removeChild(a);
                 });
     
                 downloadButtonContainer.appendChild(downloadButton);
-                downloadButtonContainer.appendChild(fileSizeText); // Append the file size text next to the button
+                downloadButtonContainer.appendChild(fileSizeText);
             })
             .catch(error => {
                 notification.style.display = 'none';
@@ -278,5 +322,120 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handles the overlay color picker
+        var colorPicker = document.getElementById('overlayColor');
+        var colorValueDisplay = document.getElementById('colorValue');
+        
+        colorPicker.addEventListener('input', function() {
+            colorValueDisplay.textContent = colorPicker.value;
+        });
+    
+        // Handles the opacity slider for overlays
+        var opacitySlider = document.getElementById('overlayOpacity');
+        var opacityValueDisplay = document.getElementById('opacityValue');
+        
+        opacitySlider.addEventListener('input', function() {
+            opacityValueDisplay.textContent = opacitySlider.value;
+        });
+    
+        // Handles the gradient color picker
+        var gradientColorPicker = document.getElementById('gradientColor');
+        var gradientColorValueDisplay = document.getElementById('gradientColorValue');
+        
+        gradientColorPicker.addEventListener('input', function() {
+            gradientColorValueDisplay.textContent = gradientColorPicker.value.toUpperCase(); // Display the gradient color value
+        });
+    });
+
+
+
+   
+    
+    // Slow Down Video
+const slowFactorSlider = document.getElementById('slowFactor');
+const slowFactorValueDisplay = document.getElementById('slowFactorValue');
+const slowVideoButton = document.getElementById('slowVideoButton');
+const slowedVideoElement = document.getElementById('slowedVideo'); 
+
+slowFactorSlider.addEventListener('input', function() {
+    slowFactorValueDisplay.textContent = this.value + 'x';
+});
+
+slowVideoButton.addEventListener('click', function() {
+    const croppedVideoElement = document.getElementById('croppedVideo');
+    if (!croppedVideoElement.src) {
+        console.log('No cropped video available.');
+        return;
+    }
+    
+    notification.style.display = 'block';
+    const slowFactor = slowFactorSlider.value;
+
+    fetch(croppedVideoElement.src)
+        .then(response => response.blob())
+        .then(blob => {
+            const formData = new FormData();
+            formData.append('video', blob, 'cropped.mp4');
+            formData.append('slowFactor', slowFactor);
+
+            return fetch('/slowVideo', { method: 'POST', body: formData });
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            notification.style.display = 'none';
+            slowedVideoElement.src = URL.createObjectURL(blob);
+            slowedVideoElement.style.display = 'block';
+        })
+        .catch(() => {
+            notification.style.display = 'none';
+            console.error('Failed to slow down video.');
+        });
+});
+    
+    
+    
+    
+    
+
     
 });
+
+
+
+
+    // document.getElementById('createGradientOverlayButton').addEventListener('click', function() {
+    //     const croppedVideoElement = document.getElementById('croppedVideo');
+    //     const gradientDirection = document.getElementById('gradientDirection').value;
+        
+    //     if (!croppedVideoElement.src) {
+    //         console.log('No cropped video available.');
+    //         return;
+    //     }
+    
+    //     notification.style.display = 'block';
+    
+    //     fetch(croppedVideoElement.src)
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             const formData = new FormData();
+    //             formData.append('video', blob, 'cropped.mp4');
+    //             formData.append('gradientDirection', gradientDirection); 
+    
+    //             return fetch('/gradientOverlay', { method: 'POST', body: formData });
+    //         })
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             notification.style.display = 'none';
+    //             const gradientOverlayVideo = document.getElementById('gradientOverlayVideo');
+    //             gradientOverlayVideo.src = URL.createObjectURL(blob);
+    //             gradientOverlayVideo.style.display = 'block';
+    //         })
+    //         .catch(() => {
+    //             notification.style.display = 'none';
+    //             console.log('Failed to create gradient overlay.');
+    //         });
+    // });
+    
+    
+    // convert to webp

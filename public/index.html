@@ -76,12 +76,11 @@
         }
         .slice-group {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* Creates two columns */
-            gap: 10px; /* Space between inputs */
+            grid-template-columns: repeat(2, 1fr); 
             padding: 10px;
-            border: 1px solid #ddd; /* Gives a box-like appearance */
+            border: 1px solid #ddd; 
             border-radius: 4px;
-            background-color: #f9f9f9; /* Slightly different background to stand out */
+            background-color: #f9f9f9; 
             margin-bottom: 20px;
         }
         .slice-group > div {
@@ -89,14 +88,14 @@
             flex-direction: column;
         }
         .slice-group input[type="number"] {
-            width: calc(100% - 20px); /* Adjust width to leave space for padding */
+            width: calc(100% - 20px); 
             padding: 8px;
             margin-bottom: 10px;
             border-radius: 4px;
             border: 1px solid #ddd;
         }
         button.download-button {
-    margin-left: 10px; /* Add some space between the title and the button */
+    margin-left: 10px; 
     padding: 5px 10px;
     font-size: 14px;
     background-color: #4CAF50;
@@ -114,7 +113,7 @@ button.download-button:hover {
 
 .title-with-button h3 {
     margin: 0;
-    margin-right: 10px; /* Adjust space between title and button */
+    margin-right: 10px; 
 }
 
 .title-with-button #webpDownloadButtonContainer {
@@ -125,6 +124,74 @@ button.download-button:hover {
     font-size: 0.9em; 
     color: #666; 
 }
+
+
+.color-picker-group {
+    display: flex;
+    align-items: center;
+}
+
+
+.color-picker-group .color-picker {
+    width: 40px; 
+    height: 40px; 
+    border: none; 
+    cursor: pointer;
+    padding: 0; 
+    background: none; 
+}
+
+
+.opacity-slider-group {
+    display: flex;
+    align-items: center;
+}
+
+.opacity-slider-group .opacity-slider {
+    width: 50%; 
+    cursor: pointer; 
+}
+
+.opacity-slider-group #opacityValue {
+    margin-left: 8px;
+    font-size: 14px;
+}
+
+
+.overlay-group {
+    display: grid;
+    grid-template-rows: auto;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #ddd; 
+    border-radius: 4px;
+    background-color: #f9f9f9; 
+    margin-bottom: 20px;
+}
+
+.overlay-group > .form-group, .overlay-group > .button-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.crop-group {
+    display: grid;
+    grid-template-columns: 1fr; 
+    gap: 10px; 
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    margin-bottom: 20px;
+}
+
+.slow-down-slider {
+    width: 50%; 
+   
+}
+
+
     </style>
     
 </head>
@@ -139,6 +206,9 @@ button.download-button:hover {
                 <label for="video">Upload Video:</label>
                 <input type="file" id="video" name="video" accept="video/*" required>
             </div>
+
+
+
 
             <div class="slice-group">
                 <div>
@@ -166,29 +236,94 @@ button.download-button:hover {
                     <input type="number" name="slice3End" min="0">
                 </div>
 
-                <button type="submit">Create Video</button>
+                <div class="button-group">
+                    <button type="submit">Create Video</button>
+                
+                    
+                </div>
         
                 
             </div>
         
-                  <div class="form-group">
-                <label for="cropRatio">Crop Ratio:</label>
-                <select id="cropRatio" name="cropRatio">
-                    <option value="None">None</option>
-                    <option value="Header">Header</option>
-                    <option value="Background">Background Video</option>
-                    <option value="1:1">Square (1:1)</option>
-                    <option value="Middle Third">Middle Third</option>
-                    <option value="Top Third">Top Third</option>
-                    <option value="Bottom Third">Bottom Third</option>
-                    <option value="Top Half">Top Half</option>
-                    <option value="Bottom Half">Bottom Half</option>
-                    <option value="Middle Half">Middle Half</option>
-                </select>
+                <!-- Crop Ratio Section -->
+                <div class="crop-group">
+                    <div class="form-group">
+                        <label for="cropRatio">Crop Ratio:</label>
+                        <select id="cropRatio" name="cropRatio">
+                            <option value="None">None</option>
+                            <option value="Header">Header</option>
+                            <option value="Background">Background Video</option>
+                            <option value="1:1">Square (1:1)</option>
+                            <option value="Middle Third">Middle Third</option>
+                            <option value="Top Third">Top Third</option>
+                            <option value="Bottom Third">Bottom Third</option>
+                            <option value="Top Half">Top Half</option>
+                            <option value="Bottom Half">Bottom Half</option>
+                            <option value="Middle Half">Middle Half</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="cropVideoButton">Crop Video</button>
+                    </div>
+                </div>
+
+            
+            
+           
+
+                <!-- Overlay Section -->
+            <div class="overlay-group">
+                <div class="form-group color-picker-group">
+                    <label for="overlayColor">Overlay Color:</label>
+                    <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
+                    <span id="colorValue">#000000</span>
+                </div>
+                <div class="form-group opacity-slider-group">
+                    <label for="overlayOpacity">Overlay Opacity:</label>
+                    <input type="range" id="overlayOpacity" name="overlayOpacity" class="opacity-slider" min="0.1" max=".7" step="0.1" value="0.5">
+                    <span id="opacityValue">0.5</span>
+                </div>
                 <div class="button-group">
-                <button type="button" id="cropVideoButton">Crop Video</button>
+                    <button type="button" id="createOverlayButton">Create Overlay</button>
                 </div>
             </div>
+
+            <!-- Gradient Overlay Section -->
+            
+            <div class="overlay-group">
+                <div class="form-group color-picker-group">
+                    <label for="gradientColor">Gradient Color:</label>
+                    <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
+                </div>
+                <div class="form-group">
+                    <label for="gradientDirection">Gradient Size:</label>
+                    <select id="gradientDirection" name="gradientDirection">
+                        <option value="full">Full</option>
+                        <option value="half">Half</option>
+                        <option value="quarter">Quarter</option>  <!-- New option added -->
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
+                </div>
+            </div>
+
+        
+
+            <!-- Slow Video Section -->
+            <div class="overlay-group">
+                <div class="form-group">
+                    <label for="slowFactor">Slow Down Factor:</label>
+                    <input type="range" id="slowFactor" name="slowFactor" class="opacity-slider" min="1.5" max="3.0" step="0.5" value="1.5" style="width:50%">
+                    <span id="slowFactorValue">1.5x</span>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="slowVideoButton">Slow Video</button>
+                </div>
+            </div>
+
+            
+            
            <div class="button-group">
             <label>Conversion Buttons</label>
            </div>
@@ -201,14 +336,6 @@ button.download-button:hover {
                 
                 
             </div>
-
-            
-                
-           
-            
-            
-
-
 
         </form>
     </div>
@@ -228,8 +355,21 @@ button.download-button:hover {
         </div>
         <div>
             <h3>Cropped Video</h3>
-            <video id="croppedVideo" controls style="display: none;"></video>
+            <video id="croppedVideo" controls></video>
         </div>
+        <div>
+            <h3>Video with Overlay</h3>
+            <video id="overlayVideo" controls style="display: none;"></video>
+        </div>
+        <div>
+            <h3>Video with Gradient</h3>
+            <video id="gradientOverlayVideo" controls style="display: none;"></video>
+        </div>
+        <div>
+            <h3>Slowed Video</h3>
+            <video id="slowedVideo" controls style="display: none;"></video>
+        </div>
+        
         <div>
             <div class="title-with-button">
                 <h3>GIF</h3><span id="gifDownloadButtonContainer"></span>
@@ -249,14 +389,8 @@ button.download-button:hover {
             </div>
             <img id="webpImage" style="display: none;">
         </div>
-        <!-- <div>
-            <h3>WebP</h3>
-            <img id="webpImage" style="display: none;">
-        </div> -->
-        <!-- <div>
-            <h3>Video with Overlay</h3>
-            <video id="overlayVideo" controls style="display: none;"></video>
-        </div> -->
+       
+        
        
     </div>
 </div>
@@ -266,5 +400,28 @@ button.download-button:hover {
 </div>
 
 <script src="videoSlicer.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+       
+        var colorPicker = document.getElementById('overlayColor');
+        var colorValueDisplay = document.getElementById('colorValue');
+        
+        colorPicker.addEventListener('input', function() {
+            colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
+        });
+    
+       
+        var opacitySlider = document.getElementById('overlayOpacity');
+        var opacityValueDisplay = document.getElementById('opacityValue');
+        
+        opacitySlider.addEventListener('input', function() {
+            opacityValueDisplay.textContent = opacitySlider.value;
+        });
+    });
+</script>
+    
+
+
 </body>
 </html>
