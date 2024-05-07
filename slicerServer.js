@@ -134,8 +134,11 @@ app.post('/overlay', upload.single('video'), (req, res) => {
     const opacity = parseFloat(req.body.opacity);
     const outputPath = path.join(__dirname, 'processed', `overlay_video_${Date.now()}.mp4`);
 
+    // Use the uploaded video instead of the cropped video for overlay creation
+    const uploadedVideoPath = path.join(__dirname, 'uploads', req.file.filename);
+
     // Calculate video size
-    exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${uploadedVideoPath}"`, (error, stdout) => {
         if (error) {
             console.error('Error getting video size:', error);
             return res.status(500).send('Failed to get video size.');
@@ -152,7 +155,7 @@ app.post('/overlay', upload.single('video'), (req, res) => {
             }
 
             // Apply the overlay
-            exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+            exec(`ffmpeg -i "${uploadedVideoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
                 if (ffmpegError) {
                     console.error('Error applying overlay:', ffmpegError);
                     return res.status(500).send('Failed to apply overlay.');
@@ -162,13 +165,57 @@ app.post('/overlay', upload.single('video'), (req, res) => {
                     if (downloadErr) {
                         console.error('Error sending the overlay video:', downloadErr);
                     }
-                    fs.unlinkSync(videoPath);
+                    fs.unlinkSync(uploadedVideoPath);
                     fs.unlinkSync(overlayPath);
                 });
             });
         });
     });
 });
+
+
+
+// app.post('/overlay', upload.single('video'), (req, res) => {
+//     const videoPath = req.file.path;
+//     const color = req.body.color.replace('#', '');
+//     const opacity = parseFloat(req.body.opacity);
+//     const outputPath = path.join(__dirname, 'processed', `overlay_video_${Date.now()}.mp4`);
+
+//     // Calculate video size
+//     exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+//         if (error) {
+//             console.error('Error getting video size:', error);
+//             return res.status(500).send('Failed to get video size.');
+//         }
+
+//         const [width, height] = stdout.trim().split(',');
+//         const overlayPath = path.join(__dirname, 'overlay', `overlay_${Date.now()}.png`);
+
+//         // Create overlay
+//         exec(`convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0,2), 16)},${parseInt(color.substring(2,4), 16)},${parseInt(color.substring(4,6), 16)},${opacity})" "${overlayPath}"`, (overlayError) => {
+//             if (overlayError) {
+//                 console.error('Error creating overlay:', overlayError);
+//                 return res.status(500).send('Failed to create overlay.');
+//             }
+
+//             // Apply the overlay
+//             exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+//                 if (ffmpegError) {
+//                     console.error('Error applying overlay:', ffmpegError);
+//                     return res.status(500).send('Failed to apply overlay.');
+//                 }
+
+//                 res.download(outputPath, (downloadErr) => {
+//                     if (downloadErr) {
+//                         console.error('Error sending the overlay video:', downloadErr);
+//                     }
+//                     fs.unlinkSync(videoPath);
+//                     fs.unlinkSync(overlayPath);
+//                 });
+//             });
+//         });
+//     });
+// });
 
 // gradient overlay
 
@@ -417,6 +464,14 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
     });
 
 
+
+
+
+
+app.post('/mergeVideos', multerMulti.array('video', 3), (req, res) => {
+    console.log(req.files);  // Check what files are received
+    return res.status(200).send('Route is working');
+});
     
 
 });
@@ -424,3 +479,5 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
 app.listen(3000, '0.0.0.0', () => {
     console.log(`Server running on port 3000`);
 });
+
+

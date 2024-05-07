@@ -3,196 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Video Processing Tool</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            display: flex;
-            min-height: 100vh;
-        }
-        .sidebar {
-            width: 300px;
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
-        .main-content {
-            flex-grow: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .form-group label, .button-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        .form-group input, .form-group select, .button-group button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056cc;
-        }
-        #videoContainer {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            width: 100%;
-        }
-        #videoContainer > div {
-            background-color: #fff;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        video, img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-        }
-        #processingNotification {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0,0,0,0.75);
-            color: white;
-            padding: 20px;
-            border-radius: 5px;
-        }
-        .slice-group {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); 
-            padding: 10px;
-            border: 1px solid #ddd; 
-            border-radius: 4px;
-            background-color: #f9f9f9; 
-            margin-bottom: 20px;
-        }
-        .slice-group > div {
-            display: flex;
-            flex-direction: column;
-        }
-        .slice-group input[type="number"] {
-            width: calc(100% - 20px); 
-            padding: 8px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-        button.download-button {
-    margin-left: 10px; 
-    padding: 5px 10px;
-    font-size: 14px;
-    background-color: #4CAF50;
-    color: white;
-}
-
-button.download-button:hover {
-    background-color: #45a049;
-}
-
-.title-with-button {
-    display: flex;
-    align-items: center;
-}
-
-.title-with-button h3 {
-    margin: 0;
-    margin-right: 10px; 
-}
-
-.title-with-button #webpDownloadButtonContainer {
-    margin: 0;
-}
-
-.title-with-button span.file-size {
-    font-size: 0.9em; 
-    color: #666; 
-}
+    <link rel="stylesheet" href="styles.css">
 
 
-.color-picker-group {
-    display: flex;
-    align-items: center;
-}
-
-
-.color-picker-group .color-picker {
-    width: 40px; 
-    height: 40px; 
-    border: none; 
-    cursor: pointer;
-    padding: 0; 
-    background: none; 
-}
-
-
-.opacity-slider-group {
-    display: flex;
-    align-items: center;
-}
-
-.opacity-slider-group .opacity-slider {
-    width: 50%; 
-    cursor: pointer; 
-}
-
-.opacity-slider-group #opacityValue {
-    margin-left: 8px;
-    font-size: 14px;
-}
-
-
-.overlay-group {
-    display: grid;
-    grid-template-rows: auto;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid #ddd; 
-    border-radius: 4px;
-    background-color: #f9f9f9; 
-    margin-bottom: 20px;
-}
-
-.overlay-group > .form-group, .overlay-group > .button-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.crop-group {
-    display: grid;
-    grid-template-columns: 1fr; 
-    gap: 10px; 
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-    margin-bottom: 20px;
-}
-
-.slow-down-slider {
-    width: 50%; 
-   
-}
-
-
-    </style>
     
 </head>
 <body>
@@ -207,10 +20,24 @@ button.download-button:hover {
                 <input type="file" id="video" name="video" accept="video/*" required>
             </div>
 
+            <div class="button-group">
+                <label>Video Effects</label>
+               </div>
+                
+                <div class="button-group">
+                    <button onclick="location.href='multiVideoUploader.html'">Upload Multiple Videos</button>
+                    <button onclick="location.href='crop-video.html'">Crop Video Feature</button>
+                    <button onclick="location.href='video-overlay.html'">Colored Overlay</button>
+                    <button onclick="location.href='video-slice.html'">Slice Video</button>
+                    
+                    
+                </div>
 
 
 
-            <div class="slice-group">
+
+            <!-- <div class="slice-group">
+            
                 <div>
                     <label>Slice 1: Start</label>
                     <input type="number" name="slice1Start" min="0" required>
@@ -243,10 +70,10 @@ button.download-button:hover {
                 </div>
         
                 
-            </div>
+            </div> -->
         
                 <!-- Crop Ratio Section -->
-                <div class="crop-group">
+                <!-- <div class="crop-group">
                     <div class="form-group">
                         <label for="cropRatio">Crop Ratio:</label>
                         <select id="cropRatio" name="cropRatio">
@@ -265,14 +92,14 @@ button.download-button:hover {
                     <div class="button-group">
                         <button type="button" id="cropVideoButton">Crop Video</button>
                     </div>
-                </div>
+                </div> -->
 
             
             
            
 
                 <!-- Overlay Section -->
-            <div class="overlay-group">
+            <!-- <div class="overlay-group">
                 <div class="form-group color-picker-group">
                     <label for="overlayColor">Overlay Color:</label>
                     <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
@@ -286,11 +113,11 @@ button.download-button:hover {
                 <div class="button-group">
                     <button type="button" id="createOverlayButton">Create Overlay</button>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Gradient Overlay Section -->
             
-            <div class="overlay-group">
+            <!-- <div class="overlay-group">
                 <div class="form-group color-picker-group">
                     <label for="gradientColor">Gradient Color:</label>
                     <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
@@ -300,18 +127,18 @@ button.download-button:hover {
                     <select id="gradientDirection" name="gradientDirection">
                         <option value="full">Full</option>
                         <option value="half">Half</option>
-                        <option value="quarter">Quarter</option>  <!-- New option added -->
+                        <option value="quarter">Quarter</option> 
                     </select>
                 </div>
                 <div class="button-group">
                     <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
                 </div>
-            </div>
+            </div> -->
 
         
 
             <!-- Slow Video Section -->
-            <div class="overlay-group">
+            <!-- <div class="overlay-group">
                 <div class="form-group">
                     <label for="slowFactor">Slow Down Factor:</label>
                     <input type="range" id="slowFactor" name="slowFactor" class="opacity-slider" min="1.5" max="3.0" step="0.5" value="1.5" style="width:50%">
@@ -320,22 +147,20 @@ button.download-button:hover {
                 <div class="button-group">
                     <button type="button" id="slowVideoButton">Slow Video</button>
                 </div>
-            </div>
+            </div> -->
 
             
             
-           <div class="button-group">
-            <label>Conversion Buttons</label>
-           </div>
-            
-            <div class="button-group">
+           
+
+            <!-- <div class="button-group">
                 <button type="button" id="convertToGifButton">Convert to GIF</button>
                 <button type="button" id="convertToAvifButton">Convert to AVIF</button>
                 <button type="button" id="convertToWebPButton">Convert to WebP</button>
                 <button type="button" id="createOverlayButton">Create Overlay</button>
                 
                 
-            </div>
+            </div> -->
 
         </form>
     </div>
