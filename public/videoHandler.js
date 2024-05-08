@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('top', Math.round(cropTop));
 
         
-        fetch('/upload', {
+        fetch('http://www.quick-convert.com/upload', {
     method: 'POST',
     body: formData
 })

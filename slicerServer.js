@@ -10,7 +10,7 @@ const convertedDir = path.join(__dirname, 'converted');
 
 app.use(express.static('public'));
 
-console.log("Current PATH:", process.env.PATH);
+
 
 app.post('/slice', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
