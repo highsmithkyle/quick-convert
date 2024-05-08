@@ -26,7 +26,7 @@
                 
                 <div class="button-group">
                     <button onclick="location.href='multiVideoUploader.html'">Upload Multiple Videos</button>
-                    <button onclick="location.href='video-crop.html'">Crop Video Feature</button>
+                    <button onclick="location.href='crop-video.html'">Crop Video Feature</button>
                     <button onclick="location.href='video-overlay.html'">Colored Overlay</button>
                     <button onclick="location.href='video-slice.html'">Slice Video</button>
                     
@@ -35,8 +35,7 @@
 
 
 
-
-            <!-- <div class="slice-group">
+            <div class="slice-group">
             
                 <div>
                     <label>Slice 1: Start</label>
@@ -70,10 +69,10 @@
                 </div>
         
                 
-            </div> -->
+            </div>
         
                 <!-- Crop Ratio Section -->
-                <!-- <div class="crop-group">
+               <div class="crop-group">
                     <div class="form-group">
                         <label for="cropRatio">Crop Ratio:</label>
                         <select id="cropRatio" name="cropRatio">
@@ -92,14 +91,13 @@
                     <div class="button-group">
                         <button type="button" id="cropVideoButton">Crop Video</button>
                     </div>
-                </div> -->
+                </div>
 
             
             
            
 
-                
-           <div class="overlay-group">
+                            <div class="overlay-group">
                 <div class="form-group color-picker-group">
                     <label for="overlayColor">Overlay Color:</label>
                     <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
@@ -137,7 +135,7 @@
 
         
 
-            <!-- Slow Video Section -->
+           
             <!-- <div class="overlay-group">
                 <div class="form-group">
                     <label for="slowFactor">Slow Down Factor:</label>
@@ -153,14 +151,14 @@
             
            
 
-            <!-- <div class="button-group">
+            <div class="button-group">
                 <button type="button" id="convertToGifButton">Convert to GIF</button>
                 <button type="button" id="convertToAvifButton">Convert to AVIF</button>
                 <button type="button" id="convertToWebPButton">Convert to WebP</button>
                 <button type="button" id="createOverlayButton">Create Overlay</button>
                 
                 
-            </div> -->
+            </div>
 
         </form>
     </div>
@@ -250,6 +248,258 @@
 
 </body>
 </html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Processing Tool</title>
+    <link rel="stylesheet" href="styles.css">
+
+
+    
+</head>
+<body>
+
+
+
+    
+    <div class="sidebar">
+        <form id="slicerForm" enctype="multipart/form-data" method="post">
+            <div class="form-group">
+                <label for="video">Upload Video:</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+            </div>
+
+            <div class="button-group">
+                <label>Video Effects</label>
+               </div>
+                
+                <div class="button-group">
+                    <button onclick="location.href='multiVideoUploader.html'">Upload Multiple Videos</button>
+                    <button onclick="location.href='crop-video.html'">Crop Video Feature</button>
+                    <button onclick="location.href='video-overlay.html'">Colored Overlay</button>
+                    <button onclick="location.href='video-slice.html'">Slice Video</button>
+                    
+                    
+                </div>
+
+
+
+
+            <div class="slice-group">
+            
+                <div>
+                    <label>Slice 1: Start</label>
+                    <input type="number" name="slice1Start" min="0" required>
+                </div>
+                <div>
+                    <label>Slice 1: End</label>
+                    <input type="number" name="slice1End" min="0" required>
+                </div>
+                <div>
+                    <label>Slice 2: Start:</label>
+                    <input type="number" name="slice2Start" min="0">
+                </div>
+                <div>
+                    <label>Slice 2: End</label>
+                    <input type="number" name="slice2End" min="0">
+                </div>
+                <div>
+                    <label>Slice 3: Start:</label>
+                    <input type="number" name="slice3Start" min="0">
+                </div>
+                <div>
+                    <label>Slice 3: End:</label>
+                    <input type="number" name="slice3End" min="0">
+                </div>
+
+                <div class="button-group">
+                    <button type="submit">Create Video</button>
+                
+                    
+                </div>
+        
+                
+            </div> 
+        
+         
+          <div class="crop-group">
+                    <div class="form-group">
+                        <label for="cropRatio">Crop Ratio:</label>
+                        <select id="cropRatio" name="cropRatio">
+                            <option value="None">None</option>
+                            <option value="Header">Header</option>
+                            <option value="Background">Background Video</option>
+                            <option value="1:1">Square (1:1)</option>
+                            <option value="Middle Third">Middle Third</option>
+                            <option value="Top Third">Top Third</option>
+                            <option value="Bottom Third">Bottom Third</option>
+                            <option value="Top Half">Top Half</option>
+                            <option value="Bottom Half">Bottom Half</option>
+                            <option value="Middle Half">Middle Half</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="cropVideoButton">Crop Video</button>
+                    </div>
+                </div>
+
+            
+            
+           
+
+               
+         <div class="overlay-group">
+                <div class="form-group color-picker-group">
+                    <label for="overlayColor">Overlay Color:</label>
+                    <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
+                    <span id="colorValue">#000000</span>
+                </div>
+                <div class="form-group opacity-slider-group">
+                    <label for="overlayOpacity">Overlay Opacity:</label>
+                    <input type="range" id="overlayOpacity" name="overlayOpacity" class="opacity-slider" min="0.1" max=".7" step="0.1" value="0.5">
+                    <span id="opacityValue">0.5</span>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="createOverlayButton">Create Overlay</button>
+                </div>
+            </div>
+
+           
+            
+     <div class="overlay-group">
+                <div class="form-group color-picker-group">
+                    <label for="gradientColor">Gradient Color:</label>
+                    <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
+                </div>
+                <div class="form-group">
+                    <label for="gradientDirection">Gradient Size:</label>
+                    <select id="gradientDirection" name="gradientDirection">
+                        <option value="full">Full</option>
+                        <option value="half">Half</option>
+                        <option value="quarter">Quarter</option> 
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
+                </div>
+            </div>
+
+        
+
+         <div class="overlay-group">
+                <div class="form-group">
+                    <label for="slowFactor">Slow Down Factor:</label>
+                    <input type="range" id="slowFactor" name="slowFactor" class="opacity-slider" min="1.5" max="3.0" step="0.5" value="1.5" style="width:50%">
+                    <span id="slowFactorValue">1.5x</span>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="slowVideoButton">Slow Video</button>
+                </div>
+            </div>
+
+            
+            
+           
+
+         <div class="button-group">
+                <button type="button" id="convertToGifButton">Convert to GIF</button>
+                <button type="button" id="convertToAvifButton">Convert to AVIF</button>
+                <button type="button" id="convertToWebPButton">Convert to WebP</button>
+                <button type="button" id="createOverlayButton">Create Overlay</button>
+                
+                
+            </div>
+
+        </form>
+    </div>
+
+
+            
+
+<div class="main-content">
+    <div id="videoContainer">
+        <div>
+            <h3>Uploaded Video</h3>
+            <video id="uploadedVideo" controls></video>
+        </div>
+        <div>
+            <h3>Sliced Video</h3>
+            <video id="processedVideo" controls></video>
+        </div>
+        <div>
+            <h3>Cropped Video</h3>
+            <video id="croppedVideo" controls></video>
+        </div>
+        <div>
+            <h3>Video with Overlay</h3>
+            <video id="overlayVideo" controls style="display: none;"></video>
+        </div>
+        <div>
+            <h3>Video with Gradient</h3>
+            <video id="gradientOverlayVideo" controls style="display: none;"></video>
+        </div>
+        <div>
+            <h3>Slowed Video</h3>
+            <video id="slowedVideo" controls style="display: none;"></video>
+        </div>
+        
+        <div>
+            <div class="title-with-button">
+                <h3>GIF</h3><span id="gifDownloadButtonContainer"></span>
+            </div>
+            <img id="gifImage" style="display: none;">
+        </div>
+        <div>
+            <div class="title-with-button">
+                <h3>AVIF</h3><span id="avifDownloadButtonContainer"></span>
+            </div>
+            <img id="avifImage" style="display: none;">
+        </div>
+        <div>
+            <div class="title-with-button">
+                <h3>WebP</h3>
+                <span id="webpDownloadButtonContainer"></span>
+            </div>
+            <img id="webpImage" style="display: none;">
+        </div>
+       
+        
+       
+    </div>
+</div>
+
+<div id="processingNotification">
+    Processing your video, please wait...
+</div>
+
+<script src="videoSlicer.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+       
+        var colorPicker = document.getElementById('overlayColor');
+        var colorValueDisplay = document.getElementById('colorValue');
+        
+        colorPicker.addEventListener('input', function() {
+            colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
+        });
+    
+       
+        var opacitySlider = document.getElementById('overlayOpacity');
+        var opacityValueDisplay = document.getElementById('opacityValue');
+        
+        opacitySlider.addEventListener('input', function() {
+            opacityValueDisplay.textContent = opacitySlider.value;
+        });
+    });
+</script>
+    
+
+
+</body>
+</html> 
 
 <!-- <!DOCTYPE html>
 <html lang="en">
