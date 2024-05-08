@@ -75,40 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
 
-    document.getElementById('createOverlayButton').addEventListener('click', function() {
-        const croppedVideoElement = document.getElementById('croppedVideo');
-        const color = document.getElementById('overlayColor').value;
-        const opacity = document.getElementById('overlayOpacity').value;
     
-        if (!croppedVideoElement.src) {
-            console.log('No cropped video available.');
-            return;
-        }
-    
-        notification.style.display = 'block';
-    
-        fetch(croppedVideoElement.src)
-            .then(response => response.blob())
-            .then(blob => {
-                const formData = new FormData();
-                formData.append('video', blob, 'cropped.mp4');
-                formData.append('color', color);
-                formData.append('opacity', opacity);
-    
-                return fetch('/overlay', { method: 'POST', body: formData });
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                notification.style.display = 'none';
-                const overlayVideo = document.getElementById('overlayVideo');
-                overlayVideo.src = URL.createObjectURL(blob);
-                overlayVideo.style.display = 'block';
-            })
-            .catch(() => {
-                notification.style.display = 'none';
-                console.log('Failed to create overlay.');
-            });
-    });
     
 
     // gradient overlay
