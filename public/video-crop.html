@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Cropper</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>FFMPEG Video Cropper</h2>
+<form id="uploadForm" enctype="multipart/form-data" method="post">
+    <input type="file" name="video" accept="video/*" id="videoInput" required>
+    <select id="sizeSelector">
+        <option value="default">Select Crop Ratio</option>
+        <option value="2:1">2:1</option>
+        <option value="2:1-small">2:1 small</option>
+        <option value="third">3:1</option>
+        <option value="9:16">9:16</option>
+    </select>
+    <button type="submit">Crop Video</button>
+</form>
+
+<form id="cropForm" style="display: none;" action="/upload" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="width" id="cropWidth">
+    <input type="hidden" name="height" id="cropHeight">
+    <input type="hidden" name="left" id="cropLeft">
+    <input type="hidden" name="top" id="cropTop">
+    <input type="hidden" name="videoId" id="videoId">
+</form>
+<div class="columns_container" style="display:flex; flex-direction: row; justify-content: space-between; width: 650px;">
+    
+    <div class="left-column" style="width: 300px;">
+        <h3>Uploaded Video</h3>
+        <div id="videoContainer">
+            
+            <video id="videoPlayer" controls></video>
+            <div id="overlay">
+            </div>
+        </div>
+    </div>
+    <div class="right_column">
+        <h3>Cropped Video</h3>
+        <div id="croppedVideoContainer" style="width: 300px;">
+            <video id="croppedVideoPlayer" controls style="max-width: 300px;"></video>
+        </div>
+    </div>
+    
+</div>
+
+
+<script src="videoHandler.js"></script>
+
+</body>
+</html>
+
+

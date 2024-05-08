@@ -1,3 +1,143 @@
+
+crop
+
+app.post('/crop', upload.single('video'), (req, res) => {
+    const videoPath = req.file.path;
+    const cropRatio = req.body.cropRatio; 
+    const outputPath = path.join(__dirname, 'processed', `cropped_video_${Date.now()}.mp4`);
+
+    if (cropRatio === 'None') {
+        
+        fs.copyFile(videoPath, outputPath, (err) => {
+            if (err) {
+                console.error('Error copying file:', err);
+                return res.status(500).send('Error processing video.');
+            }
+            res.download(outputPath, (downloadErr) => {
+                if (downloadErr) {
+                    console.error('Error sending the video file:', downloadErr);
+                }
+                fs.unlinkSync(videoPath); 
+            });
+        });
+    } else {
+     
+        let cropCommand;
+        switch (cropRatio) {
+            case '1:1':
+                cropCommand = 'crop=min(iw\\,ih):min(iw\\,ih)';
+                break;
+            case 'Header':
+                cropCommand = 'crop=in_w:in_h/2:0:in_h/4';
+                break;    
+            case 'Background':
+                cropCommand = `crop='if(gt(iw/ih,ih/iw),ih*9/16,iw)':ih`;
+                break;
+            case 'Middle Third':
+                cropCommand = 'crop=in_w:in_h/3:0:in_h/3';
+                break;
+            case 'Top Third':
+                cropCommand = 'crop=in_w:in_h/3:0:0';
+                break;
+            case 'Bottom Third':
+                cropCommand = 'crop=in_w:in_h/3:0:2*in_h/3';
+                break;
+            case 'Top Half':
+                cropCommand = 'crop=in_w:ih/2:0:0';
+                break;
+            case 'Bottom Half':
+                cropCommand = 'crop=in_w:ih/2:0:ih/2';
+                break;
+            default:
+                cropCommand = '';
+                break;
+        }
+
+        if (cropCommand !== '') {
+            const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+            exec(ffmpegCommand, (error) => {
+                if (error) {
+                    console.error('Error executing FFmpeg command:', error);
+                  
+                    return res.status(500).send('Error processing video.');
+                }
+
+                res.download(outputPath, (downloadErr) => {
+                    if (downloadErr) {
+                        console.error('Error sending the video file:', downloadErr);
+                    }
+                  
+                });
+            });
+        } else {
+            return res.status(400).send('Invalid crop ratio specified.');
+        }
+    }
+});
+
+
+CROP 
+
+
+
+
+    document.getElementById('cropVideoButton').addEventListener('click', function() {
+        const uploadedVideoElement = document.getElementById('uploadedVideo'); // Change this line
+        const cropRatioSelect = document.getElementById('cropRatio');
+    
+        if (!uploadedVideoElement.src) { // Change this line
+            console.log('No video available to crop.');
+            return;
+        }
+    
+        notification.style.display = 'block';
+    
+        fetch(uploadedVideoElement.src) // Change this line
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'uploaded.mp4'); // Change this line
+                formData.append('cropRatio', cropRatioSelect.value);
+    
+                return fetch('/crop', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                const croppedVideo = document.getElementById('croppedVideo');
+                croppedVideo.src = URL.createObjectURL(blob);
+                croppedVideo.style.display = 'block';
+            })
+            .catch(() => {
+                notification.style.display = 'none';
+                console.log('Failed to crop video.');
+            });
+    });
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.post('/slice', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const finalOutputPath = path.join(__dirname, 'processed', `final_output_${Date.now()}.mp4`);
