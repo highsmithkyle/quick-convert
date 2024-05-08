@@ -75,6 +75,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
 
+    // document.getElementById('createOverlayButton').addEventListener('click', function() {
+    //     const croppedVideoElement = document.getElementById('croppedVideo');
+    //     const color = document.getElementById('overlayColor').value;
+    //     const opacity = document.getElementById('overlayOpacity').value;
+    
+    //     if (!croppedVideoElement.src) {
+    //         console.log('No cropped video available.');
+    //         return;
+    //     }
+    
+    //     notification.style.display = 'block';
+    
+    //     fetch(croppedVideoElement.src)
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             const formData = new FormData();
+    //             formData.append('video', blob, 'cropped.mp4');
+    //             formData.append('color', color);
+    //             formData.append('opacity', opacity);
+    
+    //             return fetch('/overlay', { method: 'POST', body: formData });
+    //         })
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             notification.style.display = 'none';
+    //             const overlayVideo = document.getElementById('overlayVideo');
+    //             overlayVideo.src = URL.createObjectURL(blob);
+    //             overlayVideo.style.display = 'block';
+    //         })
+    //         .catch(() => {
+    //             notification.style.display = 'none';
+    //             console.log('Failed to create overlay.');
+    //         });
+    // });
+    
+
+    // gradient overlay
+
 
     document.getElementById('createGradientOverlayButton').addEventListener('click', function() {
         const croppedVideoElement = document.getElementById('croppedVideo');
@@ -175,6 +213,40 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
 
+
+    document.getElementById('cropVideoButton').addEventListener('click', function() {
+        const uploadedVideoElement = document.getElementById('uploadedVideo'); // Change this line
+        const cropRatioSelect = document.getElementById('cropRatio');
+    
+        if (!uploadedVideoElement.src) { // Change this line
+            console.log('No video available to crop.');
+            return;
+        }
+    
+        notification.style.display = 'block';
+    
+        fetch(uploadedVideoElement.src) // Change this line
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'uploaded.mp4'); // Change this line
+                formData.append('cropRatio', cropRatioSelect.value);
+    
+                return fetch('/crop', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                const croppedVideo = document.getElementById('croppedVideo');
+                croppedVideo.src = URL.createObjectURL(blob);
+                croppedVideo.style.display = 'block';
+            })
+            .catch(() => {
+                notification.style.display = 'none';
+                console.log('Failed to crop video.');
+            });
+    });
+    
 
    
 
@@ -369,6 +441,7 @@ slowVideoButton.addEventListener('click', function() {
 
     
 });
+
 
 
 // document.addEventListener('DOMContentLoaded', function() {
