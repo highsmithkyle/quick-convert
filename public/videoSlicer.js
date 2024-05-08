@@ -39,22 +39,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // colored overlay
 
     document.getElementById('createOverlayButton').addEventListener('click', function() {
-        const uploadedVideoElement = document.getElementById('uploadedVideo'); // Change this line
+        const uploadedVideoElement = document.getElementById('uploadedVideo');
         const color = document.getElementById('overlayColor').value;
         const opacity = document.getElementById('overlayOpacity').value;
     
-        if (!uploadedVideoElement.src) { // Change this line
-            console.log('No uploaded video available.'); // Change this line
+        if (!uploadedVideoElement.src) {
+            console.log('No uploaded video available.');
             return;
         }
     
         notification.style.display = 'block';
     
-        fetch(uploadedVideoElement.src) // Change this line
+        fetch(uploadedVideoElement.src)
             .then(response => response.blob())
             .then(blob => {
                 const formData = new FormData();
-                formData.append('video', blob, 'uploaded.mp4'); // Change this line
+                formData.append('video', blob);
                 formData.append('color', color);
                 formData.append('opacity', opacity);
     
@@ -72,9 +72,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Failed to create overlay.');
             });
     });
-    
-
-
     
     
 
