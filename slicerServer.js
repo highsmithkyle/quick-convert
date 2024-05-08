@@ -1,3 +1,4 @@
+const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
 const fs = require('fs');
@@ -50,80 +51,7 @@ app.post('/slice', upload.single('video'), (req, res) => {
     });
 });
 
-app.post('/crop', upload.single('video'), (req, res) => {
-    const videoPath = req.file.path;
-    const cropRatio = req.body.cropRatio; 
-    const outputPath = path.join(__dirname, 'processed', `cropped_video_${Date.now()}.mp4`);
 
-    if (cropRatio === 'None') {
-        
-        fs.copyFile(videoPath, outputPath, (err) => {
-            if (err) {
-                console.error('Error copying file:', err);
-                return res.status(500).send('Error processing video.');
-            }
-            res.download(outputPath, (downloadErr) => {
-                if (downloadErr) {
-                    console.error('Error sending the video file:', downloadErr);
-                }
-                fs.unlinkSync(videoPath); 
-            });
-        });
-    } else {
-     
-        let cropCommand;
-        switch (cropRatio) {
-            case '1:1':
-                cropCommand = 'crop=min(iw\\,ih):min(iw\\,ih)';
-                break;
-            case 'Header':
-                cropCommand = 'crop=in_w:in_h/2:0:in_h/4';
-                break;    
-            case 'Background':
-                cropCommand = `crop='if(gt(iw/ih,ih/iw),ih*9/16,iw)':ih`;
-                break;
-            case 'Middle Third':
-                cropCommand = 'crop=in_w:in_h/3:0:in_h/3';
-                break;
-            case 'Top Third':
-                cropCommand = 'crop=in_w:in_h/3:0:0';
-                break;
-            case 'Bottom Third':
-                cropCommand = 'crop=in_w:in_h/3:0:2*in_h/3';
-                break;
-            case 'Top Half':
-                cropCommand = 'crop=in_w:ih/2:0:0';
-                break;
-            case 'Bottom Half':
-                cropCommand = 'crop=in_w:ih/2:0:ih/2';
-                break;
-            default:
-                cropCommand = '';
-                break;
-        }
-
-        if (cropCommand !== '') {
-            const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
-
-            exec(ffmpegCommand, (error) => {
-                if (error) {
-                    console.error('Error executing FFmpeg command:', error);
-                  
-                    return res.status(500).send('Error processing video.');
-                }
-
-                res.download(outputPath, (downloadErr) => {
-                    if (downloadErr) {
-                        console.error('Error sending the video file:', downloadErr);
-                    }
-                  
-                });
-            });
-        } else {
-            return res.status(400).send('Invalid crop ratio specified.');
-        }
-    }
-});
 
 //colored overlay
 
@@ -415,7 +343,44 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
         });
     });
 
+// for video crop file
 
+
+app.post('/upload', upload.single('video'), (req, res) => {
+    if (!fs.existsSync('processed')) {
+        fs.mkdirSync('processed');
+    }
+
+    const videoPath = req.file.path;
+    const timestamp = Date.now();
+    const outputPath = path.join(__dirname, 'processed', `cropped_video_${timestamp}.mp4`);
+    const { width, height, left, top } = req.body;
+
+    const safeWidth = parseInt(width, 10);
+    const safeHeight = parseInt(height, 10);
+    const safeLeft = parseInt(left, 10);
+    const safeTop = parseInt(top, 10);
+
+   
+    if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+        return res.status(400).send('Invalid crop dimensions');
+    }
+
+    const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
+    const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+    exec(ffmpegCommand, (error, stdout, stderr) => {
+        fs.unlinkSync(videoPath); 
+        if (error) {
+            console.error(`Exec Error: ${error.message}`);
+            return res.status(500).send('Error processing video');
+        }
+
+        res.sendFile(outputPath, (err) => {
+            fs.unlinkSync(outputPath); 
+        });
+    });
+});
 
 
 
@@ -431,7 +396,6 @@ app.post('/mergeVideos', multerMulti.array('video', 3), (req, res) => {
 app.listen(3000, '0.0.0.0', () => {
     console.log(`Server running on port 3000`);
 });
-
 
 
 // const express = require('express');
