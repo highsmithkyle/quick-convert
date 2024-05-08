@@ -126,14 +126,11 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('left', Math.round(cropLeft));
         formData.append('top', Math.round(cropTop));
 
-        fetch('https://quick-convert.com/upload', {
-    method: 'POST',
-    body: formData
-})
-        // fetch('/upload', {
-        //     method: 'POST',
-        //     body: formData
-        // })
+        
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok ' + response.statusText);
