@@ -12,6 +12,11 @@ const convertedDir = path.join(__dirname, 'converted');
 app.use(express.static('public'));
 process.env.PATH += ':/usr/bin';
 
+const overlayDir = path.join(__dirname, 'overlay');
+if (!fs.existsSync(overlayDir)) {
+    fs.mkdirSync(overlayDir, { recursive: true });
+}
+
 
 
 app.get('/test-imagemagick', (req, res) => {
