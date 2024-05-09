@@ -1,3 +1,4 @@
+
 const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
@@ -9,6 +10,23 @@ const convertedDir = path.join(__dirname, 'converted');
 
 
 app.use(express.static('public'));
+process.env.PATH += ':/usr/bin';
+
+
+
+app.get('/test-imagemagick', (req, res) => {
+    console.log('Testing ImageMagick installation...');
+    exec('convert -size 1280x720 xc:"rgba(0,0,0,0.5)" "/home/kyle/quick-convert/overlay/overlay_test.png"', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Convert command failed: ${error}`);
+            return res.status(500).send(`Error running convert: ${error.message}`);
+        }
+        console.log('Convert command stdout:', stdout);
+        console.error('Convert command stderr:', stderr);
+        res.send('ImageMagick command executed successfully.');
+    });
+});
+
 
 app.post('/slice', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;

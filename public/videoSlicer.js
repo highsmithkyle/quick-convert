@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoInput = document.querySelector('input[type="file"]');
     const notification = document.getElementById('processingNotification');
     const createOverlayButton = document.getElementById('createOverlayButton'); 
+    console.log(createOverlayButton); // This should output the element or null if it's not found
+
+
 
     videoInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
