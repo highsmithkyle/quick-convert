@@ -12,8 +12,17 @@
 
 
 
-    
+
+
+
+
     <div class="sidebar">
+        
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>
+        
         <form id="slicerForm" enctype="multipart/form-data" method="post">
             <div class="form-group">
                 <label for="video">Upload Video:</label>
@@ -52,60 +61,6 @@
 
             
             
-           
-
-                <div class="overlay-group" style="display: none;">
-                    <div class="form-group color-picker-group">
-                        <label for="overlayColor">Overlay Color:</label>
-                        <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
-                        <span id="colorValue">#000000</span>
-                    </div>
-                    <div class="form-group opacity-slider-group">
-                        <label for="overlayOpacity">Overlay Opacity:</label>
-                        <input type="range" id="overlayOpacity" name="overlayOpacity" class="opacity-slider" min="0.1" max=".7" step="0.1" value="0.5">
-                        <span id="opacityValue">0.5</span>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="createOverlayButton">Create Overlay</button>
-                    </div>
-                </div>
-
-            <!-- Gradient Overlay Section -->
-            
-            <div class="overlay-group" style="display: none;">
-                <div class="form-group color-picker-group">
-                    <label for="gradientColor">Gradient Color:</label>
-                    <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
-                </div>
-                <div class="form-group">
-                    <label for="gradientDirection">Gradient Size:</label>
-                    <select id="gradientDirection" name="gradientDirection">
-                        <option value="full">Full</option>
-                        <option value="half">Half</option>
-                        <option value="quarter">Quarter</option>  <!-- New option added -->
-                    </select>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
-                </div>
-            </div>
-
-        
-
-            <!-- Slow Video Section -->
-            <div class="overlay-group" style="display: none;">
-                <div class="form-group">
-                    <label for="slowFactor">Slow Down Factor:</label>
-                    <input type="range" id="slowFactor" name="slowFactor" class="opacity-slider" min="1.5" max="3.0" step="0.5" value="1.5" style="width:50%">
-                    <span id="slowFactorValue">1.5x</span>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="slowVideoButton">Slow Video</button>
-                </div>
-            </div>
-
-            
-            
            <div class="button-group">
             <label>Conversion Buttons</label>
            </div>
@@ -138,6 +93,19 @@
         </div>
         
     </div>
+</div>
+
+<div style="display: none;">
+    <button id="createOverlayButton"></button>
+    <input type="range" id="overlayOpacity">
+    <input type="color" id="overlayColor">
+    <select id="gradientDirection"></select>
+    <input type="color" id="gradientColor">
+    <input type="range" id="slowFactor">
+</div>
+
+<div style="display: none;">
+    <button id="createGradientOverlayButton"></button>
 </div>
 
 <div id="processingNotification">

@@ -13,7 +13,32 @@
 
 
     
-    <div class="sidebar">
+    <div class="sidebar scrollable-sidebar">
+       
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>
+
+
+        <div class="title-group">
+            <h2>Slice/Trim Video</h2>
+            <p>Welcome to the Slice/Trim Video feature.<br><br>
+
+                Using this tool, you can cut your video into multiple segments by specifying the start and end times for each slice. Enter the times in the format of seconds or minutes and seconds (e.g., 90 or 1:30 for one minute and thirty seconds).<br><br>
+                
+                Steps to Slice Your Video:<br><br>
+                1. Upload Your Video: Start by uploading the video you wish to edit.<br><br>
+                2. Enter Time Segments: Enter the start and end times for the segments.<br><br> 
+                3. Create Video: Once all desired slices are set, click the 'Create Video' button. The tool will process these segments and join them into a single video file, which you can then download.
+                </p>
+        </div>
+        
+        
+       
+       
+       
+       
         <form id="slicerForm" enctype="multipart/form-data" method="post">
             <div class="form-group">
                 <label for="video">Upload Video:</label>
@@ -21,17 +46,6 @@
             </div>
 
 
-            <div class="button-group">
-                <label>Video Effects</label>
-               </div>
-                
-                <div class="button-group">
-                    <button onclick="location.href='index.html'">Home</button>
-                    <button onclick="location.href='crop-video.html'">Crop Video Feature</button>
-                    <button onclick="location.href='video-overlay.html'">Colored Overlay</button>
-                    
-                    
-                </div>
 
 
 
@@ -72,83 +86,6 @@
                 
             </div>
         
-                <!-- Crop Ratio Section -->
-                <!-- <div class="crop-group">
-                    <div class="form-group">
-                        <label for="cropRatio">Crop Ratio:</label>
-                        <select id="cropRatio" name="cropRatio">
-                            <option value="None">None</option>
-                            <option value="Header">Header</option>
-                            <option value="Background">Background Video</option>
-                            <option value="1:1">Square (1:1)</option>
-                            <option value="Middle Third">Middle Third</option>
-                            <option value="Top Third">Top Third</option>
-                            <option value="Bottom Third">Bottom Third</option>
-                            <option value="Top Half">Top Half</option>
-                            <option value="Bottom Half">Bottom Half</option>
-                            <option value="Middle Half">Middle Half</option>
-                        </select>
-                    </div>
-                    <div class="button-group">
-                        <button type="button" id="cropVideoButton">Crop Video</button>
-                    </div>
-                </div> -->
-
-            
-            
-           
-
-                <!-- Overlay Section -->
-            <!-- <div class="overlay-group">
-                <div class="form-group color-picker-group">
-                    <label for="overlayColor">Overlay Color:</label>
-                    <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000">
-                    <span id="colorValue">#000000</span>
-                </div>
-                <div class="form-group opacity-slider-group">
-                    <label for="overlayOpacity">Overlay Opacity:</label>
-                    <input type="range" id="overlayOpacity" name="overlayOpacity" class="opacity-slider" min="0.1" max=".7" step="0.1" value="0.5">
-                    <span id="opacityValue">0.5</span>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="createOverlayButton">Create Overlay</button>
-                </div>
-            </div> -->
-
-            <!-- Gradient Overlay Section -->
-            
-            <!-- <div class="overlay-group">
-                <div class="form-group color-picker-group">
-                    <label for="gradientColor">Gradient Color:</label>
-                    <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
-                </div>
-                <div class="form-group">
-                    <label for="gradientDirection">Gradient Size:</label>
-                    <select id="gradientDirection" name="gradientDirection">
-                        <option value="full">Full</option>
-                        <option value="half">Half</option>
-                        <option value="quarter">Quarter</option> 
-                    </select>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
-                </div>
-            </div> -->
-
-        
-
-            <!-- Slow Video Section -->
-            <!-- <div class="overlay-group">
-                <div class="form-group">
-                    <label for="slowFactor">Slow Down Factor:</label>
-                    <input type="range" id="slowFactor" name="slowFactor" class="opacity-slider" min="1.5" max="3.0" step="0.5" value="1.5" style="width:50%">
-                    <span id="slowFactorValue">1.5x</span>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="slowVideoButton">Slow Video</button>
-                </div>
-            </div> -->
-
             
             
           
@@ -157,9 +94,7 @@
                 <button type="button" id="convertToGifButton">Convert to GIF</button>
                 <button type="button" id="convertToAvifButton">Convert to AVIF</button>
                 <button type="button" id="convertToWebPButton">Convert to WebP</button>
-                <button type="button" id="createOverlayButton">Create Overlay</button>
-                
-                
+                        
             </div> -->
 
         </form>

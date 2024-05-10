@@ -14,7 +14,21 @@
 
     
     <div class="sidebar">
-        <form id="slicerForm" enctype="multipart/form-data" method="post">
+
+
+        <div class="title-group">
+            <h2>Quick Convert</h2>
+            <p>Welcome to Quick Convert!<br><br>
+
+                Quick Convert was designed as a powerful but easy to use tool to quickly enhance your videos.    <br><br>
+
+                Explore the different effects by clicking on the icons. 
+                
+                </p>
+        </div>
+
+
+       <!-- <form id="slicerForm" enctype="multipart/form-data" method="post">
             <div class="form-group">
                 <label for="video">Upload Video:</label>
                 <input type="file" id="video" name="video" accept="video/*" required>
@@ -36,7 +50,7 @@
 
 
 
-   <div class="slice-group">
+  <div class="slice-group">
             
                 <div>
                     <label>Slice 1: Start</label>
@@ -71,7 +85,7 @@
         
                 
             </div> 
-        
+  
                
              <div class="crop-group">
                     <div class="form-group">
@@ -98,7 +112,7 @@
             
            
 
-                <!-- Overlay Section -->
+            
         <div class="overlay-group">
                 <div class="form-group color-picker-group">
                     <label for="overlayColor">Overlay Color:</label>
@@ -148,10 +162,7 @@
                     <button type="button" id="slowVideoButton">Slow Video</button>
                 </div>
             </div>
-            
-            
-           
-
+    
           <div class="button-group">
                 <button type="button" id="convertToGifButton">Convert to GIF</button>
                 <button type="button" id="convertToAvifButton">Convert to AVIF</button>
@@ -161,14 +172,69 @@
                 
             </div>
 
-        </form>
+        </form> -->
     </div>
 
 
             
 
 <div class="main-content">
-    <div id="videoContainer">
+    
+    
+    <div class="image-grid">
+        <button onclick="location.href='crop-video.html'" class="icon-button">
+            <span class="icon-title">Crop Video</span>
+            <img src="images/video_crop_icon.png" alt="Crop_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-slice.html'" class="icon-button">
+            <span class="icon-title">Slice/Trim Video</span>
+            <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Colored Overlay</span>
+            <img src="images/video_colored_overlay_icon.png" alt="overlay_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Gradient Overlay</span>
+            <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Slow Video</span>
+            <img src="images/video_slow_icon.png" alt="slow_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Resize Video</span>
+            <img src="images/video_resize_icon.png" alt="slow_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Create Call To Action</span>
+            <img src="images/video_CTA_icon.png" alt="slow_icon" class="icon">
+        </button>
+        <img src="" alt="Placeholder">
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Convert to GIF</span>
+            <img src="images/video_convert_icon2.png" alt="slow_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Convert to AVIF</span>
+            <img src="images/video_convert_icon2.png" alt="slow_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Convert to WebM</span>
+            <img src="images/video_convert_icon2.png" alt="slow_icon" class="icon">
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+            <span class="icon-title">Convert to JPEG XL</span>
+            <img src="images/video_convert_icon2.png" alt="slow_icon" class="icon">
+        </button>
+    </div>
+    
+    
+    
+    
+    
+    
+ <!-- <div id="videoContainer">
         <div>
             <h3>Uploaded Video</h3>
             <video id="uploadedVideo" controls></video>
@@ -216,7 +282,7 @@
        
         
        
-    </div>
+    </div> -->
 </div>
 
 <div id="processingNotification">
