@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Background Remover</title>
+</head>
+<body>
+    <h1>Background Remover</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="image" name="image" accept="image/*" required>
+        <button type="submit">Remove Background</button>
+    </form>
+    <div>
+        <h3>Uploaded Image</h3>
+        <img id="uploadedImage" src="" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+        <h3>Background Removed Image</h3>
+        <img id="processedImage" src="" alt="Background Removed Image" style="max-width: 100%; height: auto;">
+    </div>
+
+    <script src="background-remover.js"></script>
+</body>
+</html>

@@ -1,23 +1,77 @@
 
+// app.use(cors());
+// const express = require('express');
+// const multer = require('multer');
+// const { exec } = require('child_process');
+// const fs = require('fs');
+// const path = require('path');
+// const app = express();
+// const upload = multer({ dest: 'uploads/' });
+// const convertedDir = path.join(__dirname, 'converted');
+// const axios = require('axios');
+
+
+// app.use(express.static('public'));
+
 const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');  // Make sure Axios is required
+const FormData = require('form-data');  // Required for handling form data
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const convertedDir = path.join(__dirname, 'converted');
+const cors = require('cors');  // Ensure CORS is required
+
+app.use(cors());  // Apply CORS
+app.use(express.static('public'));  // Serve static files
 
 
-app.use(express.static('public'));
 process.env.PATH += ':/usr/bin';
+
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'background-remover.html'));
+});
+
+
 
 const overlayDir = path.join(__dirname, 'overlay');
 if (!fs.existsSync(overlayDir)) {
     fs.mkdirSync(overlayDir, { recursive: true });
 }
 
+app.post('/remove-background', upload.single('image'), async (req, res) => {
+    console.log("Route hit: /remove-background");
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
 
+    const imagePath = req.file.path;
+    const formData = new FormData();
+    formData.append('image_file', fs.createReadStream(imagePath));
+    formData.append('get_file', 1);
+
+    try {
+        const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'  // Use your actual API key
+            },
+            responseType: 'arraybuffer'  // Ensure you receive the image as a binary array buffer
+        });
+
+        fs.unlinkSync(imagePath); // Delete the uploaded file to clean up
+
+        // Send the processed image directly in the response
+        res.setHeader('Content-Type', 'image/png');
+        res.send(response.data);
+    } catch (error) {
+        console.error('Failed to remove background:', error);
+        res.status(500).send('Failed to remove background');
+    }
+});
 
 app.get('/test-imagemagick', (req, res) => {
     console.log('Testing ImageMagick installation...');
@@ -440,14 +494,9 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
     });
 
 
+/// for background remover
 
 
-
-
-app.post('/mergeVideos', multerMulti.array('video', 3), (req, res) => {
-    console.log(req.files);  // Check what files are received
-    return res.status(200).send('Route is working');
-});
     
 
 });
