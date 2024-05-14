@@ -1,3 +1,47 @@
+overlay?
+
+
+    // gradient overlay
+
+
+    // document.getElementById('createGradientOverlayButton').addEventListener('click', function() {
+    //     const croppedVideoElement = document.getElementById('croppedVideo');
+    //     const gradientType = document.getElementById('gradientDirection').value;
+    //     const gradientColor = document.getElementById('gradientColor').value.replace('#', ''); // Remove the '#' for server processing
+        
+    //     if (!croppedVideoElement.src) {
+    //         console.log('No cropped video available.');
+    //         return;
+    //     }
+    
+    //     notification.style.display = 'block';
+    
+    //     fetch(croppedVideoElement.src)
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             const formData = new FormData();
+    //             formData.append('video', blob, 'cropped.mp4');
+    //             formData.append('gradientType', gradientType);
+    //             formData.append('gradientColor', gradientColor);
+    
+    //             return fetch('/gradientOverlay', { method: 'POST', body: formData });
+    //         })
+    //         .then(response => response.blob())
+    //         .then(blob => {
+    //             notification.style.display = 'none';
+    //             const gradientOverlayVideo = document.getElementById('gradientOverlayVideo');
+    //             gradientOverlayVideo.src = URL.createObjectURL(blob);
+    //             gradientOverlayVideo.style.display = 'block';
+    //         })
+    //         .catch(() => {
+    //             notification.style.display = 'none';
+    //             console.error('Failed to create gradient overlay.');
+    //         });
+    // });
+
+
+
+
 
 crop
 

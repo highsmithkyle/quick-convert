@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoInput = document.querySelector('input[type="file"]');
     const notification = document.getElementById('processingNotification');
     const createOverlayButton = document.getElementById('createOverlayButton'); 
-    console.log(createOverlayButton); // This should output the element or null if it's not found
+    console.log(createOverlayButton);
+    console.log(createGradientOverlayButton);
 
 
 
@@ -78,29 +79,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     
 
-    // gradient overlay
-
-
+    
     document.getElementById('createGradientOverlayButton').addEventListener('click', function() {
-        const croppedVideoElement = document.getElementById('croppedVideo');
+        const uploadedVideoElement = document.getElementById('uploadedVideo');
         const gradientType = document.getElementById('gradientDirection').value;
         const gradientColor = document.getElementById('gradientColor').value.replace('#', ''); // Remove the '#' for server processing
         
-        if (!croppedVideoElement.src) {
-            console.log('No cropped video available.');
+        if (!uploadedVideoElement.src) {
+            console.log('No uploaded video available.');
             return;
         }
-    
+
         notification.style.display = 'block';
-    
-        fetch(croppedVideoElement.src)
+
+        fetch(uploadedVideoElement.src)
             .then(response => response.blob())
             .then(blob => {
                 const formData = new FormData();
-                formData.append('video', blob, 'cropped.mp4');
+                formData.append('video', blob, 'uploaded.mp4');
                 formData.append('gradientType', gradientType);
                 formData.append('gradientColor', gradientColor);
-    
+
                 return fetch('/gradientOverlay', { method: 'POST', body: formData });
             })
             .then(response => response.blob())
@@ -115,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Failed to create gradient overlay.');
             });
     });
-    
+
 
 
 

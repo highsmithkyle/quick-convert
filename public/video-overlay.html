@@ -4,29 +4,20 @@
     <meta charset="UTF-8">
     <title>Video Processing Tool</title>
     <link rel="stylesheet" href="styles.css">
-
-
-    
 </head>
 <body>
-
-
-
-    
     <div class="sidebar">
+        
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>
+        
         <form id="slicerForm" enctype="multipart/form-data" method="post">
             <div class="form-group">
                 <label for="video">Upload Video:</label>
                 <input type="file" id="video" name="video" accept="video/*" required>
-                <button onclick="location.href='index.html'">Home</button>
-
-
             </div>
-
-
-            
-            
-           
 
                 <div class="overlay-group">
                     <div class="form-group color-picker-group">
@@ -43,35 +34,9 @@
                         <button type="button" id="createOverlayButton">Create Overlay</button>
                     </div>
                 </div>
-
-       
-            
-   
-                
-        
-
-        
-
-            
-            
-           <div class="button-group">
-            <label>Conversion Buttons</label>
-           </div>
-            
-            <div class="button-group">
-                <button type="button" id="convertToGifButton">Convert to GIF</button>
-                <button type="button" id="convertToAvifButton">Convert to AVIF</button>
-                <button type="button" id="convertToWebPButton">Convert to WebP</button>
-                
-                
-                
-            </div>
-
         </form>
     </div>
 
-
-            
 
 <div class="main-content">
     <div id="videoContainer">
