@@ -42,6 +42,47 @@ if (!fs.existsSync(overlayDir)) {
     fs.mkdirSync(overlayDir, { recursive: true });
 }
 
+
+// for video crop
+
+app.post('/upload', upload.single('video'), (req, res) => {
+    if (!fs.existsSync('processed')) {
+        fs.mkdirSync('processed');
+    }
+
+    const videoPath = req.file.path;
+    const timestamp = Date.now();
+    const outputPath = path.join(__dirname, 'processed', `cropped_video_${timestamp}.mp4`);
+    const { width, height, left, top } = req.body;
+
+    const safeWidth = parseInt(width, 10);
+    const safeHeight = parseInt(height, 10);
+    const safeLeft = parseInt(left, 10);
+    const safeTop = parseInt(top, 10);
+
+   
+    if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+        return res.status(400).send('Invalid crop dimensions');
+    }
+
+    const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
+    const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+    exec(ffmpegCommand, (error, stdout, stderr) => {
+        fs.unlinkSync(videoPath); 
+        if (error) {
+            console.error(`Exec Error: ${error.message}`);
+            return res.status(500).send('Error processing video');
+        }
+
+        res.sendFile(outputPath, (err) => {
+            fs.unlinkSync(outputPath); 
+        });
+    });
+});
+
+
+
 app.post('/remove-background', upload.single('image'), async (req, res) => {
     console.log("Route hit: /remove-background");
     if (!req.file) {
@@ -494,7 +535,7 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
     });
 
 
-/// for background remover
+
 
 
     
