@@ -5,9 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const notification = document.getElementById('processingNotification');
     const overlayVideo = document.getElementById('overlayVideo');
     const gradientColorInput = document.getElementById('gradientColor');
-    const gradientColorValueDisplay = document.getElementById('colorValue'); // Assuming there's an element to display the color value
+    const gradientColorValueDisplay = document.getElementById('colorValue');
+    const downloadButtonContainer = document.getElementById('downloadButtonContainer');
 
-    // Update color text display as the user picks a color
     gradientColorInput.addEventListener('input', function() {
         gradientColorValueDisplay.textContent = gradientColorInput.value.toUpperCase();
     });
@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         notification.style.display = 'block';
-
-        const gradientColor = gradientColorInput.value.replace('#', ''); // Ensure the '#' is removed for processing
+        const gradientColor = gradientColorInput.value.replace('#', ''); 
         const gradientDirection = document.getElementById('gradientDirection').value;
+        const originalFileName = videoInput.files[0].name.split('.')[0];
         
         const formData = new FormData();
         formData.append('video', videoInput.files[0]);
@@ -38,9 +38,28 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/gradientOverlay', { method: 'POST', body: formData })
             .then(response => response.blob())
             .then(blob => {
-                notification.style.display = 'none';
-                overlayVideo.src = URL.createObjectURL(blob);
-                overlayVideo.style.display = 'block';
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const dataUrl = reader.result;
+                    notification.style.display = 'none';
+                    overlayVideo.src = dataUrl;
+                    overlayVideo.style.display = 'block';
+
+                    const downloadButton = document.createElement('button');
+                    downloadButton.textContent = 'Download Video';
+                    downloadButton.className = 'download-button';
+                    downloadButton.addEventListener('click', function() {
+                        const a = document.createElement('a');
+                        a.href = dataUrl;
+                        a.download = originalFileName + '_gradient-overlay.mp4';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    });
+                    downloadButtonContainer.innerHTML = '';
+                    downloadButtonContainer.appendChild(downloadButton);
+                };
+                reader.readAsDataURL(blob);
             })
             .catch((error) => {
                 notification.style.display = 'none';
