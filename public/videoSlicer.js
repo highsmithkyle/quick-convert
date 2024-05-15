@@ -5,8 +5,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoInput = document.querySelector('input[type="file"]');
     const notification = document.getElementById('processingNotification');
     const createOverlayButton = document.getElementById('createOverlayButton'); 
-    console.log(createOverlayButton);
-    console.log(createGradientOverlayButton);
+    const createGradientOverlayButton = document.getElementById('createGradientOverlayButton');
+
+    console.log(createOverlayButton);  // Check if the button exists
+
 
 
 
@@ -399,10 +401,6 @@ slowVideoButton.addEventListener('click', function() {
             console.error('Failed to slow down video.');
         });
 });
-    
-    
-    
-    
     
 
     
