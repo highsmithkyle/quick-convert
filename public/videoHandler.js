@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const videoRect = videoPlayer.getBoundingClientRect();
         const overlayRect = overlay.getBoundingClientRect();
 
+        const notification = document.getElementById('processingNotification');
+        notification.style.display = 'block';
+
         // Calculate the scale factors
         const scaleX = videoPlayer.videoWidth / videoRect.width;
         const scaleY = videoPlayer.videoHeight / videoRect.height;
@@ -153,6 +156,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const croppedVideoPlayer = document.getElementById('croppedVideoPlayer');
             croppedVideoPlayer.src = url;
             croppedVideoPlayer.play();
+
+            notification.style.display = 'none';
         
             // const downloadBtn = document.getElementById('downloadBtn');
             // downloadBtn.href = url;
@@ -161,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Problem with fetch operation:', error);
             alert('Error cropping video: ' + error.message);
+            notification.style.display = 'none';
         });
     });
 });
