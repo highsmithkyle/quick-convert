@@ -1,5 +1,21 @@
 overlay?
+conversion buttons
 
+
+
+            <div class="button-group">
+            <label>Conversion Buttons</label>
+           </div>
+            
+            <div class="button-group">
+                <button type="button" id="convertToGifButton">Convert to GIF</button>
+                <button type="button" id="convertToAvifButton">Convert to AVIF</button>
+                <button type="button" id="convertToWebPButton">Convert to WebP</button>
+                <button type="button" id="cropVideoButton">Convert to WebP</button>
+                
+                
+                
+            </div>
 
     // gradient overlay
 
