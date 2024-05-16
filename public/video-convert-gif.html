@@ -15,9 +15,11 @@
             <div class="form-group">
                 <label for="videoInput">Upload Video:</label>
                 <input type="file" id="videoInput" name="video" accept="video/*" required>
-                <button type="button" id="uploadButton">Upload Video</button>
             </div>
-            <button type="button" id="convertToGifButton" style="display:none;">Convert to GIF</button>
+            <div class="button-group">
+                <button type="button" id="convertToGifButton">Convert to GIF</button>
+                  
+            </div>
         </form>
     </div>
 
@@ -28,80 +30,19 @@
                 <video id="uploadedVideo" controls></video>
             </div>
             <div>
-                <h3>GIF</h3>
+                <h3>GIF<span id="gifDownloadButtonContainer" style="margin-left: 10px;font-size: 14px; font-weight: normal;"></span></h3>
                 <img id="gifImage" style="display: none;">
-                <div id="gifDownloadButtonContainer"></div>
             </div>
         </div>
     </div>
+
+
 
     <div id="processingNotification" style="display:none;">
         Processing your video, please wait...
     </div>
 
-    <script src="video-convert-gif.js"></script>
+    <script src="video-convert-gif.js" defer></script>
 </body>
 </html>
 
-
-
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Convert to GIF</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="sidebar">        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>   
-        
-        
-        
-
-
-        <form id="slicerForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="video">Upload Video:</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
-
-            <div class="overlay-group">
-                
-                <div class="button-group">
-                    <button type="button" id="convertToGifButton">Convert to GIF</button>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Uploaded Video</h3>
-                <video id="uploadedVideo" controls></video>
-            </div>
-          
-            
-            <div>
-                <div class="title-with-button">
-                    <h3>GIF</h3><span id="gifDownloadButtonContainer"></span>
-                </div>
-                <img id="gifImage" style="display: none;">
-            </div>
-            
-           
-        
-           
-        </div>
-
-    <div id="processingNotification">
-        Processing your video, please wait...
-    </div>
-
-    <script src="video-slow.js"></script>
-</body>
-</html> -->

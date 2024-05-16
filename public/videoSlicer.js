@@ -39,6 +39,62 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
+    document.getElementById('convertToGifButton').addEventListener('click', function() {
+        const videoSource = document.getElementById('uploadedVideo').getAttribute('src');
+        if (!videoSource) {
+            console.log('No video available to convert to GIF.');
+            return;
+        }
+        notification.style.display = 'block';
+        
+        fetch(videoSource)
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'final.mp4');
+                return fetch('/convertToGif', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                const gifImage = document.getElementById('gifImage');
+                gifImage.src = URL.createObjectURL(blob);
+                gifImage.style.display = 'block';
+    
+                
+                const downloadButtonContainer = document.getElementById('gifDownloadButtonContainer');
+                downloadButtonContainer.innerHTML = ''; 
+    
+                
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = 'Download GIF';
+                downloadButton.className = 'download-button';
+    
+                
+                const fileSizeSpan = document.createElement('span');
+                fileSizeSpan.className = 'file-size';
+                const fileSizeInBytes = blob.size;
+                const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
+                fileSizeSpan.textContent = `(${fileSizeInMB} MB)`;
+    
+                
+                downloadButtonContainer.appendChild(downloadButton);
+                downloadButtonContainer.appendChild(fileSizeSpan);
+    
+                downloadButton.addEventListener('click', function() {
+                    const a = document.createElement('a');
+                    a.href = gifImage.src;
+                    a.download = 'converted_image.gif';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            })
+            .catch(error => {
+                notification.style.display = 'none';
+                console.error('Failed to convert to GIF:', error);
+            });
+    });
     
 
 
@@ -218,62 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
    
 
-    document.getElementById('convertToGifButton').addEventListener('click', function() {
-        const videoSource = document.getElementById('croppedVideo').getAttribute('src');
-        if (!videoSource) {
-            console.log('No video available to convert to GIF.');
-            return;
-        }
-        notification.style.display = 'block';
-        
-        fetch(videoSource)
-            .then(response => response.blob())
-            .then(blob => {
-                const formData = new FormData();
-                formData.append('video', blob, 'final.mp4');
-                return fetch('/convertToGif', { method: 'POST', body: formData });
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                notification.style.display = 'none';
-                const gifImage = document.getElementById('gifImage');
-                gifImage.src = URL.createObjectURL(blob);
-                gifImage.style.display = 'block';
     
-                
-                const downloadButtonContainer = document.getElementById('gifDownloadButtonContainer');
-                downloadButtonContainer.innerHTML = ''; 
-    
-                
-                const downloadButton = document.createElement('button');
-                downloadButton.textContent = 'Download GIF';
-                downloadButton.className = 'download-button';
-    
-                
-                const fileSizeSpan = document.createElement('span');
-                fileSizeSpan.className = 'file-size';
-                const fileSizeInBytes = blob.size;
-                const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
-                fileSizeSpan.textContent = `(${fileSizeInMB} MB)`;
-    
-                
-                downloadButtonContainer.appendChild(downloadButton);
-                downloadButtonContainer.appendChild(fileSizeSpan);
-    
-                downloadButton.addEventListener('click', function() {
-                    const a = document.createElement('a');
-                    a.href = gifImage.src;
-                    a.download = 'converted_image.gif';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                });
-            })
-            .catch(error => {
-                notification.style.display = 'none';
-                console.error('Failed to convert to GIF:', error);
-            });
-    });
     
     
 
@@ -356,13 +357,6 @@ document.addEventListener('DOMContentLoaded', function() {
             gradientColorValueDisplay.textContent = gradientColorPicker.value.toUpperCase(); // Display the gradient color value
         });
     });
-
-
-
-   
-    
-
-    
 
     
 });

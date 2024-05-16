@@ -1,54 +1,65 @@
 document.addEventListener('DOMContentLoaded', function() {
     const videoInput = document.getElementById('videoInput');
-    const uploadButton = document.getElementById('uploadButton');
-    const convertToGifButton = document.getElementById('convertToGifButton');
     const uploadedVideo = document.getElementById('uploadedVideo');
     const gifImage = document.getElementById('gifImage');
-    const gifDownloadButtonContainer = document.getElementById('gifDownloadButtonContainer');
-    const processingNotification = document.getElementById('processingNotification');
-
-    uploadButton.addEventListener('click', function() {
-        if (videoInput.files.length > 0) {
-            const videoFile = videoInput.files[0];
-            uploadedVideo.src = URL.createObjectURL(videoFile);
-            uploadedVideo.style.display = 'block';
-            convertToGifButton.style.display = 'block';
+    const notification = document.getElementById('processingNotification');
+    const convertToGifButton = document.getElementById('convertToGifButton');
+    const downloadButtonContainer = document.getElementById('gifDownloadButtonContainer'); 
+    videoInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            uploadedVideo.src = URL.createObjectURL(file);
+            uploadedVideo.parentElement.style.display = 'block';
         }
     });
 
+   
     convertToGifButton.addEventListener('click', function() {
-        processingNotification.style.display = 'block';
-        const formData = new FormData();
-        formData.append('video', videoInput.files[0]);
+        if (!uploadedVideo.src) {
+            console.log('No video available to convert to GIF.');
+            return;
+        }
+        notification.style.display = 'block';
 
-        fetch('/convertToGif', {
-            method: 'POST',
-            body: formData
-        }).then(response => response.blob())
-          .then(blob => {
-              gifImage.src = URL.createObjectURL(blob);
-              gifImage.style.display = 'block';
-              processingNotification.style.display = 'none';
+        fetch(uploadedVideo.src)
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'final.mp4');
+                return fetch('/convertToGif', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                gifImage.src = URL.createObjectURL(blob);
+                gifImage.style.display = 'block';
 
-              // Create and append the download button
-              const downloadButton = document.createElement('button');
-              downloadButton.textContent = 'Download GIF';
-              downloadButton.className = 'download-button';
-              downloadButton.addEventListener('click', function() {
-                  const a = document.createElement('a');
-                  a.href = gifImage.src;
-                  a.download = 'converted_image.gif';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-              });
+                downloadButtonContainer.innerHTML = '';
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = 'Download GIF';
+                downloadButton.className = 'download-button';
 
-              gifDownloadButtonContainer.innerHTML = ''; // Clear previous
-              gifDownloadButtonContainer.appendChild(downloadButton);
-          })
-          .catch(error => {
-              console.error('Failed to convert to GIF:', error);
-              processingNotification.style.display = 'none';
-          });
+                const fileSizeInBytes = blob.size;
+                const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
+                const fileSizeSpan = document.createElement('span');
+                fileSizeSpan.className = 'file-size';
+                fileSizeSpan.textContent = `(${fileSizeInMB} MB)`;
+
+                downloadButtonContainer.appendChild(downloadButton);
+                downloadButtonContainer.appendChild(fileSizeSpan);
+
+                downloadButton.addEventListener('click', function() {
+                    const a = document.createElement('a');
+                    a.href = gifImage.src;
+                    a.download = 'converted_image.gif';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            })
+            .catch(error => {
+                notification.style.display = 'none';
+                console.error('Failed to convert to GIF:', error);
+            });
     });
 });
