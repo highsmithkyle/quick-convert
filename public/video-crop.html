@@ -21,19 +21,29 @@
 
     
   
-    <h2>Crop Video</h2>
+    <h2>Crop Video test</h2>
     
     
     <form id="uploadForm" enctype="multipart/form-data" method="post">
-        <input type="file" name="video" accept="video/*" id="videoInput" required>
-        <select id="sizeSelector">
-            <option value="default">Select Crop Ratio</option>
-            <option value="2:1">2:1</option>
-            <option value="2:1-small">2:1 small</option>
-            <option value="third">3:1</option>
-            <option value="9:16">9:16</option>
-        </select>
-        <button type="submit">Crop Video</button>
+        <div class="form-group">
+            <label for="videoInput">Upload Video:</label>
+            <input type="file" name="video" accept="video/*" id="videoInput" required>
+        </div>
+
+        <div class="form-group">
+            <label for="sizeSelector">Select Crop Ratio:</label>
+            <select id="sizeSelector">
+                <option value="default">Select Crop Ratio</option>
+                <option value="2:1">2:1</option>
+                <option value="2:1-small">2:1 small</option>
+                <option value="third">3:1</option>
+                <option value="9:16">9:16</option>
+            </select>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" class="form-button">Crop Video</button>
+        </div>
     </form>
     
 
@@ -48,9 +58,9 @@
     <input type="hidden" name="top" id="cropTop">
     <input type="hidden" name="videoId" id="videoId">
 </form>
-<div class="columns_container" style="padding-left: 20px; display:flex; flex-direction: row; justify-content: space-between; width: 650px;">
+<div class="columns_container" style="padding-left: 20px; display:flex; flex-direction: row; justify-content: space-between; width: 850px;">
     
-    <div class="left-column" style="width: 300px;">
+    <div class="left-column" style="width: 400px;">
         <h3>Uploaded Video</h3>
         <div id="videoContainer">
             
@@ -61,8 +71,8 @@
     </div>
     <div class="right_column">
         <h3>Cropped Video</h3>
-        <div id="croppedVideoContainer" style="width: 300px;">
-            <video id="croppedVideoPlayer" controls style="max-width: 300px;"></video>
+        <div id="croppedVideoContainer" style="width: 400px;">
+            <video id="croppedVideoPlayer" controls style="max-width: 400px;"></video>
         </div>
     </div>
     

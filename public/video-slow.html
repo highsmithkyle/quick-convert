@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Slow Video</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="sidebar">        
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>        
+        <form id="slicerForm" enctype="multipart/form-data" method="post">
+            <div class="form-group">
+                <label for="video">Upload Video:</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+            </div>
+
+            <div class="overlay-group">
+                <div class="form-group">
+                    <label for="slowFactor">Slow Down Factor:</label>
+                    <input type="range" id="slowFactor" name="slowFactor" min="1.5" max="3.0" step="0.25" value="1.5" style="width: 50%;">
+                    <span id="slowFactorValue">1.5x</span>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="slowVideoButton">Slow Video</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="main-content">
+        <div id="videoContainer">
+            <div>
+                <h3>Uploaded Video</h3>
+                <video id="uploadedVideo" controls></video>
+            </div>
+            <div>
+                <h3>Slowed Video<span id="downloadButtonContainer" style="margin-left: 10px;"></span></h3>
+                <video id="slowedVideo" controls></video>
+            </div>
+        </div>
+    </div>
+
+    <div id="processingNotification">
+        Processing your video, please wait...
+    </div>
+
+    <script src="video-slow.js"></script>
+</body>
+</html>

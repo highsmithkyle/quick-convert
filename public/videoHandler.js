@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 overlay.style.height = `${width / 2}px`;
                 break;
             case '2:1-small':
-                let smallWidth = width * 0.8;
+                let smallWidth = width * 0.7;
                 overlay.style.width = `${smallWidth}px`;
                 overlay.style.height = `${smallWidth / 2}px`;
                 break;
@@ -169,4 +169,31 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.style.display = 'none';
         });
     });
+});
+
+document.getElementById('videoPlayer').onloadedmetadata = function() {
+    document.getElementById('seekBar').max = videoPlayer.duration;
+};
+
+function playPause() {
+    var video = document.getElementById("videoPlayer");
+    if (video.paused) {
+        video.play();
+    } else {
+        video.pause();
+    }
+}
+
+function muteUnmute() {
+    var video = document.getElementById("videoPlayer");
+    video.muted = !video.muted;
+}
+
+document.getElementById('seekBar').addEventListener('input', function() {
+    var video = document.getElementById("videoPlayer");
+    video.currentTime = this.value;
+});
+
+document.getElementById('videoPlayer').addEventListener('timeupdate', function() {
+    document.getElementById('seekBar').value = this.currentTime;
 });

@@ -1,31 +1,16 @@
-
-// app.use(cors());
-// const express = require('express');
-// const multer = require('multer');
-// const { exec } = require('child_process');
-// const fs = require('fs');
-// const path = require('path');
-// const app = express();
-// const upload = multer({ dest: 'uploads/' });
-// const convertedDir = path.join(__dirname, 'converted');
-// const axios = require('axios');
-
-
-// app.use(express.static('public'));
-
 const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');  // Make sure Axios is required
-const FormData = require('form-data');  // Required for handling form data
+const axios = require('axios');
+const FormData = require('form-data');  
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const cors = require('cors');  // Ensure CORS is required
+const cors = require('cors');  
 
-app.use(cors());  // Apply CORS
-app.use(express.static('public'));  // Serve static files
+app.use(cors()); 
+app.use(express.static('public'));
 
 
 process.env.PATH += ':/usr/bin';
@@ -98,14 +83,12 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
         const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
             headers: {
                 ...formData.getHeaders(),
-                'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'  // Use your actual API key
+                'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'
             },
-            responseType: 'arraybuffer'  // Ensure you receive the image as a binary array buffer
+            responseType: 'arraybuffer' 
         });
 
-        fs.unlinkSync(imagePath); // Delete the uploaded file to clean up
-
-        // Send the processed image directly in the response
+        fs.unlinkSync(imagePath); 
         res.setHeader('Content-Type', 'image/png');
         res.send(response.data);
     } catch (error) {

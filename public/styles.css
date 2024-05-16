@@ -43,7 +43,7 @@ button:hover {
 }
 #videoContainer {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 20px;
     width: 100%;
 }
@@ -54,20 +54,25 @@ button:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 video, img {
-    max-width: 100%;
+    /* max-width: 100%; */
+    width: 500px;
     height: auto;
     border-radius: 4px;
+}
+img[src=""] {
+    display: none;
 }
 #processingNotification {
     display: none;
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -80%);
     background-color: rgba(0,0,0,0.75);
     color: white;
     padding: 20px;
     border-radius: 5px;
+    
 }
 .slice-group {
     display: grid;
@@ -91,7 +96,9 @@ video, img {
 }
 button.download-button {
     margin-left: 10px;
-    padding: 5px 10px;
+    height: 20px;
+    margin: 0, 0;
+    border-radius: 4px;
     font-size: 14px;
     background-color: #4CAF50;
     color: white;

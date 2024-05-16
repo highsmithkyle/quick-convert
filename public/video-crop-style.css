@@ -97,6 +97,7 @@ button:hover {
 
 video, img {
     max-width: 100%;
+    width:600px;
     height: auto;
     border-radius: 4px;
 }
