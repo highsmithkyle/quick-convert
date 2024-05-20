@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Recolor</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.min.js"></script>
+</head>
+<body>
+    <div class="sidebar">        
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>        
+        <form id="recolorForm" enctype="multipart/form-data" method="post">
+            <div class="form-group">
+                <label for="imageInput">Upload Image:</label>
+                <input type="file" id="imageInput" name="image" accept="image/*" required>
+            </div>
+            <div class="form-group">
+                <label for="dominantColor">Dominant Colors:</label>
+                <div id="dominantColor" style="display: flex;"></div>
+            </div>
+            <div class="form-group color-picker-group">
+                <label for="targetColor">New Color:</label>
+                <input type="color" id="targetColor" name="targetColor" class="color-picker" value="#0000FF">
+                <span id="colorValue">#0000FF</span>
+            </div>
+            <div class="button-group">
+                <button type="button" id="recolorButton">Recolor Image</button>
+                <button type="button" id="clearButton">Clear Recolored Image</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="main-content">
+        <div id="videoContainer">
+            <div>
+                <h3>Original Image</h3>
+                <img id="uploadedImage" controls></video>
+            </div>
+            <div>
+                <h3>Recolored Image<span id="gifDownloadButtonContainer" style="margin-left: 10px;font-size: 14px; font-weight: normal;"></span></h3>
+                <img id="recoloredImage" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+
+    <div id="processingNotification" style="display:none;">
+        Processing your image, please wait...
+    </div>
+
+    <script src="image-recolor.js"></script>
+</body>
+</html>
+
