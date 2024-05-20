@@ -61,6 +61,7 @@ video, img {
     height: auto;
     border-radius: 4px;
 }
+
 img[src=""] {
     display: none;
 }
@@ -75,6 +76,7 @@ img[src=""] {
     color: white;
     padding: 20px;
     border-radius: 5px;
+    z-index: 999;
     
 }
 .slice-group {
@@ -179,8 +181,8 @@ button.download-button:hover {
 
 .image-grid {
     display: grid;
-    grid-template-columns: repeat(4, 150px); 
-    grid-template-rows: repeat(2, 150px); 
+    grid-template-columns: repeat(5, 150px); 
+    grid-template-rows: repeat(1, 150px); 
     grid-gap: 30px; 
     justify-content: center; 
     margin-bottom: 20px; 
@@ -289,4 +291,9 @@ button.download-button:hover {
 .ai-effects {
     grid-template-columns: repeat(4, 150px);
     grid-template-rows: auto;
+}
+
+.processed-image {
+    width: 450px;
+    height: auto;
 }

@@ -111,6 +111,7 @@ video, img {
     color: white;
     padding: 20px;
     border-radius: 5px;
+    z-index: 999;
 }
 .slice-group {
     display: grid;
@@ -303,11 +304,11 @@ button.download-button:hover {
 }
 
 .home-button:hover img {
-    content: url('./images/home-icon-blue.png'); /* Change to blue icon on hover */
+    content: url('./images/home-icon-blue.png');
 }
 
 .home-button:hover span {
-    color: #2494e4; /* This changes the text color on hover */
+    color: #2494e4; 
 }
 
 
