@@ -2,13 +2,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('image');
     const uploadFormUpscale = document.getElementById('uploadFormUpscale');
     const notification = document.getElementById('processingNotification');
-    const downloadButtonContainer = document.getElementById('downloadButtonContainer');
+    const upscalePercentageSlider = document.getElementById('upscale_percentage');
+    const percentageDisplay = document.getElementById('percentage_display');
+
+    function updatePercentageDisplay(value) {
+        percentageDisplay.textContent = value + '%';
+    }
+
+    window.updatePercentageDisplay = updatePercentageDisplay;
 
     imageInput.addEventListener('change', function() {
         if (this.files && this.files[0]) {
             var reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('uploadedImage').src = e.target.result;
+                var img = document.getElementById('uploadedImage');
+                img.src = e.target.result;
+                img.onload = function() {
+                    const originalWidth = img.naturalWidth;
+                    const originalHeight = img.naturalHeight;
+                    upscalePercentageSlider.addEventListener('input', function() {
+                        updatePercentageDisplay(this.value);
+                    });
+                };
             };
             reader.readAsDataURL(this.files[0]);
         }
@@ -16,9 +31,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     uploadFormUpscale.addEventListener('submit', function(e) {
         e.preventDefault();
-        const formData = new FormData(this);
+        const scale = upscalePercentageSlider.value / 100;
+        const scaledWidth = Math.round(document.getElementById('uploadedImage').naturalWidth * scale);
+        const scaledHeight = Math.round(document.getElementById('uploadedImage').naturalHeight * scale);
 
-        notification.style.display = 'block'; // Show processing notification
+        const formData = new FormData();
+        formData.append('image', imageInput.files[0]);
+        formData.append('target_width', scaledWidth);
+        formData.append('target_height', scaledHeight);
+
+        notification.style.display = 'block';
+
         fetch('/upscale-image', {
             method: 'POST',
             body: formData,
@@ -32,33 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(blob => {
             const url = window.URL.createObjectURL(blob);
             document.getElementById('processedImage').src = url;
-            notification.style.display = 'none'; // Hide processing notification
-
-            // Clear existing download button if any
-            downloadButtonContainer.innerHTML = ''; 
-
-            // Create and append the download button
-            const downloadButton = document.createElement('button');
-            downloadButton.textContent = 'Download Image';
-            downloadButton.className = 'download-button';
-            downloadButton.addEventListener('click', function() {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'upscaled_image'; // Modify as needed
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-
-            downloadButtonContainer.appendChild(downloadButton);
+            notification.style.display = 'none';
         })
         .catch(err => {
             console.error('Error:', err);
             alert('Failed to upscale the image. ' + err.message);
-            notification.style.display = 'none'; // Hide processing notification
+            notification.style.display = 'none';
         });
     });
 });
-
-
-

@@ -94,6 +94,71 @@ app.post('/upload', upload.single('video'), (req, res) => {
 });
 
 
+//cleanup
+
+app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_file' }]), async (req, res) => {
+    const imagePath = req.files['image_file'][0].path;
+    const maskPath = req.files['mask_file'][0].path;
+
+    const formData = new FormData();
+    formData.append('image_file', fs.createReadStream(imagePath));
+    formData.append('mask_file', fs.createReadStream(maskPath));
+    formData.append('mode', 'quality'); // Adding mode for better quality
+
+    try {
+        const response = await axios.post('https://clipdrop-api.co/cleanup/v1', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
+            },
+            responseType: 'arraybuffer'
+        });
+
+        fs.unlinkSync(imagePath);
+        fs.unlinkSync(maskPath);
+        const imageType = 'image/png';
+        res.setHeader('Content-Type', imageType);
+        res.send(response.data);
+    } catch (error) {
+        console.error('Failed to cleanup image:', error);
+        res.status(500).send('Failed to cleanup image');
+    }
+});
+
+// app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_file' }]), async (req, res) => {
+//     const imagePath = req.files['image_file'][0].path;
+//     const maskPath = req.files['mask_file'][0].path;
+
+//     const formData = new FormData();
+//     formData.append('image_file', fs.createReadStream(imagePath));
+//     formData.append('mask_file', fs.createReadStream(maskPath));
+
+//     try {
+//         const response = await axios.post('https://clipdrop-api.co/cleanup/v1', formData, {
+//             headers: {
+//                 ...formData.getHeaders(),
+//                 'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
+//             },
+//             responseType: 'arraybuffer'
+//         });
+
+//         fs.unlinkSync(imagePath);
+//         fs.unlinkSync(maskPath);
+//         const imageType = 'image/png';
+//         res.setHeader('Content-Type', imageType);
+//         res.send(response.data);
+//     } catch (error) {
+//         console.error('Failed to cleanup image:', error);
+//         res.status(500).send('Failed to cleanup image');
+//     }
+// });
+
+
+
+
+
+
+
 // uncrop fix
 
 app.post('/uncrop-image', upload.single('image'), async (req, res) => {
@@ -206,11 +271,7 @@ app.post('/upscale-image', upload.single('image'), async (req, res) => {
 });
 
 
-
-
-
 app.post('/remove-background', upload.single('image'), async (req, res) => {
-    console.log("Route hit: /remove-background");
     if (!req.file) {
         return res.status(400).send('No image file uploaded.');
     }
@@ -218,19 +279,19 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
     const imagePath = req.file.path;
     const formData = new FormData();
     formData.append('image_file', fs.createReadStream(imagePath));
-    formData.append('get_file', 1);
 
     try {
-        const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
+        const response = await axios.post('https://clipdrop-api.co/remove-background/v1', formData, {
             headers: {
                 ...formData.getHeaders(),
-                'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'
+                'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
             },
-            responseType: 'arraybuffer' 
+            responseType: 'arraybuffer'
         });
 
-        fs.unlinkSync(imagePath); 
-        res.setHeader('Content-Type', 'image/png');
+        fs.unlinkSync(imagePath); // Clean up the uploaded file
+        const imageType = response.headers['content-type'];
+        res.setHeader('Content-Type', imageType);
         res.send(response.data);
     } catch (error) {
         console.error('Failed to remove background:', error);
@@ -238,18 +299,50 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
     }
 });
 
-app.get('/test-imagemagick', (req, res) => {
-    console.log('Testing ImageMagick installation...');
-    exec('convert -size 1280x720 xc:"rgba(0,0,0,0.5)" "/home/kyle/quick-convert/overlay/overlay_test.png"', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Convert command failed: ${error}`);
-            return res.status(500).send(`Error running convert: ${error.message}`);
-        }
-        console.log('Convert command stdout:', stdout);
-        console.error('Convert command stderr:', stderr);
-        res.send('ImageMagick command executed successfully.');
-    });
-});
+
+
+
+// app.post('/remove-background', upload.single('image'), async (req, res) => {
+//     console.log("Route hit: /remove-background");
+//     if (!req.file) {
+//         return res.status(400).send('No image file uploaded.');
+//     }
+
+//     const imagePath = req.file.path;
+//     const formData = new FormData();
+//     formData.append('image_file', fs.createReadStream(imagePath));
+//     formData.append('get_file', 1);
+
+//     try {
+//         const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
+//             headers: {
+//                 ...formData.getHeaders(),
+//                 'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'
+//             },
+//             responseType: 'arraybuffer' 
+//         });
+
+//         fs.unlinkSync(imagePath); 
+//         res.setHeader('Content-Type', 'image/png');
+//         res.send(response.data);
+//     } catch (error) {
+//         console.error('Failed to remove background:', error);
+//         res.status(500).send('Failed to remove background');
+//     }
+// });
+
+// app.get('/test-imagemagick', (req, res) => {
+//     console.log('Testing ImageMagick installation...');
+//     exec('convert -size 1280x720 xc:"rgba(0,0,0,0.5)" "/home/kyle/quick-convert/overlay/overlay_test.png"', (error, stdout, stderr) => {
+//         if (error) {
+//             console.error(`Convert command failed: ${error}`);
+//             return res.status(500).send(`Error running convert: ${error.message}`);
+//         }
+//         console.log('Convert command stdout:', stdout);
+//         console.error('Convert command stderr:', stderr);
+//         res.send('ImageMagick command executed successfully.');
+//     });
+// });
 
 
 app.post('/slice', upload.single('video'), (req, res) => {

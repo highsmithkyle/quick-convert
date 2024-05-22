@@ -20,10 +20,10 @@
         <form id="uploadFormUpscale" enctype="multipart/form-data" class="form-group">
             <label for="image">Upload your image:</label>
             <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required>
-            <label for="target_width">Upscaled Width:</label>
-            <input type="number" id="target_width" name="target_width" style="width: 90%" required>
-            <label for="target_height">Upscaled Height:</label>
-            <input type="number" id="target_height" name="target_height" style="width: 90%" required>
+            <label for="upscale_percentage">Upscale Percentage:</label>
+            <input type="range" id="upscale_percentage" name="upscale_percentage" min="100" max="300" value="100" oninput="updatePercentageDisplay(this.value)" style="width: 90%">
+            <span id="percentage_display">100%</span>
+
             <div class="button-group">
                 <button type="submit" class="form-button">Upscale Image</button>
             </div> 

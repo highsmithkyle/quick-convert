@@ -42,27 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // image recolor
 
 
-    app.post('/recolorImage', upload.single('image'), (req, res) => {
-        const imagePath = req.file.path;
-        const sourceColor = req.body.sourceColor;
-        const targetColor = req.body.targetColor;
-        const outputPath = path.join(__dirname, 'converted', `recolor_${Date.now()}.png`);
-    
-        const recolorCommand = `convert "${imagePath}" -fuzz 20% -fill "#${targetColor}" -opaque "#${sourceColor}" "${outputPath}"`;
-    
-        exec(recolorCommand, (error, stdout, stderr) => {
-            if (error) {
-                console.error('Error recoloring image:', stderr);
-                fs.unlinkSync(imagePath);
-                return res.status(500).send('Failed to recolor image.');
-            }
-    
-            res.sendFile(outputPath, (err) => {
-                fs.unlinkSync(imagePath);
-                fs.unlinkSync(outputPath);
-            });
-        });
-    });
+
 
 
     document.getElementById('convertToGifButton').addEventListener('click', function() {
