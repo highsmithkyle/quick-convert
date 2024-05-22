@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(this);
 
-        notification.style.display = 'block'; // Show processing notification
+        notification.style.display = 'block';
         fetch('/uncrop-image', {
             method: 'POST',
             body: formData,
@@ -32,19 +32,17 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(blob => {
             const url = window.URL.createObjectURL(blob);
             document.getElementById('processedImage').src = url;
-            notification.style.display = 'none'; // Hide processing notification
+            notification.style.display = 'none';
 
-            // Clear existing download button if any
             downloadButtonContainer.innerHTML = ''; 
 
-            // Create and append the download button
             const downloadButton = document.createElement('button');
             downloadButton.textContent = 'Download Image';
             downloadButton.className = 'download-button';
             downloadButton.addEventListener('click', function() {
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'uncropped_image'; // Modify as needed
+                a.download = 'uncropped_image';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -55,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(err => {
             console.error('Error:', err);
             alert('Failed to uncrop the image. ' + err.message);
-            notification.style.display = 'none'; // Hide processing notification
+            notification.style.display = 'none';
         });
     });
 });

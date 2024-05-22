@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var gradientColorValueDisplay = document.getElementById('gradientColorValue');
         
         gradientColorPicker.addEventListener('input', function() {
-            gradientColorValueDisplay.textContent = gradientColorPicker.value.toUpperCase(); // Display the gradient color value
+            gradientColorValueDisplay.textContent = gradientColorPicker.value.toUpperCase();
         });
     });
 

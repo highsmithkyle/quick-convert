@@ -125,36 +125,6 @@ app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_
     }
 });
 
-// app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_file' }]), async (req, res) => {
-//     const imagePath = req.files['image_file'][0].path;
-//     const maskPath = req.files['mask_file'][0].path;
-
-//     const formData = new FormData();
-//     formData.append('image_file', fs.createReadStream(imagePath));
-//     formData.append('mask_file', fs.createReadStream(maskPath));
-
-//     try {
-//         const response = await axios.post('https://clipdrop-api.co/cleanup/v1', formData, {
-//             headers: {
-//                 ...formData.getHeaders(),
-//                 'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
-//             },
-//             responseType: 'arraybuffer'
-//         });
-
-//         fs.unlinkSync(imagePath);
-//         fs.unlinkSync(maskPath);
-//         const imageType = 'image/png';
-//         res.setHeader('Content-Type', imageType);
-//         res.send(response.data);
-//     } catch (error) {
-//         console.error('Failed to cleanup image:', error);
-//         res.status(500).send('Failed to cleanup image');
-//     }
-// });
-
-
-
 
 
 
@@ -197,42 +167,6 @@ app.post('/uncrop-image', upload.single('image'), async (req, res) => {
         res.status(500).send('Failed to uncrop image');
     }
 });
-
-
-// app.post('/uncrop-image', upload.single('image'), async (req, res) => {
-//     if (!req.file) {
-//         return res.status(400).send('No image file uploaded.');
-//     }
-
-//     const imagePath = req.file.path;
-//     const { extend_left, extend_right, extend_up, extend_down, seed } = req.body;
-
-//     const formData = new FormData();
-//     formData.append('image_file', fs.createReadStream(imagePath));
-//     if (extend_left) formData.append('extend_left', extend_left);
-//     if (extend_right) formData.append('extend_right', extend_right);
-//     if (extend_up) formData.append('extend_up', extend_up);
-//     if (extend_down) formData.append('extend_down', extend_down);
-//     if (seed) formData.append('seed', seed);
-
-//     try {
-//         const response = await axios.post('https://clipdrop-api.co/uncrop/v1', formData, {
-//             headers: {
-//                 ...formData.getHeaders(),
-//                 'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
-//             },
-//             responseType: 'arraybuffer' 
-//         });
-
-//         fs.unlinkSync(imagePath); // Clean up the uploaded file
-//         const imageType = response.headers['content-type'] === 'image/webp' ? 'webp' : 'jpeg';
-//         res.setHeader('Content-Type', `image/${imageType}`);
-//         res.send(response.data);
-//     } catch (error) {
-//         console.error('Failed to uncrop image:', error);
-//         res.status(500).send('Failed to uncrop image');
-//     }
-// });
 
 
 
@@ -299,50 +233,6 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
     }
 });
 
-
-
-
-// app.post('/remove-background', upload.single('image'), async (req, res) => {
-//     console.log("Route hit: /remove-background");
-//     if (!req.file) {
-//         return res.status(400).send('No image file uploaded.');
-//     }
-
-//     const imagePath = req.file.path;
-//     const formData = new FormData();
-//     formData.append('image_file', fs.createReadStream(imagePath));
-//     formData.append('get_file', 1);
-
-//     try {
-//         const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
-//             headers: {
-//                 ...formData.getHeaders(),
-//                 'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'
-//             },
-//             responseType: 'arraybuffer' 
-//         });
-
-//         fs.unlinkSync(imagePath); 
-//         res.setHeader('Content-Type', 'image/png');
-//         res.send(response.data);
-//     } catch (error) {
-//         console.error('Failed to remove background:', error);
-//         res.status(500).send('Failed to remove background');
-//     }
-// });
-
-// app.get('/test-imagemagick', (req, res) => {
-//     console.log('Testing ImageMagick installation...');
-//     exec('convert -size 1280x720 xc:"rgba(0,0,0,0.5)" "/home/kyle/quick-convert/overlay/overlay_test.png"', (error, stdout, stderr) => {
-//         if (error) {
-//             console.error(`Convert command failed: ${error}`);
-//             return res.status(500).send(`Error running convert: ${error.message}`);
-//         }
-//         console.log('Convert command stdout:', stdout);
-//         console.error('Convert command stderr:', stderr);
-//         res.send('ImageMagick command executed successfully.');
-//     });
-// });
 
 
 app.post('/slice', upload.single('video'), (req, res) => {
@@ -469,7 +359,7 @@ app.post('/overlay', upload.single('video'), (req, res) => {
     const opacity = parseFloat(req.body.opacity);
     const outputPath = path.join(__dirname, 'processed', `overlay_video_${Date.now()}.mp4`);
 
-    // Calculate video size
+  
     exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
         if (error) {
             console.error('Error getting video size:', error);
@@ -479,14 +369,13 @@ app.post('/overlay', upload.single('video'), (req, res) => {
         const [width, height] = stdout.trim().split(',');
         const overlayPath = path.join(__dirname, 'overlay', `overlay_${Date.now()}.png`);
 
-        // Create overlay
+       
         exec(`convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0,2), 16)},${parseInt(color.substring(2,4), 16)},${parseInt(color.substring(4,6), 16)},${opacity})" "${overlayPath}"`, (overlayError) => {
             if (overlayError) {
                 console.error('Error creating overlay:', overlayError);
                 return res.status(500).send('Failed to create overlay.');
             }
 
-            // Apply the overlay
             exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
                 if (ffmpegError) {
                     console.error('Error applying overlay:', ffmpegError);
@@ -511,7 +400,7 @@ app.post('/overlay', upload.single('video'), (req, res) => {
 app.post('/gradientOverlay', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const gradientType = req.body.gradientType;
-    const gradientColor = req.body.gradientColor.replace('#', ''); // Ensure '#' is removed for consistency
+    const gradientColor = req.body.gradientColor.replace('#', ''); 
     const outputPath = path.join(__dirname, 'processed', `gradient_overlay_video_${Date.now()}.mp4`);
 
     exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
@@ -547,7 +436,7 @@ app.post('/gradientOverlay', upload.single('video'), (req, res) => {
                 return res.status(500).send('Failed to create gradient.');
             }
 
-            // Apply the gradient
+           
             const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition} [outv]" -map "[outv]" -map 0:a? -c:a copy "${outputPath}"`;
 
             exec(ffmpegCommand, (ffmpegError) => {
@@ -580,9 +469,9 @@ app.post('/slowVideo', upload.single('video'), (req, res) => {
     exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${videoPath}"`, (error, stdout) => {
         let ffmpegCommand;
 
-        if (stdout) { // Audio stream
+        if (stdout) { 
             ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "[0:v]setpts=${slowFactor}*PTS[v];[0:a]atempo=1/${slowFactor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
-        } else { // No audio stream
+        } else {
             ffmpegCommand = `ffmpeg -i "${videoPath}" -filter:v "setpts=${slowFactor}*PTS" "${outputPath}"`;
         }
 
@@ -602,9 +491,6 @@ app.post('/slowVideo', upload.single('video'), (req, res) => {
         });
     });
 });
-
-
-
 
 
 
@@ -750,10 +636,6 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
             });
         });
     });
-
-
-
-
 
     
 
