@@ -315,11 +315,13 @@ canvas {
 }
 
 #imageCanvas {
-    width: auto; /* or 100% of its parent, depending on your design */
-    height: auto; /* maintaining aspect ratio */
-    max-width: 100%; /* ensures it doesn't overflow its container */
+    width: auto;
+    height: auto;
+    max-width: 100%;
 }
 
 input[type="file"] {
     width: 95%;
 }
+
+

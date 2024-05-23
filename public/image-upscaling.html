@@ -21,7 +21,7 @@
             <label for="image">Upload your image:</label>
             <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required>
             <label for="upscale_percentage">Upscale Percentage:</label>
-            <input type="range" id="upscale_percentage" name="upscale_percentage" min="100" max="300" value="100" oninput="updatePercentageDisplay(this.value)" style="width: 90%">
+            <input type="range" id="upscale_percentage" name="upscale_percentage" min="100" max="300" value="150" step="50" oninput="updatePercentageDisplay(this.value)" style="width: 90%">
             <span id="percentage_display">100%</span>
 
             <div class="button-group">

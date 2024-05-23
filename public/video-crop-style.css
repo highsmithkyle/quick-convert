@@ -35,8 +35,8 @@ body {
 }
 
 .scrollable-sidebar {
-    height: 100vh; /* Full viewport height */
-    overflow-y: auto; /* Enables vertical scrolling */
+    height: 100vh; 
+    overflow-y: auto; 
 }
 .sidebar {
     width: 300px;
@@ -211,68 +211,15 @@ button.download-button:hover {
     width: 50%;
 }
 
-.image-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 150px); /* Three columns, each 200px wide */
-    grid-template-rows: repeat(3, 150px); /* Three rows, each 200px high */
-    grid-gap: 30px; /* Spacing between images */
-    justify-content: center; /* Center grid horizontally */
-    margin-bottom: 20px; /* Space below the grid */
-}
-
-.image-grid img {
-    width: 80px; /* Width of each image */
-    height: 80px; /* Height of each image */
-    object-fit: cover; /* Ensures images cover the grid area without stretching */
-}
-
-.icon-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px; /* Add padding for visual spacing */
-    display: flex; /* Ensures the content is centered */
-    flex-direction: column; /* Aligns items vertically */
-    align-items: center; /* Center items horizontally in the button */
-    overflow: hidden; /* Keeps content within the button */
-    text-align: center; /* Centers text horizontally */
-    transition: background-color 0.3s ease; /* Smooth transition for background color */
-}
-
-.icon {
-    transition: transform 0.3s ease; /* Smooth transformation for scaling */
-    margin-bottom: 5px; /* Space between icon and title */
-}
-
-.icon-button:hover .icon {
-    transform: scale(1.1); /* Scales the icon only */
-}
-
-.icon-button:hover {
-    background-color: transparent; /* Ensures background stays transparent on hover */
-}
-
-.icon-title {
-    font-size: 12px; /* Set the font size for the title */
-    color: #333; /* Title color */
-    text-decoration: none; /* In case it's a link, remove underline */
-    pointer-events: none; /* Prevents the title from being clickable */
-    padding: 10px;
-}
-
-.title-group p {
-    color: #666; /* Lighter text for instructions */
-    font-size: 14px;
-}
 
 
 
 .upload-group {
-    background-color: #f9f9f9; /* Matching the style of slice group */
+    background-color: #f9f9f9; 
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    margin-bottom: 20px; /* Space before the next section */
+    margin-bottom: 20px;
 }
 
 .home-button {
@@ -283,7 +230,7 @@ button.download-button:hover {
     padding: 10px 0;
     margin-bottom: 20px;
     transform-origin: left center;
-    text-decoration: none; /* This line removes the underline */
+    text-decoration: none;
 }
 
 .home-button img {
@@ -299,8 +246,8 @@ button.download-button:hover {
 }
 
 .home-button:hover {
-    transform: scale(1.1); /* Enlarge button on hover */
-    color: #2494e4; /* Change text color on hover */
+    transform: scale(1.1);
+    color: #2494e4;
 }
 
 .home-button:hover img {
@@ -313,7 +260,7 @@ button.download-button:hover {
 
 
 .scrollable-sidebar {
-    height: 100vh; /* Full viewport height */
-    overflow-y: auto; /* Enables vertical scrolling */
+    height: 100vh; 
+    overflow-y: auto;
 }
 

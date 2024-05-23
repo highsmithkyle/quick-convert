@@ -14,6 +14,7 @@ app.use(express.static('public'));
 
 
 process.env.PATH += ':/usr/bin';
+const convertedDir = path.join(__dirname, 'converted');
 
 
 app.get('/', (req, res) => {
@@ -52,6 +53,36 @@ app.post('/recolorImage', upload.single('image'), (req, res) => {
         });
     });
 });
+
+// image-reimagine
+
+app.post('/reimagine-image', upload.single('image'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
+
+    const imagePath = req.file.path;
+    const formData = new FormData();
+    formData.append('image_file', fs.createReadStream(imagePath));
+
+    try {
+        const response = await axios.post('https://clipdrop-api.co/reimagine/v1/reimagine', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
+            },
+            responseType: 'arraybuffer'
+        });
+
+        fs.unlinkSync(imagePath);
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.send(response.data);
+    } catch (error) {
+        console.error('API Call Failed:', error.response ? error.response.data : error.message);
+        res.status(500).send('Failed to reimagine image');
+    }
+});
+
 
 
 
@@ -94,8 +125,9 @@ app.post('/upload', upload.single('video'), (req, res) => {
 });
 
 
-//cleanup
 
+
+//cleanup
 app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_file' }]), async (req, res) => {
     const imagePath = req.files['image_file'][0].path;
     const maskPath = req.files['mask_file'][0].path;
@@ -103,7 +135,7 @@ app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_
     const formData = new FormData();
     formData.append('image_file', fs.createReadStream(imagePath));
     formData.append('mask_file', fs.createReadStream(maskPath));
-    formData.append('mode', 'quality'); // Adding mode for better quality
+    formData.append('mode', 'quality');
 
     try {
         const response = await axios.post('https://clipdrop-api.co/cleanup/v1', formData, {
@@ -114,17 +146,18 @@ app.post('/cleanup-image', upload.fields([{ name: 'image_file' }, { name: 'mask_
             responseType: 'arraybuffer'
         });
 
+        // console.log('API Call Success:', response.data);
+
         fs.unlinkSync(imagePath);
         fs.unlinkSync(maskPath);
         const imageType = 'image/png';
         res.setHeader('Content-Type', imageType);
         res.send(response.data);
     } catch (error) {
-        console.error('Failed to cleanup image:', error);
+        console.error('API Call Failed:', error.response ? error.response.data : error.message);
         res.status(500).send('Failed to cleanup image');
     }
 });
-
 
 
 
@@ -158,7 +191,7 @@ app.post('/uncrop-image', upload.single('image'), async (req, res) => {
             responseType: 'arraybuffer' 
         });
 
-        fs.unlinkSync(imagePath); // Clean up the uploaded file
+        fs.unlinkSync(imagePath);
         const imageType = response.headers['content-type'] === 'image/webp' ? 'webp' : 'jpeg';
         res.setHeader('Content-Type', `image/${imageType}`);
         res.send(response.data);
@@ -167,7 +200,6 @@ app.post('/uncrop-image', upload.single('image'), async (req, res) => {
         res.status(500).send('Failed to uncrop image');
     }
 });
-
 
 
 //upscale image
@@ -194,7 +226,7 @@ app.post('/upscale-image', upload.single('image'), async (req, res) => {
             responseType: 'arraybuffer' 
         });
 
-        fs.unlinkSync(imagePath); // Clean up the uploaded file
+        fs.unlinkSync(imagePath); 
         const imageType = response.headers['content-type'] === 'image/webp' ? 'webp' : 'jpeg';
         res.setHeader('Content-Type', `image/${imageType}`);
         res.send(response.data);
@@ -223,7 +255,7 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
             responseType: 'arraybuffer'
         });
 
-        fs.unlinkSync(imagePath); // Clean up the uploaded file
+        fs.unlinkSync(imagePath);
         const imageType = response.headers['content-type'];
         res.setHeader('Content-Type', imageType);
         res.send(response.data);
@@ -232,6 +264,8 @@ app.post('/remove-background', upload.single('image'), async (req, res) => {
         res.status(500).send('Failed to remove background');
     }
 });
+
+
 
 
 
@@ -276,80 +310,7 @@ app.post('/slice', upload.single('video'), (req, res) => {
     });
 });
 
-app.post('/crop', upload.single('video'), (req, res) => {
-    const videoPath = req.file.path;
-    const cropRatio = req.body.cropRatio; 
-    const outputPath = path.join(__dirname, 'processed', `cropped_video_${Date.now()}.mp4`);
 
-    if (cropRatio === 'None') {
-        
-        fs.copyFile(videoPath, outputPath, (err) => {
-            if (err) {
-                console.error('Error copying file:', err);
-                return res.status(500).send('Error processing video.');
-            }
-            res.download(outputPath, (downloadErr) => {
-                if (downloadErr) {
-                    console.error('Error sending the video file:', downloadErr);
-                }
-                fs.unlinkSync(videoPath); 
-            });
-        });
-    } else {
-     
-        let cropCommand;
-        switch (cropRatio) {
-            case '1:1':
-                cropCommand = 'crop=min(iw\\,ih):min(iw\\,ih)';
-                break;
-            case 'Header':
-                cropCommand = 'crop=in_w:in_h/2:0:in_h/4';
-                break;    
-            case 'Background':
-                cropCommand = `crop='if(gt(iw/ih,ih/iw),ih*9/16,iw)':ih`;
-                break;
-            case 'Middle Third':
-                cropCommand = 'crop=in_w:in_h/3:0:in_h/3';
-                break;
-            case 'Top Third':
-                cropCommand = 'crop=in_w:in_h/3:0:0';
-                break;
-            case 'Bottom Third':
-                cropCommand = 'crop=in_w:in_h/3:0:2*in_h/3';
-                break;
-            case 'Top Half':
-                cropCommand = 'crop=in_w:ih/2:0:0';
-                break;
-            case 'Bottom Half':
-                cropCommand = 'crop=in_w:ih/2:0:ih/2';
-                break;
-            default:
-                cropCommand = '';
-                break;
-        }
-
-        if (cropCommand !== '') {
-            const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
-
-            exec(ffmpegCommand, (error) => {
-                if (error) {
-                    console.error('Error executing FFmpeg command:', error);
-                  
-                    return res.status(500).send('Error processing video.');
-                }
-
-                res.download(outputPath, (downloadErr) => {
-                    if (downloadErr) {
-                        console.error('Error sending the video file:', downloadErr);
-                    }
-                  
-                });
-            });
-        } else {
-            return res.status(400).send('Invalid crop ratio specified.');
-        }
-    }
-});
 
 //colored overlay
 
@@ -368,8 +329,7 @@ app.post('/overlay', upload.single('video'), (req, res) => {
 
         const [width, height] = stdout.trim().split(',');
         const overlayPath = path.join(__dirname, 'overlay', `overlay_${Date.now()}.png`);
-
-       
+     
         exec(`convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0,2), 16)},${parseInt(color.substring(2,4), 16)},${parseInt(color.substring(4,6), 16)},${opacity})" "${overlayPath}"`, (overlayError) => {
             if (overlayError) {
                 console.error('Error creating overlay:', overlayError);
@@ -400,7 +360,7 @@ app.post('/overlay', upload.single('video'), (req, res) => {
 app.post('/gradientOverlay', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const gradientType = req.body.gradientType;
-    const gradientColor = req.body.gradientColor.replace('#', ''); 
+    const gradientColor = req.body.gradientColor.replace('#', '');
     const outputPath = path.join(__dirname, 'processed', `gradient_overlay_video_${Date.now()}.mp4`);
 
     exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
@@ -436,7 +396,7 @@ app.post('/gradientOverlay', upload.single('video'), (req, res) => {
                 return res.status(500).send('Failed to create gradient.');
             }
 
-           
+            // Apply the gradient
             const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition} [outv]" -map "[outv]" -map 0:a? -c:a copy "${outputPath}"`;
 
             exec(ffmpegCommand, (ffmpegError) => {
@@ -469,9 +429,9 @@ app.post('/slowVideo', upload.single('video'), (req, res) => {
     exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${videoPath}"`, (error, stdout) => {
         let ffmpegCommand;
 
-        if (stdout) { 
+        if (stdout) { // has audio
             ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "[0:v]setpts=${slowFactor}*PTS[v];[0:a]atempo=1/${slowFactor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
-        } else {
+        } else { // no audio
             ffmpegCommand = `ffmpeg -i "${videoPath}" -filter:v "setpts=${slowFactor}*PTS" "${outputPath}"`;
         }
 
@@ -495,11 +455,15 @@ app.post('/slowVideo', upload.single('video'), (req, res) => {
 
 
 
+
+
+
 app.post('/convertToWebP', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
 
-    const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libwebp -lossless 1 -q:v 80 -loop 0 -preset picture -an -vsync 0 "${outputPath}"`;
+    const convertCommand = `ffmpeg -i "${videoPath}" -vf scale=iw:ih -vcodec libwebp -compression_level 6 -q:v 30 -preset picture -an -loop 0 -vsync 0 "${outputPath}"`;
+
 
     exec(convertCommand, (error, stdout, stderr) => {
         if (error) {
@@ -515,8 +479,7 @@ app.post('/convertToWebP', upload.single('video'), (req, res) => {
             }
             
             fs.unlinkSync(videoPath);
-            
-            // fs.unlinkSync(outputPath);
+            fs.unlinkSync(outputPath);
         });
     });
 });
@@ -546,7 +509,7 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
     fs.mkdirSync(framesDir, { recursive: true });
 
    
-    const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=12 "${path.join(framesDir, 'frame_%04d.png')}"`;
+    const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=15 "${path.join(framesDir, 'frame_%04d.png')}"`;
 
     exec(extractFramesCommand, (extractError) => {
         if (extractError) {
@@ -569,7 +532,7 @@ app.post('/convertToGif', upload.single('video'), (req, res) => {
             const frameFiles = files.map(file => path.join(framesDir, file));
             
             
-            execFile('gifski', ['-o', outputPath, '--fps', '12', '--quality', '80', ...frameFiles], (gifskiError, stdout, stderr) => {
+            execFile('gifski', ['-o', outputPath, '--fps', '15', '--quality', '80', ...frameFiles], (gifskiError, stdout, stderr) => {
                 if (gifskiError) {
                     console.error('Error creating GIF with gifski:', gifskiError);
                     console.error('stderr:', stderr);
@@ -603,8 +566,6 @@ const cleanup = (videoPath, framesDir, outputPath) => {
 };
 
 
-
-
 app.post('/convertToAvif', upload.single('video'), (req, res) => {
     const videoPath = req.file.path;
     const outputPath = path.join(convertedDir, `converted_${Date.now()}.avif`);
@@ -612,13 +573,11 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
     console.log(`Starting conversion for ${videoPath}`);
     const convertCommand = `ffmpeg -y -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
 
-
     exec(convertCommand, (convertError) => {
         if (convertError) {
+            console.error('Conversion Error:', convertError);
             return res.status(500).send('Error converting video to AVIF.');
         }
-
-        console.log('Video conversion to AVIF completed successfully.');
 
         fs.access(outputPath, fs.constants.F_OK, (err) => {
             if (err) {
@@ -631,15 +590,18 @@ app.post('/convertToAvif', upload.single('video'), (req, res) => {
                     console.error('SendFile Error:', downloadErr.message);
                     return res.status(500).send('Error sending the converted file.');
                 }
-                console.log(`File sent: ${outputPath}`);
-              
+
+                fs.unlink(outputPath, unlinkErr => {
+                    if (unlinkErr) {
+                        console.error(`Error deleting output file: ${outputPath}`, unlinkErr);
+                    }
+                });
             });
         });
     });
-
-    
-
 });
+
+
 
 app.listen(3000, '0.0.0.0', () => {
     console.log(`Server running on port 3000`);

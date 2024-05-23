@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const gifImage = document.getElementById('gifImage');
     const notification = document.getElementById('processingNotification');
     const convertToGifButton = document.getElementById('convertToGifButton');
-    const downloadButtonContainer = document.getElementById('gifDownloadButtonContainer'); 
+    const downloadButtonContainer = document.getElementById('downloadButtonContainer'); 
     videoInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (file) {

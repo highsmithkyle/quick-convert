@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Reimagine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="sidebar">
+        <a href="index.html" class="home-button">
+            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+            <span>Home</span>
+        </a>
+
+        <div id="processingNotification" style="display:none;">
+            Processing your image, please wait...
+        </div>
+
+        <h2>Image Reimagine</h2>
+        <form id="uploadFormReimagine" enctype="multipart/form-data" class="form-group">
+            <label for="image">Upload your image:</label>
+            <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required>
+
+            <div class="button-group">
+                <button type="submit" class="form-button">Reimagine Image</button>
+            </div>
+        </form>
+    </div>
+
+
+    <div class="main-content">
+        <div id="videoContainer">
+            <div>
+                <h3>Uploaded Image</h3>
+                <img id="uploadedImage" src="" alt="Uploaded Image" style="width: 450px;">
+            </div>
+            <div>
+                <h3>Reimagined Image</h3>
+                <img id="processedImage" src="" alt="Uncropped Image" style="width:450px;">
+            </div>
+        </div>
+    </div>
+
+    <script src="image-reimagine.js"></script>
+</body>
+</html>

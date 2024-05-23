@@ -1,3 +1,200 @@
+old webp
+
+
+    document.getElementById('convertToWebPButton').addEventListener('click', function() {
+        const videoSource = document.getElementById('croppedVideo').getAttribute('src');
+        if (!videoSource) {
+            console.error('No video available to convert to WebP.');
+            return;
+        }
+        notification.style.display = 'block';
+    
+        fetch(videoSource)
+            .then(response => response.blob())
+            .then(blob => {
+                const formData = new FormData();
+                formData.append('video', blob, 'final.mp4');
+                return fetch('/convertToWebP', { method: 'POST', body: formData });
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                notification.style.display = 'none';
+                const webPImage = document.getElementById('webpImage');
+                webPImage.src = URL.createObjectURL(blob);
+                webPImage.style.display = 'block';
+    
+                
+                const downloadButtonContainer = document.getElementById('webpDownloadButtonContainer');
+                downloadButtonContainer.innerHTML = ''; 
+    
+                const downloadButton = document.createElement('button');
+                downloadButton.textContent = 'Download WebP';
+                downloadButton.className = 'download-button';
+    
+                const fileSizeInBytes = blob.size;
+                const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2); // Convert to MB
+                const fileSizeText = document.createTextNode(` (${fileSizeInMB} MB)`);
+    
+                downloadButton.addEventListener('click', function() {
+                    const a = document.createElement('a');
+                    a.href = webPImage.src;
+                    a.download = 'converted_image.webp'; 
+                    document.body.appendChild(a); 
+                    a.click(); 
+                    document.body.removeChild(a); 
+                });
+    
+                downloadButtonContainer.appendChild(downloadButton);
+                downloadButtonContainer.appendChild(fileSizeText); 
+            })
+            .catch(error => {
+                notification.style.display = 'none';
+                console.error('Failed to convert to WebP:', error);
+            });
+    });
+
+
+
+
+image crop with pre set sizes
+
+app.post('/crop', upload.single('video'), (req, res) => {
+    const videoPath = req.file.path;
+    const cropRatio = req.body.cropRatio; 
+    const outputPath = path.join(__dirname, 'processed', `cropped_video_${Date.now()}.mp4`);
+
+    if (cropRatio === 'None') {
+        
+        fs.copyFile(videoPath, outputPath, (err) => {
+            if (err) {
+                console.error('Error copying file:', err);
+                return res.status(500).send('Error processing video.');
+            }
+            res.download(outputPath, (downloadErr) => {
+                if (downloadErr) {
+                    console.error('Error sending the video file:', downloadErr);
+                }
+                fs.unlinkSync(videoPath); 
+            });
+        });
+    } else {
+     
+        let cropCommand;
+        switch (cropRatio) {
+            case '1:1':
+                cropCommand = 'crop=min(iw\\,ih):min(iw\\,ih)';
+                break;
+            case 'Header':
+                cropCommand = 'crop=in_w:in_h/2:0:in_h/4';
+                break;    
+            case 'Background':
+                cropCommand = `crop='if(gt(iw/ih,ih/iw),ih*9/16,iw)':ih`;
+                break;
+            case 'Middle Third':
+                cropCommand = 'crop=in_w:in_h/3:0:in_h/3';
+                break;
+            case 'Top Third':
+                cropCommand = 'crop=in_w:in_h/3:0:0';
+                break;
+            case 'Bottom Third':
+                cropCommand = 'crop=in_w:in_h/3:0:2*in_h/3';
+                break;
+            case 'Top Half':
+                cropCommand = 'crop=in_w:ih/2:0:0';
+                break;
+            case 'Bottom Half':
+                cropCommand = 'crop=in_w:ih/2:0:ih/2';
+                break;
+            default:
+                cropCommand = '';
+                break;
+        }
+
+        if (cropCommand !== '') {
+            const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+            exec(ffmpegCommand, (error) => {
+                if (error) {
+                    console.error('Error executing FFmpeg command:', error);
+                  
+                    return res.status(500).send('Error processing video.');
+                }
+
+                res.download(outputPath, (downloadErr) => {
+                    if (downloadErr) {
+                        console.error('Error sending the video file:', downloadErr);
+                    }
+                  
+                });
+            });
+        } else {
+            return res.status(400).send('Invalid crop ratio specified.');
+        }
+    }
+});
+
+
+
+
+
+
+
+
+
+
+/ //font-size: 14px; font-weight: normal;
+
+
+
+/ remove background extra
+
+
+
+// app.post('/remove-background', upload.single('image'), async (req, res) => {
+//     console.log("Route hit: /remove-background");
+//     if (!req.file) {
+//         return res.status(400).send('No image file uploaded.');
+//     }
+
+//     const imagePath = req.file.path;
+//     const formData = new FormData();
+//     formData.append('image_file', fs.createReadStream(imagePath));
+//     formData.append('get_file', 1);
+
+//     try {
+//         const response = await axios.post('https://api.removal.ai/3.0/remove', formData, {
+//             headers: {
+//                 ...formData.getHeaders(),
+//                 'Rm-Token': '4D0203C1-63B7-75DF-304B-A217F9C7CC2B'
+//             },
+//             responseType: 'arraybuffer' 
+//         });
+
+//         fs.unlinkSync(imagePath); 
+//         res.setHeader('Content-Type', 'image/png');
+//         res.send(response.data);
+//     } catch (error) {
+//         console.error('Failed to remove background:', error);
+//         res.status(500).send('Failed to remove background');
+//     }
+// });
+
+// app.get('/test-imagemagick', (req, res) => {
+//     console.log('Testing ImageMagick installation...');
+//     exec('convert -size 1280x720 xc:"rgba(0,0,0,0.5)" "/home/kyle/quick-convert/overlay/overlay_test.png"', (error, stdout, stderr) => {
+//         if (error) {
+//             console.error(`Convert command failed: ${error}`);
+//             return res.status(500).send(`Error running convert: ${error.message}`);
+//         }
+//         console.log('Convert command stdout:', stdout);
+//         console.error('Convert command stderr:', stderr);
+//         res.send('ImageMagick command executed successfully.');
+//     });
+// });
+
+
+
+
 overlay?
 conversion buttons
 
