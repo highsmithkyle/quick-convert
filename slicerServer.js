@@ -9,8 +9,15 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 const cors = require('cors');  
 
+
+const speech = require('@google-cloud/speech');
+const speechClient = new speech.SpeechClient();
+
+
 app.use(cors()); 
 app.use(express.static('public'));
+app.use('/subtitles', express.static(path.join(__dirname, 'subtitles')));
+
 
 
 process.env.PATH += ':/usr/bin';
@@ -23,10 +30,151 @@ app.get('/', (req, res) => {
 
 
 
-const overlayDir = path.join(__dirname, 'overlay');
-if (!fs.existsSync(overlayDir)) {
-    fs.mkdirSync(overlayDir, { recursive: true });
+app.post('/transcribe-video', upload.single('video'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No video file uploaded.');
+    }
+
+    const videoPath = req.file.path;
+    const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
+    const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
+    const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
+
+    
+    const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+    exec(ffmpegExtractAudioCommand, async (error) => {
+        if (error) {
+            console.error('Error converting video to audio:', error);
+            return res.status(500).send('Failed to convert video.');
+        }
+
+        try {
+            const transcriptionResults = await transcribeAudio(audioPath);
+            createSRT(transcriptionResults, srtPath);
+
+            const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf subtitles="${srtPath}" -c:v libx264 -c:a copy "${outputPath}"`;
+            exec(ffmpegAddSubtitlesCommand, (subError) => {
+                cleanupFiles(videoPath, audioPath, srtPath); 
+
+                if (subError) {
+                    console.error('Error adding subtitles:', subError);
+                    return res.status(500).send('Failed to add subtitles to video.');
+                }
+
+                res.json({ message: 'Video processed with subtitles', videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+            });
+        } catch (transcriptionError) {
+            console.error('Transcription error:', transcriptionError);
+            cleanupFiles(videoPath, audioPath, srtPath);
+            res.status(500).send('Failed to transcribe audio.');
+        }
+    });
+});
+
+function transcribeAudio(filePath) {
+    const file = fs.readFileSync(filePath);
+    const audioBytes = file.toString('base64');
+
+    const request = {
+        audio: { content: audioBytes },
+        config: {
+            encoding: 'FLAC',
+            sampleRateHertz: 16000,
+            languageCode: 'en-US',
+            enableAutomaticPunctuation: true,
+            enableWordTimeOffsets: true
+        },
+    };
+
+    return speechClient.recognize(request).then(data => {
+        const [response] = data;
+        const transcriptionResults = response.results.map(result => {
+            const alternatives = result.alternatives[0];
+            const timestamps = alternatives.words.map(word => ({
+                word: word.word,
+                startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+                endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9
+            }));
+            console.log("Raw Timestamps:", timestamps); 
+            return {
+                transcript: alternatives.transcript,
+                timestamps: timestamps
+            };
+        });
+        return transcriptionResults;
+    });
 }
+
+
+// new
+
+
+function createSRT(transcriptionResults, srtPath) {
+    let srtContent = [];
+    let index = 1;
+    let sentence = "";
+    let startTime = 0;
+    let endTime = 0;
+
+    transcriptionResults.forEach((result, resultIdx) => {
+        result.timestamps.forEach((word, idx) => {
+            if (sentence === "") {
+                startTime = word.startTime;  // Start time of the first word in the sentence
+            }
+            sentence += (sentence ? " " : "") + word.word;  // Append words to form a sentence
+
+            if (idx === result.timestamps.length - 1 || (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)) {
+                // End of sentence or significant pause detected
+                endTime = word.endTime;  // Set end time to the end of the last word in the sentence
+
+                // Create subtitle entry
+                const formattedStart = formatSRTTime(startTime);
+                const formattedEnd = formatSRTTime(endTime + 0.5);  // Extend the display slightly longer by 0.5 second
+                srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
+                index++;
+                sentence = "";  // Reset sentence for the next one
+            }
+        });
+    });
+
+    fs.writeFileSync(srtPath, srtContent.join('\n\n'));
+}
+
+
+
+function formatSRTTime(rawTime) {
+    console.log("Raw time received:", rawTime); // Debug log
+
+    const time = parseFloat(rawTime);
+    if (isNaN(time)) {
+        console.error("Invalid time data:", rawTime);
+        return "00:00:00,000";
+    }
+
+    let hours = Math.floor(time / 3600);
+    let minutes = Math.floor((time % 3600) / 60);
+    let seconds = Math.floor(time % 60);
+    let milliseconds = Math.round((time - Math.floor(time)) * 1000);
+
+    hours = hours.toString().padStart(2, '0');
+    minutes = minutes.toString().padStart(2, '0');
+    seconds = seconds.toString().padStart(2, '0');
+    milliseconds = milliseconds.toString().padStart(3, '0');
+
+    const formattedTime = `${hours}:${minutes}:${seconds},${milliseconds}`;
+    console.log("Formatted time:", formattedTime); // Debug log 
+
+    return formattedTime;
+}
+
+
+
+function cleanupFiles(videoPath, audioPath, srtPath) {
+    fs.unlinkSync(videoPath);
+    fs.unlinkSync(audioPath);
+    // fs.unlinkSync(srtPath);
+}
+
 
 
 
@@ -53,36 +201,6 @@ app.post('/recolorImage', upload.single('image'), (req, res) => {
         });
     });
 });
-
-// image-reimagine
-
-app.post('/reimagine-image', upload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No image file uploaded.');
-    }
-
-    const imagePath = req.file.path;
-    const formData = new FormData();
-    formData.append('image_file', fs.createReadStream(imagePath));
-
-    try {
-        const response = await axios.post('https://clipdrop-api.co/reimagine/v1/reimagine', formData, {
-            headers: {
-                ...formData.getHeaders(),
-                'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
-            },
-            responseType: 'arraybuffer'
-        });
-
-        fs.unlinkSync(imagePath);
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.send(response.data);
-    } catch (error) {
-        console.error('API Call Failed:', error.response ? error.response.data : error.message);
-        res.status(500).send('Failed to reimagine image');
-    }
-});
-
 
 
 
@@ -200,6 +318,34 @@ app.post('/uncrop-image', upload.single('image'), async (req, res) => {
         res.status(500).send('Failed to uncrop image');
     }
 });
+
+app.post('/reimagine-image', upload.single('image'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
+
+    const imagePath = req.file.path;
+    const formData = new FormData();
+    formData.append('image_file', fs.createReadStream(imagePath));
+
+    try {
+        const response = await axios.post('https://clipdrop-api.co/reimagine/v1/reimagine', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'x-api-key': '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e'
+            },
+            responseType: 'arraybuffer'
+        });
+
+        fs.unlinkSync(imagePath);
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.send(response.data);
+    } catch (error) {
+        console.error('API Call Failed:', error.response ? error.response.data : error.message);
+        res.status(500).send('Failed to reimagine image');
+    }
+});
+
 
 
 //upscale image
