@@ -1,3 +1,5 @@
+//test
+
 document.addEventListener('DOMContentLoaded', function() {
     const uploadFormVideo = document.getElementById('uploadFormVideo');
     const videoInput = document.getElementById('video');
