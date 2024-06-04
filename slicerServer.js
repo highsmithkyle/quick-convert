@@ -1,3 +1,7 @@
+
+console.log('Google Credentials Path:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
+
 const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
@@ -8,10 +12,16 @@ const FormData = require('form-data');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 const cors = require('cors');  
+const { Translate } = require('@google-cloud/translate').v2;
+const translate = new Translate();
 
 
 const speech = require('@google-cloud/speech');
 const speechClient = new speech.SpeechClient();
+
+const {google} = require('googleapis');
+google.options({auth: new google.auth.GoogleAuth({logLevel: 'debug'})});
+
 
 
 app.use(cors()); 
@@ -27,6 +37,12 @@ const convertedDir = path.join(__dirname, 'converted');
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'background-remover.html'));
 });
+
+
+
+
+console.log(`Credentials Path: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+
 
 
 
@@ -119,20 +135,20 @@ function createSRT(transcriptionResults, srtPath) {
     transcriptionResults.forEach((result, resultIdx) => {
         result.timestamps.forEach((word, idx) => {
             if (sentence === "") {
-                startTime = word.startTime;  // Start time of the first word in the sentence
+                startTime = word.startTime;
             }
-            sentence += (sentence ? " " : "") + word.word;  // Append words to form a sentence
+            sentence += (sentence ? " " : "") + word.word;
 
             if (idx === result.timestamps.length - 1 || (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)) {
-                // End of sentence or significant pause detected
-                endTime = word.endTime;  // Set end time to the end of the last word in the sentence
+                
+                endTime = word.endTime; 
 
-                // Create subtitle entry
+              
                 const formattedStart = formatSRTTime(startTime);
-                const formattedEnd = formatSRTTime(endTime + 0.5);  // Extend the display slightly longer by 0.5 second
+                const formattedEnd = formatSRTTime(endTime + 0.5);
                 srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
                 index++;
-                sentence = "";  // Reset sentence for the next one
+                sentence = "";
             }
         });
     });

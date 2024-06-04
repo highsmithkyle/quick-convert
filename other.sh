@@ -1,3 +1,49 @@
+
+transcribe
+
+// app.post('/transcribe-video', upload.single('video'), async (req, res) => {
+//     if (!req.file) {
+//         return res.status(400).send('No video file uploaded.');
+//     }
+
+//     const videoPath = req.file.path;
+//     const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
+//     const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
+//     const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
+
+    
+//     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+//     exec(ffmpegExtractAudioCommand, async (error) => {
+//         if (error) {
+//             console.error('Error converting video to audio:', error);
+//             return res.status(500).send('Failed to convert video.');
+//         }
+
+//         try {
+//             const transcriptionResults = await transcribeAudio(audioPath);
+//             createSRT(transcriptionResults, srtPath);
+
+//             const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf subtitles="${srtPath}" -c:v libx264 -c:a copy "${outputPath}"`;
+//             exec(ffmpegAddSubtitlesCommand, (subError) => {
+//                 cleanupFiles(videoPath, audioPath, srtPath); 
+
+//                 if (subError) {
+//                     console.error('Error adding subtitles:', subError);
+//                     return res.status(500).send('Failed to add subtitles to video.');
+//                 }
+
+//                 res.json({ message: 'Video processed with subtitles', videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+//             });
+//         } catch (transcriptionError) {
+//             console.error('Transcription error:', transcriptionError);
+//             cleanupFiles(videoPath, audioPath, srtPath);
+//             res.status(500).send('Failed to transcribe audio.');
+//         }
+//     });
+// });
+
+
+
 old webp
 
 
