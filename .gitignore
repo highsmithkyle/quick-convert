@@ -1,2 +1,6 @@
 secure/google-credentials.json
 secure/api-access-token.txt
+converted/
+overlay/
+uploads/
+processed/
