@@ -14,7 +14,7 @@ const upload = multer({ dest: 'uploads/' });
 const cors = require('cors');  
 const { Translate } = require('@google-cloud/translate').v2;
 const translate = new Translate();
-
+const { v4: uuidv4 } = require('uuid');
 
 const speech = require('@google-cloud/speech');
 const speechClient = new speech.SpeechClient();
@@ -22,6 +22,9 @@ const speechClient = new speech.SpeechClient();
 const {google} = require('googleapis');
 google.options({auth: new google.auth.GoogleAuth({logLevel: 'debug'})});
 
+const { Storage } = require('@google-cloud/storage');
+const storage = new Storage();
+const bucket = storage.bucket('image-2d-to-3d')
 
 
 app.use(cors()); 
@@ -40,8 +43,80 @@ app.get('/', (req, res) => {
 
 
 
+app.use(express.json());
 
-console.log(`Credentials Path: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+
+
+app.post('/upload-to-gc', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).send({ message: 'No file uploaded.' });
+    }
+
+    const filePath = req.file.path; // Path to the temporary file
+    const blob = bucket.file(req.file.originalname);
+    const blobStream = blob.createWriteStream({
+        resumable: false,
+        metadata: {
+            contentType: req.file.mimetype
+        }
+    });
+
+    blobStream.on('error', err => {
+        console.error('Error during upload:', err);
+        res.status(500).send({ message: 'Could not upload the file.' });
+    });
+
+    blobStream.on('finish', () => {
+        blob.makePublic().then(() => {
+            const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+            res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
+        }).catch(err => {
+            console.error('Failed to make the file public:', err);
+            res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
+        });
+    });
+
+   
+    fs.createReadStream(filePath).pipe(blobStream);
+});
+
+
+
+
+
+
+app.post('/2d-to-3d', async (req, res) => {
+    const accessToken = process.env.API_ACCESS_TOKEN; 
+    const correlationId = uuidv4();
+    const inputImageUrl = req.body.inputImageUrl;
+    const resultPresignedUrl = req.body.resultPresignedUrl;
+
+    if (!inputImageUrl || !resultPresignedUrl) {
+        return res.status(400).send({ message: 'Missing required parameters: inputImageUrl and resultPresignedUrl are required.' });
+    }
+
+    try {
+        const response = await axios.post(
+            'https://api.immersity.ai/api/v1/disparity',
+            {
+                correlationId,
+                inputImageUrl,
+                resultPresignedUrl
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                timeout: 180000 // 3 minutes timeout
+            }
+        );
+        res.send(response.data);
+    } catch (error) {
+        console.error('API Call Failed:', error.response ? error.response.data : error.message);
+        res.status(500). send({ message: 'API call failed', error: error.response ? error.response.data : error.message });
+    }
+});
+
 
 
 
