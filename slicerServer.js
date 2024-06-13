@@ -86,6 +86,41 @@ app.post('/upload-to-gc', upload.single('file'), (req, res) => {
 });
 
 
+// app.post('/upload-to-gc', upload.single('file'), (req, res) => {
+//     console.log('Received file:', req.file);
+
+//     if (!req.file) {
+//         return res.status(400).send({ message: 'No file uploaded.' });
+//     }
+
+//     const filePath = req.file.path; // Path to the temporary file
+//     const blob = bucket.file(req.file.originalname);
+//     const blobStream = blob.createWriteStream({
+//         resumable: false,
+//         metadata: {
+//             contentType: req.file.mimetype
+//         }
+//     });
+
+//     blobStream.on('error', err => {
+//         console.error('Error during upload:', err);
+//         res.status(500).send({ message: 'Could not upload the file.' });
+//     });
+
+//     blobStream.on('finish', () => {
+//         blob.makePublic().then(() => {
+//             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+//             res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
+//         }).catch(err => {
+//             console.error('Failed to make the file public:', err);
+//             res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
+//         });
+//     });
+
+//     fs.createReadStream(filePath).pipe(blobStream);
+// });
+
+
 
 // app.post('/upload-to-gc', upload.single('file'), (req, res) => {
 //     if (!req.file) {
