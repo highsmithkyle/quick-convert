@@ -1,6 +1,9 @@
 
-console.log('Google Credentials Path:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+console.log('Google Upload Credentials Path:', process.env.GOOGLE_UPLOAD_CREDENTIALS);
+console.log('Google Application Credentials Path:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
+
+require('dotenv').config();
 
 const express = require('express');
 const multer = require('multer');
@@ -23,7 +26,9 @@ const {google} = require('googleapis');
 google.options({auth: new google.auth.GoogleAuth({logLevel: 'debug'})});
 
 const { Storage } = require('@google-cloud/storage');
-const storage = new Storage();
+const storage = new Storage({
+    keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS
+});
 const bucket = storage.bucket('image-2d-to-3d')
 
 
@@ -46,8 +51,9 @@ app.get('/', (req, res) => {
 app.use(express.json());
 
 
-
 app.post('/upload-to-gc', upload.single('file'), (req, res) => {
+    console.log('Received file:', req.file);
+
     if (!req.file) {
         return res.status(400).send({ message: 'No file uploaded.' });
     }
@@ -76,9 +82,43 @@ app.post('/upload-to-gc', upload.single('file'), (req, res) => {
         });
     });
 
-   
     fs.createReadStream(filePath).pipe(blobStream);
 });
+
+
+
+// app.post('/upload-to-gc', upload.single('file'), (req, res) => {
+//     if (!req.file) {
+//         return res.status(400).send({ message: 'No file uploaded.' });
+//     }
+
+//     const filePath = req.file.path; // Path to the temporary file
+//     const blob = bucket.file(req.file.originalname);
+//     const blobStream = blob.createWriteStream({
+//         resumable: false,
+//         metadata: {
+//             contentType: req.file.mimetype
+//         }
+//     });
+
+//     blobStream.on('error', err => {
+//         console.error('Error during upload:', err);
+//         res.status(500).send({ message: 'Could not upload the file.' });
+//     });
+
+//     blobStream.on('finish', () => {
+//         blob.makePublic().then(() => {
+//             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+//             res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
+//         }).catch(err => {
+//             console.error('Failed to make the file public:', err);
+//             res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
+//         });
+//     });
+
+   
+//     fs.createReadStream(filePath).pipe(blobStream);
+// });
 
 
 
