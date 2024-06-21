@@ -3,3 +3,15 @@ secure/google-credentials.json
 secure/new-google-upload-credentials.json
 
 secure/api-access-token.txt
+
+uploads/*
+
+compressed/*
+
+compressedDir/*
+
+converted/*
+
+processed/*
+
+subtitles/*
