@@ -102,46 +102,7 @@ app.post('/compressGif', upload.single('gif'), (req, res) => {
         });
     });
 });
-// app.post('/compressGif', upload.single('gif'), (req, res) => {
-//     if (!req.file) {
-//         console.error('No file uploaded.');
-//         return res.status(400).send('No file uploaded.');
-//     }
 
-//     const gifPath = req.file.path;
-//     const outputPath = path.join(__dirname, 'compressed', `compressed_${Date.now()}.gif`);
-//     const quality = req.body.quality || '80';
-//     const fps = req.body.fps || '15';
-//     const width = req.body.width || null;
-//     const height = req.body.height || null;
-
-//     const gifskiArgs = ['-o', outputPath, '--quality', quality, '--fps', fps];
-    
-//     if (width && height) {
-//         gifskiArgs.push('--width', width, '--height', height);
-//     }
-
-//     gifskiArgs.push(gifPath);
-
-//     execFile('gifski', gifskiArgs, (error, stdout, stderr) => {
-//         if (error) {
-//             console.error('Error compressing GIF with gifski:', error);
-//             fs.unlink(gifPath, (err) => {
-//                 if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
-//             });
-//             return res.status(500).send('Error compressing GIF with gifski.');
-//         }
-
-//         res.download(outputPath, () => {
-//             fs.unlink(gifPath, (err) => {
-//                 if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
-//             });
-//             fs.unlink(outputPath, (err) => {
-//                 if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
-//             });
-//         });
-//     });
-// });
 
 
 app.post('/upload-to-gc', upload.single('file'), (req, res) => {
