@@ -7,23 +7,55 @@
 </head>
 <body>
     <div class="sidebar">
+        
         <a href="index.html" class="home-button">
             <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
             <span>Home</span>
         </a>
 
+        <form id="uploadFormVideo" enctype="multipart/form-data" method="post">
+            <div class="form-group">
+                <label for="video">Upload your video:</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+            </div>
+
+
+            <div class="overlay-group">
+               
+                
+                <div class="form-group">
+                    <label for="fontSize">Subtitle Font Size:</label>
+                    <input type="number" id="fontSize" style="width:90%"name="fontSize" value="24" step="1" min="10">
+                </div>
+
+                <div class="form-group">    
+                    <label for="fontFamily">Subtitle Font:</label>
+                    <select id="fontFamily" name="fontFamily">
+                        <option value="Arial">Arial</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </select>
+                </div>
+
+            <div class="form-group color-picker-group">
+                <label for="fontColor">Subtitle Color:</label>
+                <input type="color" id="fontColor" name="fontColor" class="color-picker" value="#FFFFFF">
+                <span id="colorValue">#FFFFFF</span>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="form-button">Transcribe Video</button>
+            </div>
+
+        </div>
+        </form>
+
         <div id="processingNotification" style="display:none;">
             Processing your video, please wait...
         </div>
 
-        <h2>Upload Video for Transcription</h2>
-        <form id="uploadFormVideo" enctype="multipart/form-data" class="form-group">
-            <label for="video">Upload your video:</label>
-            <input type="file" id="video" name="video" style="width: 90%;" accept="video/*" required>
-            <div class="button-group">
-                <button type="submit" class="form-button">Transcribe Video</button>
-            </div>
-        </form>
     </div>
 
     <div class="main-content">
@@ -41,5 +73,19 @@
     </div>
 
     <script src="video-subtitles.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var colorPicker = document.getElementById('fontColor');
+            var colorValueDisplay = document.getElementById('colorValue');
+            
+            colorPicker.addEventListener('input', function() {
+                colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
+            });
+        });
+    </script>
 </body>
 </html>
+
+
+

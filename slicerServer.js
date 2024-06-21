@@ -1,6 +1,8 @@
 
 console.log('Google Upload Credentials Path:', process.env.GOOGLE_UPLOAD_CREDENTIALS);
 console.log('Google Application Credentials Path:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+console.log('Api access token:', process.env.API_ACCESS_TOKEN);
+
 
 
 require('dotenv').config();
@@ -32,23 +34,114 @@ const storage = new Storage({
 const bucket = storage.bucket('image-2d-to-3d')
 
 
+const getApiAccessToken = () => {
+    try {
+        const tokenPath = '/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/api-access-token.txt';
+        const token = fs.readFileSync(tokenPath, 'utf8').trim();
+        console.log('Retrieved API access token:', token); 
+        return token;
+    } catch (error) {
+        console.error('Error reading API access token:', error);
+        return null;
+    }
+};
+
 app.use(cors()); 
 app.use(express.static('public'));
+app.use(express.json());
 app.use('/subtitles', express.static(path.join(__dirname, 'subtitles')));
 
 
 
 process.env.PATH += ':/usr/bin';
 const convertedDir = path.join(__dirname, 'converted');
+const compressedDir = path.join(__dirname, 'compressed');
+
+if (!fs.existsSync(compressedDir)) {
+    fs.mkdirSync(compressedDir, { recursive: true });
+}
+
+
+
+
 
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'background-remover.html'));
 });
 
+app.post('/compressGif', upload.single('gif'), (req, res) => {
+    if (!req.file) {
+        console.error('No file uploaded.');
+        return res.status(400).send('No file uploaded.');
+    }
 
+    const gifPath = req.file.path;
+    const outputPath = path.join(compressedDir, `compressed_${Date.now()}.gif`);
+    const quality = req.body.quality || '80';
+    const fps = req.body.fps || '15';
 
-app.use(express.json());
+    const gifskiArgs = ['-o', outputPath, '--quality', quality, '--fps', fps, gifPath];
+
+    execFile('gifski', gifskiArgs, (error, stdout, stderr) => {
+        if (error) {
+            console.error('Error compressing GIF with gifski:', error);
+            fs.unlink(gifPath, (err) => {
+                if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
+            });
+            return res.status(500).send('Error compressing GIF with gifski.');
+        }
+
+        res.download(outputPath, () => {
+            fs.unlink(gifPath, (err) => {
+                if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
+            });
+            fs.unlink(outputPath, (err) => {
+                if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
+            });
+        });
+    });
+});
+// app.post('/compressGif', upload.single('gif'), (req, res) => {
+//     if (!req.file) {
+//         console.error('No file uploaded.');
+//         return res.status(400).send('No file uploaded.');
+//     }
+
+//     const gifPath = req.file.path;
+//     const outputPath = path.join(__dirname, 'compressed', `compressed_${Date.now()}.gif`);
+//     const quality = req.body.quality || '80';
+//     const fps = req.body.fps || '15';
+//     const width = req.body.width || null;
+//     const height = req.body.height || null;
+
+//     const gifskiArgs = ['-o', outputPath, '--quality', quality, '--fps', fps];
+    
+//     if (width && height) {
+//         gifskiArgs.push('--width', width, '--height', height);
+//     }
+
+//     gifskiArgs.push(gifPath);
+
+//     execFile('gifski', gifskiArgs, (error, stdout, stderr) => {
+//         if (error) {
+//             console.error('Error compressing GIF with gifski:', error);
+//             fs.unlink(gifPath, (err) => {
+//                 if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
+//             });
+//             return res.status(500).send('Error compressing GIF with gifski.');
+//         }
+
+//         res.download(outputPath, () => {
+//             fs.unlink(gifPath, (err) => {
+//                 if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
+//             });
+//             fs.unlink(outputPath, (err) => {
+//                 if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
+//             });
+//         });
+//     });
+// });
 
 
 app.post('/upload-to-gc', upload.single('file'), (req, res) => {
@@ -58,7 +151,7 @@ app.post('/upload-to-gc', upload.single('file'), (req, res) => {
         return res.status(400).send({ message: 'No file uploaded.' });
     }
 
-    const filePath = req.file.path; // Path to the temporary file
+    const filePath = req.file.path;
     const blob = bucket.file(req.file.originalname);
     const blobStream = blob.createWriteStream({
         resumable: false,
@@ -75,7 +168,8 @@ app.post('/upload-to-gc', upload.single('file'), (req, res) => {
     blobStream.on('finish', () => {
         blob.makePublic().then(() => {
             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-            res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
+            console.log('Generated Public URL:', publicUrl); // Log the generated URL
+            res.status(200).send({ message: `File uploaded successfully: ${publicUrl}`, url: publicUrl });
         }).catch(err => {
             console.error('Failed to make the file public:', err);
             res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
@@ -86,93 +180,43 @@ app.post('/upload-to-gc', upload.single('file'), (req, res) => {
 });
 
 
-// app.post('/upload-to-gc', upload.single('file'), (req, res) => {
-//     console.log('Received file:', req.file);
-
-//     if (!req.file) {
-//         return res.status(400).send({ message: 'No file uploaded.' });
-//     }
-
-//     const filePath = req.file.path; // Path to the temporary file
-//     const blob = bucket.file(req.file.originalname);
-//     const blobStream = blob.createWriteStream({
-//         resumable: false,
-//         metadata: {
-//             contentType: req.file.mimetype
-//         }
-//     });
-
-//     blobStream.on('error', err => {
-//         console.error('Error during upload:', err);
-//         res.status(500).send({ message: 'Could not upload the file.' });
-//     });
-
-//     blobStream.on('finish', () => {
-//         blob.makePublic().then(() => {
-//             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-//             res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
-//         }).catch(err => {
-//             console.error('Failed to make the file public:', err);
-//             res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
-//         });
-//     });
-
-//     fs.createReadStream(filePath).pipe(blobStream);
-// });
-
-
-
-// app.post('/upload-to-gc', upload.single('file'), (req, res) => {
-//     if (!req.file) {
-//         return res.status(400).send({ message: 'No file uploaded.' });
-//     }
-
-//     const filePath = req.file.path; // Path to the temporary file
-//     const blob = bucket.file(req.file.originalname);
-//     const blobStream = blob.createWriteStream({
-//         resumable: false,
-//         metadata: {
-//             contentType: req.file.mimetype
-//         }
-//     });
-
-//     blobStream.on('error', err => {
-//         console.error('Error during upload:', err);
-//         res.status(500).send({ message: 'Could not upload the file.' });
-//     });
-
-//     blobStream.on('finish', () => {
-//         blob.makePublic().then(() => {
-//             const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-//             res.status(200).send({ message: `File uploaded successfully: ${publicUrl}` });
-//         }).catch(err => {
-//             console.error('Failed to make the file public:', err);
-//             res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
-//         });
-//     });
-
-   
-//     fs.createReadStream(filePath).pipe(blobStream);
-// });
-
-
-
-
-
-
 app.post('/2d-to-3d', async (req, res) => {
-    const accessToken = process.env.API_ACCESS_TOKEN; 
+    const accessToken = getApiAccessToken();
     const correlationId = uuidv4();
-    const inputImageUrl = req.body.inputImageUrl;
-    const resultPresignedUrl = req.body.resultPresignedUrl;
 
-    if (!inputImageUrl || !resultPresignedUrl) {
-        return res.status(400).send({ message: 'Missing required parameters: inputImageUrl and resultPresignedUrl are required.' });
+    // Use the hardcoded input image URL
+    const inputImageUrl = 'https://storage.googleapis.com/image-2d-to-3d/2.jpeg';
+
+    // Provide or generate the result presigned URL
+    const resultPresignedUrl = 'https://storage.googleapis.com/image-2d-to-3d/result-file-name.png';
+
+    if (!accessToken) {
+        return res.status(500).send({ message: 'Failed to retrieve API access token.' });
     }
+
+    console.log('Sending request to API with data:', {
+        correlationId,
+        inputImageUrl,
+        resultPresignedUrl
+    });
+
+    try {
+        new URL(inputImageUrl);
+        new URL(resultPresignedUrl);
+    } catch (e) {
+        console.error('Invalid URL:', e.message);
+        return res.status(400).send({ message: 'Invalid URL format.' });
+    }
+
+    const authorizationHeader = `Bearer ${accessToken}`;
+    console.log('Authorization header:', authorizationHeader);
+
+    const apiUrl = 'https://api.immersity.ai/api/v1/disparity';
+    console.log('API URL:', apiUrl);
 
     try {
         const response = await axios.post(
-            'https://api.immersity.ai/api/v1/disparity',
+            apiUrl,
             {
                 correlationId,
                 inputImageUrl,
@@ -180,19 +224,26 @@ app.post('/2d-to-3d', async (req, res) => {
             },
             {
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization: authorizationHeader,
                 },
-                timeout: 180000 // 3 minutes timeout
+                timeout: 180000
             }
         );
         res.send(response.data);
     } catch (error) {
         console.error('API Call Failed:', error.response ? error.response.data : error.message);
-        res.status(500). send({ message: 'API call failed', error: error.response ? error.response.data : error.message });
+
+        if (error.response) {
+            console.error('Error response data:', JSON.stringify(error.response.data, null, 2));
+            console.error('Error response status:', error.response.status);
+            console.error('Error response headers:', JSON.stringify(error.response.headers, null, 2));
+        } else {
+            console.error('Error message:', error.message);
+        }
+
+        res.status(500).send({ message: 'API call failed', error: error.response ? error.response.data : error.message });
     }
 });
-
-
 
 
 
@@ -205,8 +256,21 @@ app.post('/transcribe-video', upload.single('video'), async (req, res) => {
     const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
     const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
     const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
+    const fontSize = req.body.fontSize || 24;
+    const fontFamily = req.body.fontFamily || 'Arial';
+    const fontColor = req.body.fontColor || '#FFFFFF';
 
-    
+    // Convert the hex color to ASS format
+    const hexToAssColor = (hex) => {
+        const alpha = '00'; // No transparency
+        const red = hex.substring(1, 3);
+        const green = hex.substring(3, 5);
+        const blue = hex.substring(5, 7);
+        return `&H${alpha}${blue}${green}${red}&`;
+    };
+
+    const primaryColor = hexToAssColor(fontColor);
+
     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
     exec(ffmpegExtractAudioCommand, async (error) => {
         if (error) {
@@ -218,9 +282,9 @@ app.post('/transcribe-video', upload.single('video'), async (req, res) => {
             const transcriptionResults = await transcribeAudio(audioPath);
             createSRT(transcriptionResults, srtPath);
 
-            const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf subtitles="${srtPath}" -c:v libx264 -c:a copy "${outputPath}"`;
+            const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor}'" -c:v libx264 -c:a copy "${outputPath}"`;
             exec(ffmpegAddSubtitlesCommand, (subError) => {
-                cleanupFiles(videoPath, audioPath, srtPath); 
+                cleanupFiles(videoPath, audioPath, srtPath);
 
                 if (subError) {
                     console.error('Error adding subtitles:', subError);
@@ -236,6 +300,8 @@ app.post('/transcribe-video', upload.single('video'), async (req, res) => {
         }
     });
 });
+
+
 
 function transcribeAudio(filePath) {
     const file = fs.readFileSync(filePath);
@@ -348,11 +414,13 @@ function cleanupFiles(videoPath, audioPath, srtPath) {
 
 app.post('/recolorImage', upload.single('image'), (req, res) => {
     const imagePath = req.file.path;
-    const sourceColor = req.body.sourceColor;
     const targetColor = req.body.targetColor;
     const outputPath = path.join(__dirname, 'converted', `recolor_${Date.now()}.png`);
 
-    const recolorCommand = `convert "${imagePath}" -fuzz 30% -fill "#${targetColor}" -opaque "#${sourceColor}" "${outputPath}"`;
+    // Convert target color hex to HSL
+    const { h, s, l } = hexToHSL(targetColor);
+
+    const recolorCommand = `convert "${imagePath}" -modulate 100,${s},${h} "${outputPath}"`;
 
     exec(recolorCommand, (error, stdout, stderr) => {
         if (error) {
@@ -367,6 +435,48 @@ app.post('/recolorImage', upload.single('image'), (req, res) => {
         });
     });
 });
+
+function hexToHSL(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    return rgbToHsl(r, g, b);
+}
+
+function hexToRgb(hex) {
+    const bigint = parseInt(hex.slice(1), 16);
+    return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+    };
+}
+
+function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0; // achromatic
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        l: Math.round(l * 100)
+    };
+}
 
 
 
