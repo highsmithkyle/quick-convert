@@ -324,4 +324,47 @@ input[type="file"] {
     width: 95%;
 }
 
+input[type="number"] {
+    width: 95%;
+}
+
+
+
+
+.title-with-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-with-button h3 {
+    margin: 0;
+    margin-right: 10px;
+}
+
+.title-with-button #downloadButtonContainer {
+    margin: 0;
+}
+
+.download-button-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px;
+}
+
+
+.title-with-size {
+    display: flex;
+    align-items: center;
+}
+.title-with-size h3 {
+    margin: 0;
+}
+.title-with-size span {
+    margin-left: 10px;
+    font-size: 14px;
+    font-weight: normal;
+}
+
 
