@@ -33,6 +33,33 @@ const storage = new Storage({
 });
 const bucket = storage.bucket('image-2d-to-3d')
 
+// require('dotenv').config();
+
+// const express = require('express');
+// const multer = require('multer');
+// const { exec } = require('child_process');
+// const fs = require('fs');
+// const path = require('path');
+// const axios = require('axios');
+// const FormData = require('form-data');  
+// const app = express();
+// const upload = multer({ dest: 'uploads/' });
+// const cors = require('cors');  
+// const { Translate } = require('@google-cloud/translate').v2;
+// const translate = new Translate();
+// const { v4: uuidv4 } = require('uuid');
+
+// const speech = require('@google-cloud/speech');
+// const speechClient = new speech.SpeechClient();
+
+// const {google} = require('googleapis');
+// google.options({auth: new google.auth.GoogleAuth({logLevel: 'debug'})});
+
+// const { Storage } = require('@google-cloud/storage');
+// const storage = new Storage({
+//     keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS
+// });
+// const bucket = storage.bucket('image-2d-to-3d');
 
 const getApiAccessToken = () => {
     try {
@@ -66,241 +93,50 @@ if (!fs.existsSync(compressedDir)) {
 
 
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'background-remover.html'));
-});
-
-app.post('/compressGif', upload.single('gif'), (req, res) => {
-    if (!req.file) {
-        console.error('No file uploaded.');
-        return res.status(400).send('No file uploaded.');
-    }
-
-    const gifPath = req.file.path;
-    const outputPath = path.join(compressedDir, `compressed_${Date.now()}.gif`);
-    const quality = req.body.quality || '80';
-    const fps = req.body.fps || '15';
-
-    const gifskiArgs = ['-o', outputPath, '--quality', quality, '--fps', fps, gifPath];
-
-    execFile('gifski', gifskiArgs, (error, stdout, stderr) => {
-        if (error) {
-            console.error('Error compressing GIF with gifski:', error);
-            fs.unlink(gifPath, (err) => {
-                if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
-            });
-            return res.status(500).send('Error compressing GIF with gifski.');
-        }
-
-        res.download(outputPath, () => {
-            fs.unlink(gifPath, (err) => {
-                if (err) console.error(`Error deleting gif file: ${gifPath}`, err);
-            });
-            fs.unlink(outputPath, (err) => {
-                if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
-            });
-        });
+async function uploadFileToGCS(filePath) {
+    const fileName = path.basename(filePath);
+    await bucket.upload(filePath, {
+        destination: fileName,
     });
-});
+    return `gs://${bucket.name}/${fileName}`;
+}
 
-
-
-app.post('/upload-to-gc', upload.single('file'), (req, res) => {
-    console.log('Received file:', req.file);
-
-    if (!req.file) {
-        return res.status(400).send({ message: 'No file uploaded.' });
-    }
-
-    const filePath = req.file.path;
-    const blob = bucket.file(req.file.originalname);
-    const blobStream = blob.createWriteStream({
-        resumable: false,
-        metadata: {
-            contentType: req.file.mimetype
-        }
-    });
-
-    blobStream.on('error', err => {
-        console.error('Error during upload:', err);
-        res.status(500).send({ message: 'Could not upload the file.' });
-    });
-
-    blobStream.on('finish', () => {
-        blob.makePublic().then(() => {
-            const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-            console.log('Generated Public URL:', publicUrl); // Log the generated URL
-            res.status(200).send({ message: `File uploaded successfully: ${publicUrl}`, url: publicUrl });
-        }).catch(err => {
-            console.error('Failed to make the file public:', err);
-            res.status(500).send({ message: 'Uploaded but failed to make the file public.' });
-        });
-    });
-
-    fs.createReadStream(filePath).pipe(blobStream);
-});
-
-
-app.post('/2d-to-3d', async (req, res) => {
-    const accessToken = getApiAccessToken();
-    const correlationId = uuidv4();
-
-    // Use the hardcoded input image URL
-    const inputImageUrl = 'https://storage.googleapis.com/image-2d-to-3d/2.jpeg';
-
-    // Provide or generate the result presigned URL
-    const resultPresignedUrl = 'https://storage.googleapis.com/image-2d-to-3d/result-file-name.png';
-
-    if (!accessToken) {
-        return res.status(500).send({ message: 'Failed to retrieve API access token.' });
-    }
-
-    console.log('Sending request to API with data:', {
-        correlationId,
-        inputImageUrl,
-        resultPresignedUrl
-    });
-
-    try {
-        new URL(inputImageUrl);
-        new URL(resultPresignedUrl);
-    } catch (e) {
-        console.error('Invalid URL:', e.message);
-        return res.status(400).send({ message: 'Invalid URL format.' });
-    }
-
-    const authorizationHeader = `Bearer ${accessToken}`;
-    console.log('Authorization header:', authorizationHeader);
-
-    const apiUrl = 'https://api.immersity.ai/api/v1/disparity';
-    console.log('API URL:', apiUrl);
-
-    try {
-        const response = await axios.post(
-            apiUrl,
-            {
-                correlationId,
-                inputImageUrl,
-                resultPresignedUrl
-            },
-            {
-                headers: {
-                    Authorization: authorizationHeader,
-                },
-                timeout: 180000
-            }
-        );
-        res.send(response.data);
-    } catch (error) {
-        console.error('API Call Failed:', error.response ? error.response.data : error.message);
-
-        if (error.response) {
-            console.error('Error response data:', JSON.stringify(error.response.data, null, 2));
-            console.error('Error response status:', error.response.status);
-            console.error('Error response headers:', JSON.stringify(error.response.headers, null, 2));
-        } else {
-            console.error('Error message:', error.message);
-        }
-
-        res.status(500).send({ message: 'API call failed', error: error.response ? error.response.data : error.message });
-    }
-});
-
-
-
-app.post('/transcribe-video', upload.single('video'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No video file uploaded.');
-    }
-
-    const videoPath = req.file.path;
-    const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
-    const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
-    const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
-    const fontSize = req.body.fontSize || 24;
-    const fontFamily = req.body.fontFamily || 'Arial';
-    const fontColor = req.body.fontColor || '#FFFFFF';
-
-    // Convert the hex color to ASS format
-    const hexToAssColor = (hex) => {
-        const alpha = '00'; // No transparency
-        const red = hex.substring(1, 3);
-        const green = hex.substring(3, 5);
-        const blue = hex.substring(5, 7);
-        return `&H${alpha}${blue}${green}${red}&`;
-    };
-
-    const primaryColor = hexToAssColor(fontColor);
-
-    const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
-    exec(ffmpegExtractAudioCommand, async (error) => {
-        if (error) {
-            console.error('Error converting video to audio:', error);
-            return res.status(500).send('Failed to convert video.');
-        }
-
-        try {
-            const transcriptionResults = await transcribeAudio(audioPath);
-            createSRT(transcriptionResults, srtPath);
-
-            const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor}'" -c:v libx264 -c:a copy "${outputPath}"`;
-            exec(ffmpegAddSubtitlesCommand, (subError) => {
-                cleanupFiles(videoPath, audioPath, srtPath);
-
-                if (subError) {
-                    console.error('Error adding subtitles:', subError);
-                    return res.status(500).send('Failed to add subtitles to video.');
-                }
-
-                res.json({ message: 'Video processed with subtitles', videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
-            });
-        } catch (transcriptionError) {
-            console.error('Transcription error:', transcriptionError);
-            cleanupFiles(videoPath, audioPath, srtPath);
-            res.status(500).send('Failed to transcribe audio.');
-        }
-    });
-});
-
-
-
-function transcribeAudio(filePath) {
-    const file = fs.readFileSync(filePath);
-    const audioBytes = file.toString('base64');
+// Function to transcribe audio using LongRunningRecognize
+async function transcribeAudio(filePath) {
+    const gcsUri = await uploadFileToGCS(filePath);
 
     const request = {
-        audio: { content: audioBytes },
+        audio: {
+            uri: gcsUri,
+        },
         config: {
             encoding: 'FLAC',
             sampleRateHertz: 16000,
             languageCode: 'en-US',
             enableAutomaticPunctuation: true,
-            enableWordTimeOffsets: true
+            enableWordTimeOffsets: true,
         },
     };
 
-    return speechClient.recognize(request).then(data => {
-        const [response] = data;
-        const transcriptionResults = response.results.map(result => {
-            const alternatives = result.alternatives[0];
-            const timestamps = alternatives.words.map(word => ({
-                word: word.word,
-                startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
-                endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9
-            }));
-            console.log("Raw Timestamps:", timestamps); 
-            return {
-                transcript: alternatives.transcript,
-                timestamps: timestamps
-            };
-        });
-        return transcriptionResults;
+    const [operation] = await speechClient.longRunningRecognize(request);
+    const [response] = await operation.promise();
+
+    const transcriptionResults = response.results.map(result => {
+        const alternatives = result.alternatives[0];
+        const timestamps = alternatives.words.map(word => ({
+            word: word.word,
+            startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+            endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9
+        }));
+        console.log("Raw Timestamps:", timestamps);
+        return {
+            transcript: alternatives.transcript,
+            timestamps: timestamps
+        };
     });
+
+    return transcriptionResults;
 }
-
-
-// new
-
 
 function createSRT(transcriptionResults, srtPath) {
     let srtContent = [];
@@ -317,10 +153,9 @@ function createSRT(transcriptionResults, srtPath) {
             sentence += (sentence ? " " : "") + word.word;
 
             if (idx === result.timestamps.length - 1 || (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)) {
-                
-                endTime = word.endTime; 
 
-              
+                endTime = word.endTime;
+
                 const formattedStart = formatSRTTime(startTime);
                 const formattedEnd = formatSRTTime(endTime + 0.5);
                 srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
@@ -331,9 +166,8 @@ function createSRT(transcriptionResults, srtPath) {
     });
 
     fs.writeFileSync(srtPath, srtContent.join('\n\n'));
+    console.log(`SRT file created at: ${srtPath}`); // Debug log to confirm SRT file creation
 }
-
-
 
 function formatSRTTime(rawTime) {
     console.log("Raw time received:", rawTime); // Debug log
@@ -355,12 +189,10 @@ function formatSRTTime(rawTime) {
     milliseconds = milliseconds.toString().padStart(3, '0');
 
     const formattedTime = `${hours}:${minutes}:${seconds},${milliseconds}`;
-    console.log("Formatted time:", formattedTime); // Debug log 
+    console.log("Formatted time:", formattedTime); // Debug log
 
     return formattedTime;
 }
-
-
 
 function cleanupFiles(videoPath, audioPath, srtPath) {
     fs.unlinkSync(videoPath);
@@ -368,116 +200,340 @@ function cleanupFiles(videoPath, audioPath, srtPath) {
     // fs.unlinkSync(srtPath);
 }
 
-
-
-
-// for recolor
-
-app.post('/recolorImage', upload.single('image'), (req, res) => {
-    const imagePath = req.file.path;
-    const targetColor = req.body.targetColor;
-    const outputPath = path.join(__dirname, 'converted', `recolor_${Date.now()}.png`);
-
-    // Convert target color hex to HSL
-    const { h, s, l } = hexToHSL(targetColor);
-
-    const recolorCommand = `convert "${imagePath}" -modulate 100,${s},${h} "${outputPath}"`;
-
-    exec(recolorCommand, (error, stdout, stderr) => {
-        if (error) {
-            console.error('Error recoloring image:', stderr);
-            fs.unlinkSync(imagePath);
-            return res.status(500).send('Failed to recolor image.');
-        }
-
-        res.sendFile(outputPath, (err) => {
-            fs.unlinkSync(imagePath);
-            fs.unlinkSync(outputPath);
-        });
-    });
-});
-
-function hexToHSL(hex) {
-    const { r, g, b } = hexToRgb(hex);
-    return rgbToHsl(r, g, b);
-}
-
-function hexToRgb(hex) {
-    const bigint = parseInt(hex.slice(1), 16);
-    return {
-        r: (bigint >> 16) & 255,
-        g: (bigint >> 8) & 255,
-        b: bigint & 255
-    };
-}
-
-function rgbToHsl(r, g, b) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
-
-    if (max === min) {
-        h = s = 0; // achromatic
-    } else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-    }
-
-    return {
-        h: Math.round(h * 360),
-        s: Math.round(s * 100),
-        l: Math.round(l * 100)
-    };
-}
-
-
-
-// for video crop
-
-app.post('/upload', upload.single('video'), (req, res) => {
-    if (!fs.existsSync('processed')) {
-        fs.mkdirSync('processed');
+app.post('/transcribe-video', upload.single('video'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No video file uploaded.');
     }
 
     const videoPath = req.file.path;
-    const timestamp = Date.now();
-    const outputPath = path.join(__dirname, 'processed', `cropped_video_${timestamp}.mp4`);
-    const { width, height, left, top } = req.body;
+    const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
+    const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
+    const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
+    const fontSize = req.body.fontSize || 24;
+    const fontFamily = req.body.fontFamily || 'Arial';
+    const fontColor = req.body.fontColor || '#FFFFFF';
 
-    const safeWidth = parseInt(width, 10);
-    const safeHeight = parseInt(height, 10);
-    const safeLeft = parseInt(left, 10);
-    const safeTop = parseInt(top, 10);
+    const hexToAssColor = (hex) => {
+        const alpha = '00';
+        const red = hex.substring(1, 3);
+        const green = hex.substring(3, 5);
+        const blue = hex.substring(5, 7);
+        return `&H${alpha}${blue}${green}${red}&`;
+    };
 
-   
-    if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
-        return res.status(400).send('Invalid crop dimensions');
-    }
+    const primaryColor = hexToAssColor(fontColor);
 
-    const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
-    const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
-
-    exec(ffmpegCommand, (error, stdout, stderr) => {
-        fs.unlinkSync(videoPath); 
+    const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+    exec(ffmpegExtractAudioCommand, async (error) => {
         if (error) {
-            console.error(`Exec Error: ${error.message}`);
-            return res.status(500).send('Error processing video');
+            console.error('Error converting video to audio:', error);
+            return res.status(500).send('Failed to convert video.');
         }
 
-        res.sendFile(outputPath, (err) => {
-            fs.unlinkSync(outputPath); 
-        });
+        try {
+            const transcriptionResults = await transcribeAudio(audioPath);
+            createSRT(transcriptionResults, srtPath);
+
+            // Verify the SRT file exists before running FFmpeg
+            if (!fs.existsSync(srtPath)) {
+                console.error('SRT file does not exist:', srtPath);
+                return res.status(500).send('SRT file creation failed.');
+            }
+
+            const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor}'" -c:v libx264 -c:a copy "${outputPath}"`;
+            console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`); // Debug log
+            exec(ffmpegAddSubtitlesCommand, (subError) => {
+                cleanupFiles(videoPath, audioPath, srtPath);
+
+                if (subError) {
+                    console.error('Error adding subtitles:', subError);
+                    return res.status(500).send('Failed to add subtitles to video.');
+                }
+
+                res.json({ message: 'Video processed with subtitles', videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+            });
+        } catch (transcriptionError) {
+            console.error('Transcription error:', transcriptionError);
+            cleanupFiles(videoPath, audioPath, srtPath);
+            res.status(500).send('Failed to transcribe audio.');
+        }
     });
 });
+
+
+
+
+
+// app.post('/transcribe-video', upload.single('video'), async (req, res) => {
+//     if (!req.file) {
+//         return res.status(400).send('No video file uploaded.');
+//     }
+
+//     const videoPath = req.file.path;
+//     const audioPath = path.join(__dirname, 'subtitles', `${req.file.filename}.flac`);
+//     const srtPath = path.join(__dirname, 'subtitles', `${req.file.filename}.srt`);
+//     const outputPath = path.join(__dirname, 'subtitles', `${req.file.filename}_subtitled.mp4`);
+//     const fontSize = req.body.fontSize || 24;
+//     const fontFamily = req.body.fontFamily || 'Arial';
+//     const fontColor = req.body.fontColor || '#FFFFFF';
+
+   
+//     const hexToAssColor = (hex) => {
+//         const alpha = '00';
+//         const red = hex.substring(1, 3);
+//         const green = hex.substring(3, 5);
+//         const blue = hex.substring(5, 7);
+//         return `&H${alpha}${blue}${green}${red}&`;
+//     };
+
+//     const primaryColor = hexToAssColor(fontColor);
+
+//     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+//     exec(ffmpegExtractAudioCommand, async (error) => {
+//         if (error) {
+//             console.error('Error converting video to audio:', error);
+//             return res.status(500).send('Failed to convert video.');
+//         }
+
+//         try {
+//             const transcriptionResults = await transcribeAudio(audioPath);
+//             createSRT(transcriptionResults, srtPath);
+
+//             const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor}'" -c:v libx264 -c:a copy "${outputPath}"`;
+//             exec(ffmpegAddSubtitlesCommand, (subError) => {
+//                 cleanupFiles(videoPath, audioPath, srtPath);
+
+//                 if (subError) {
+//                     console.error('Error adding subtitles:', subError);
+//                     return res.status(500).send('Failed to add subtitles to video.');
+//                 }
+
+//                 res.json({ message: 'Video processed with subtitles', videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+//             });
+//         } catch (transcriptionError) {
+//             console.error('Transcription error:', transcriptionError);
+//             cleanupFiles(videoPath, audioPath, srtPath);
+//             res.status(500).send('Failed to transcribe audio.');
+//         }
+//     });
+// });
+
+
+
+// function transcribeAudio(filePath) {
+//     const file = fs.readFileSync(filePath);
+//     const audioBytes = file.toString('base64');
+
+//     const request = {
+//         audio: { content: audioBytes },
+//         config: {
+//             encoding: 'FLAC',
+//             sampleRateHertz: 16000,
+//             languageCode: 'en-US',
+//             enableAutomaticPunctuation: true,
+//             enableWordTimeOffsets: true
+//         },
+//     };
+
+//     return speechClient.recognize(request).then(data => {
+//         const [response] = data;
+//         const transcriptionResults = response.results.map(result => {
+//             const alternatives = result.alternatives[0];
+//             const timestamps = alternatives.words.map(word => ({
+//                 word: word.word,
+//                 startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+//                 endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9
+//             }));
+//             console.log("Raw Timestamps:", timestamps); 
+//             return {
+//                 transcript: alternatives.transcript,
+//                 timestamps: timestamps
+//             };
+//         });
+//         return transcriptionResults;
+//     });
+// }
+
+
+// // new
+
+
+// function createSRT(transcriptionResults, srtPath) {
+//     let srtContent = [];
+//     let index = 1;
+//     let sentence = "";
+//     let startTime = 0;
+//     let endTime = 0;
+
+//     transcriptionResults.forEach((result, resultIdx) => {
+//         result.timestamps.forEach((word, idx) => {
+//             if (sentence === "") {
+//                 startTime = word.startTime;
+//             }
+//             sentence += (sentence ? " " : "") + word.word;
+
+//             if (idx === result.timestamps.length - 1 || (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)) {
+                
+//                 endTime = word.endTime; 
+
+              
+//                 const formattedStart = formatSRTTime(startTime);
+//                 const formattedEnd = formatSRTTime(endTime + 0.5);
+//                 srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
+//                 index++;
+//                 sentence = "";
+//             }
+//         });
+//     });
+
+//     fs.writeFileSync(srtPath, srtContent.join('\n\n'));
+// }
+
+
+
+// function formatSRTTime(rawTime) {
+//     console.log("Raw time received:", rawTime); // Debug log
+
+//     const time = parseFloat(rawTime);
+//     if (isNaN(time)) {
+//         console.error("Invalid time data:", rawTime);
+//         return "00:00:00,000";
+//     }
+
+//     let hours = Math.floor(time / 3600);
+//     let minutes = Math.floor((time % 3600) / 60);
+//     let seconds = Math.floor(time % 60);
+//     let milliseconds = Math.round((time - Math.floor(time)) * 1000);
+
+//     hours = hours.toString().padStart(2, '0');
+//     minutes = minutes.toString().padStart(2, '0');
+//     seconds = seconds.toString().padStart(2, '0');
+//     milliseconds = milliseconds.toString().padStart(3, '0');
+
+//     const formattedTime = `${hours}:${minutes}:${seconds},${milliseconds}`;
+//     console.log("Formatted time:", formattedTime); // Debug log 
+
+//     return formattedTime;
+// }
+
+
+
+// function cleanupFiles(videoPath, audioPath, srtPath) {
+//     fs.unlinkSync(videoPath);
+//     fs.unlinkSync(audioPath);
+//     // fs.unlinkSync(srtPath);
+// }
+
+
+
+
+// // for recolor
+
+// app.post('/recolorImage', upload.single('image'), (req, res) => {
+//     const imagePath = req.file.path;
+//     const targetColor = req.body.targetColor;
+//     const outputPath = path.join(__dirname, 'converted', `recolor_${Date.now()}.png`);
+
+//     // Convert target color hex to HSL
+//     const { h, s, l } = hexToHSL(targetColor);
+
+//     const recolorCommand = `convert "${imagePath}" -modulate 100,${s},${h} "${outputPath}"`;
+
+//     exec(recolorCommand, (error, stdout, stderr) => {
+//         if (error) {
+//             console.error('Error recoloring image:', stderr);
+//             fs.unlinkSync(imagePath);
+//             return res.status(500).send('Failed to recolor image.');
+//         }
+
+//         res.sendFile(outputPath, (err) => {
+//             fs.unlinkSync(imagePath);
+//             fs.unlinkSync(outputPath);
+//         });
+//     });
+// });
+
+// function hexToHSL(hex) {
+//     const { r, g, b } = hexToRgb(hex);
+//     return rgbToHsl(r, g, b);
+// }
+
+// function hexToRgb(hex) {
+//     const bigint = parseInt(hex.slice(1), 16);
+//     return {
+//         r: (bigint >> 16) & 255,
+//         g: (bigint >> 8) & 255,
+//         b: bigint & 255
+//     };
+// }
+
+// function rgbToHsl(r, g, b) {
+//     r /= 255;
+//     g /= 255;
+//     b /= 255;
+//     const max = Math.max(r, g, b);
+//     const min = Math.min(r, g, b);
+//     let h, s, l = (max + min) / 2;
+
+//     if (max === min) {
+//         h = s = 0; // achromatic
+//     } else {
+//         const d = max - min;
+//         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+//         switch (max) {
+//             case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+//             case g: h = (b - r) / d + 2; break;
+//             case b: h = (r - g) / d + 4; break;
+//         }
+//         h /= 6;
+//     }
+
+//     return {
+//         h: Math.round(h * 360),
+//         s: Math.round(s * 100),
+//         l: Math.round(l * 100)
+//     };
+// }
+
+
+
+// // for video crop
+
+// app.post('/upload', upload.single('video'), (req, res) => {
+//     if (!fs.existsSync('processed')) {
+//         fs.mkdirSync('processed');
+//     }
+
+//     const videoPath = req.file.path;
+//     const timestamp = Date.now();
+//     const outputPath = path.join(__dirname, 'processed', `cropped_video_${timestamp}.mp4`);
+//     const { width, height, left, top } = req.body;
+
+//     const safeWidth = parseInt(width, 10);
+//     const safeHeight = parseInt(height, 10);
+//     const safeLeft = parseInt(left, 10);
+//     const safeTop = parseInt(top, 10);
+
+   
+//     if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+//         return res.status(400).send('Invalid crop dimensions');
+//     }
+
+//     const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
+//     const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+//     exec(ffmpegCommand, (error, stdout, stderr) => {
+//         fs.unlinkSync(videoPath); 
+//         if (error) {
+//             console.error(`Exec Error: ${error.message}`);
+//             return res.status(500).send('Error processing video');
+//         }
+
+//         res.sendFile(outputPath, (err) => {
+//             fs.unlinkSync(outputPath); 
+//         });
+//     });
+// });
 
 
 
