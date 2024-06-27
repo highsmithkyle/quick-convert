@@ -1,91 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Video Subtitles</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
 
-        <form id="uploadFormVideo" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="video">Upload your video:</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
-
-
-            <div class="overlay-group">
-               
-                
-                <div class="form-group">
-                    <label for="fontSize">Subtitle Font Size:</label>
-                    <input type="number" id="fontSize" style="width:90%"name="fontSize" value="24" step="1" min="10">
-                </div>
-
-                <div class="form-group">    
-                    <label for="fontFamily">Subtitle Font:</label>
-                    <select id="fontFamily" name="fontFamily">
-                        <option value="Arial">Arial</option>
-                        <option value="Verdana">Verdana</option>
-                        <option value="Tahoma">Tahoma</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Courier New">Courier New</option>
-                    </select>
-                </div>
-
-            <div class="form-group color-picker-group">
-                <label for="fontColor">Subtitle Color:</label>
-                <input type="color" id="fontColor" name="fontColor" class="color-picker" value="#FFFFFF">
-                <span id="colorValue">#FFFFFF</span>
-            </div>
-
-            <div class="button-group">
-                <button type="submit" class="form-button">Transcribe Video</button>
-            </div>
-
-        </div>
-        </form>
-
-        <div id="processingNotification" style="display:none;">
-            Processing your video, please wait...
+      <form id="uploadFormVideo" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload your video:</label>
+          <input type="file" id="video" name="video" accept="video/*" required />
         </div>
 
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="fontSize">Subtitle Font Size:</label>
+            <input type="number" id="fontSize" style="width: 90%" name="fontSize" value="24" step="1" min="10" />
+          </div>
+
+          <div class="form-group">
+            <label for="fontFamily">Subtitle Font:</label>
+            <select id="fontFamily" name="fontFamily">
+              <option value="Arial">Arial</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Courier New">Courier New</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="maxWordsPerLine">Max Words Per Line:</label>
+            <input type="number" id="maxWordsPerLine" style="width: 90%" name="maxWordsPerLine" value="10" step="1" min="1" />
+          </div>
+
+          <div class="form-group color-picker-group">
+            <label for="fontColor">Subtitle Color:</label>
+            <input type="color" id="fontColor" name="fontColor" class="color-picker" value="#FFFFFF" />
+            <span id="colorValue">#FFFFFF</span>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="form-button">Transcribe Video</button>
+          </div>
+        </div>
+      </form>
+
+      <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
     </div>
 
     <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Uploaded Video</h3>
-                <video id="uploadedVideo" controls style="width: 450px;"></video>
-            </div>
-            <div>
-                <h3>Video with Subtitles</h3>
-                <video id="subtitledVideo" controls style="width: 450px;"></video>
-            </div>
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls style="width: 450px"></video>
         </div>
-        <div id="transcript" style="display: none;"></div>
+        <div>
+          <h3>Video with Subtitles</h3>
+          <video id="subtitledVideo" controls style="width: 450px"></video>
+        </div>
+      </div>
+      <div id="transcript" style="display: none"></div>
     </div>
 
     <script src="video-subtitles.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var colorPicker = document.getElementById('fontColor');
-            var colorValueDisplay = document.getElementById('colorValue');
-            
-            colorPicker.addEventListener('input', function() {
-                colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
-            });
+      document.addEventListener("DOMContentLoaded", function () {
+        var colorPicker = document.getElementById("fontColor");
+        var colorValueDisplay = document.getElementById("colorValue");
+
+        colorPicker.addEventListener("input", function () {
+          colorValueDisplay.textContent = colorPicker.value.toUpperCase(); //
         });
+      });
     </script>
-</body>
+  </body>
 </html>
-
-
-
