@@ -1,52 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Compress GIF</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="sidebar">        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>        
-        <form id="gifCompressionForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="gifInput">Upload GIF:</label>
-                <input type="file" id="gifInput" name="gif" accept="image/gif" required>
-            </div>
-            <div class="form-group">
-                <label for="quality">Quality (1-100):</label>
-                <input type="number" id="quality" name="quality" min="1" max="100" value="80" required>
-            </div>
-            <div class="form-group">
-                <label for="fps">Frame Rate (FPS):</label>
-                <input type="number" id="fps" name="fps" min="1" max="60" value="15" required>
-            </div>
-            <div class="button-group">
-                <button type="button" id="compressGifButton">Compress GIF</button>
-            </div>
-        </form>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="gifCompressionForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="gifInput">Upload GIF:</label>
+          <input type="file" id="gifInput" name="gif" accept="image/gif" required />
+        </div>
+        <div class="form-group">
+          <label for="quality">Quality (1-100):</label>
+          <input type="number" id="quality" name="quality" min="1" max="100" value="80" required />
+        </div>
+        <div class="form-group">
+          <label for="fps">Frame Rate (FPS):</label>
+          <input type="number" id="fps" name="fps" min="1" max="60" value="15" required />
+        </div>
+        <div class="button-group">
+          <button type="button" id="compressGifButton">Compress GIF</button>
+        </div>
+      </form>
     </div>
 
     <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Uploaded GIF<span id="uploadedGifSize" style="margin-left: 10px; font-size: 14px; font-weight: normal;"></span></h3>
-                <img id="uploadedGif" style="display: none;">
-            </div>
-            <div>
-                <h3>Compressed GIF<span id="downloadButtonContainer" style="outline: 2px;margin-left: 10px; margin-right:10px; font-size: 14px; font-weight: normal;"></span></h3>
-                <img id="compressedGifImage" style="display: none;">
-            </div>
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded GIF<span id="uploadedGifSize" style="margin-left: 10px; font-size: 14px; font-weight: normal"></span></h3>
+          <img id="uploadedGif" style="display: none" />
         </div>
+        <div>
+          <h3>Compressed GIF<span id="downloadButtonContainer" style="outline: 2px; margin-left: 10px; margin-right: 10px; font-size: 14px; font-weight: normal"></span></h3>
+          <img id="compressedGifImage" style="display: none" />
+        </div>
+      </div>
     </div>
 
-    <div id="processingNotification" style="display:none;">
-        Processing your GIF, please wait...
-    </div>
+    <div id="processingNotification" style="display: none">Processing your GIF, please wait...</div>
 
     <script src="gif-compression.js" defer></script>
-</body>
+  </body>
 </html>
