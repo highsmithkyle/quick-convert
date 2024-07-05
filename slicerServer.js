@@ -122,7 +122,6 @@ app.post("/download-youtube", async (req, res) => {
       audioStream.pipe(audioWriteStream);
 
       audioWriteStream.on("finish", () => {
-        // Merge video and audio using ffmpeg
         const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
         exec(ffmpegCommand, (error, stdout, stderr) => {
           if (error) {
@@ -130,7 +129,6 @@ app.post("/download-youtube", async (req, res) => {
             return res.status(500).send("Failed to merge video and audio.");
           }
 
-          // Send the merged video file
           res.download(outputPath, (err) => {
             if (err) {
               console.error("Download error:", err);
@@ -209,9 +207,9 @@ function createSRT(transcriptionResults, srtPath) {
   let sentence = "";
   let startTime = 0;
   let endTime = 0;
-  const maxWordsPerLine = 10; // Maximum number of words per subtitle line
-  const maxDurationPerLine = 5; // Maximum duration per subtitle line in seconds
-  const bufferTime = 0.1; // Smaller buffer time to prevent overlap but reduce delay
+  const maxWordsPerLine = 10;
+  const maxDurationPerLine = 5;
+  const bufferTime = 0.1;
 
   transcriptionResults.forEach((result) => {
     result.timestamps.forEach((word, idx) => {
@@ -232,7 +230,7 @@ function createSRT(transcriptionResults, srtPath) {
       ) {
         endTime = word.endTime;
 
-        // Ensure no overlap with the previous subtitle
+        // Ensure no overlap
         if (srtContent.length > 0) {
           const previousSubtitle = srtContent[srtContent.length - 1];
           const previousEndTime = parseSRTTime(previousSubtitle.split(" --> ")[1].split("\n")[0]);
@@ -299,6 +297,11 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   const fontSize = req.body.fontSize || 24;
   const fontFamily = req.body.fontFamily || "Arial";
   const fontColor = req.body.fontColor || "#FFFFFF";
+  const maxWordsPerLine = req.body.maxWordsPerLine || 10;
+  const maxDurationPerLine = req.body.maxDurationPerLine || 5;
+  const bufferTime = req.body.bufferTime || 0.1;
+  const borderStyle = req.body.borderStyle || 1;
+  const outlineColor = req.body.outlineColor || "#000000";
 
   const hexToAssColor = (hex) => {
     const alpha = "00";
@@ -309,6 +312,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   };
 
   const primaryColor = hexToAssColor(fontColor);
+  const outlineAssColor = hexToAssColor(outlineColor);
 
   const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
   exec(ffmpegExtractAudioCommand, async (error) => {
@@ -319,7 +323,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
 
     try {
       const transcriptionResults = await transcribeAudio(audioPath);
-      createSRT(transcriptionResults, srtPath);
+      createSRT(transcriptionResults, srtPath, maxWordsPerLine, maxDurationPerLine, bufferTime);
 
       // Verify the SRT file exists before running FFmpeg
       if (!fs.existsSync(srtPath)) {
@@ -327,7 +331,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
         return res.status(500).send("SRT file creation failed.");
       }
 
-      const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor}'" -c:v libx264 -c:a copy "${outputPath}"`;
+      const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineAssColor},Outline=1,Shadow=0'" -c:v libx264 -c:a copy "${outputPath}"`;
       console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`); // Debug log
       exec(ffmpegAddSubtitlesCommand, (subError) => {
         cleanupFiles(videoPath, audioPath, srtPath);

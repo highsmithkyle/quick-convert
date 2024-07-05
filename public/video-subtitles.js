@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const processingNotification = document.getElementById("processingNotification");
   const colorPicker = document.getElementById("fontColor");
   const colorValueDisplay = document.getElementById("colorValue");
+  const outlineColorPicker = document.getElementById("outlineColor");
+  const outlineColorValueDisplay = document.getElementById("outlineColorValue");
 
   videoInput.addEventListener("change", function () {
     const file = videoInput.files[0];
@@ -23,6 +25,33 @@ document.addEventListener("DOMContentLoaded", function () {
     colorValueDisplay.textContent = colorPicker.value.toUpperCase();
   });
 
+  outlineColorPicker.addEventListener("input", function () {
+    outlineColorValueDisplay.textContent = outlineColorPicker.value.toUpperCase();
+  });
+
+  // Function to update labels based on border style
+  function updateLabels() {
+    const borderStyle = document.getElementById("borderStyle").value;
+    const fontColorLabel = document.getElementById("fontColorLabel");
+    const outlineColorLabel = document.getElementById("outlineColorLabel");
+
+    if (borderStyle == "1") {
+      // Outline
+      fontColorLabel.textContent = "Subtitle Color:";
+      outlineColorLabel.textContent = "Outline Color:";
+    } else {
+      // Colored Background
+      fontColorLabel.textContent = "Subtitle Color:";
+      outlineColorLabel.textContent = "Background Color:";
+    }
+  }
+
+  // Add event listener to border style select element
+  document.getElementById("borderStyle").addEventListener("change", updateLabels);
+
+  // Initialize labels on page load
+  updateLabels();
+
   uploadFormVideo.addEventListener("submit", function (event) {
     event.preventDefault();
     if (!videoInput.files[0]) {
@@ -36,6 +65,11 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("fontSize", document.getElementById("fontSize").value);
     formData.append("fontFamily", document.getElementById("fontFamily").value);
     formData.append("fontColor", document.getElementById("fontColor").value);
+    formData.append("maxWordsPerLine", document.getElementById("maxWordsPerLine").value);
+    formData.append("maxDurationPerLine", document.getElementById("maxDurationPerLine").value);
+    formData.append("bufferTime", document.getElementById("bufferTime").value);
+    formData.append("borderStyle", document.getElementById("borderStyle").value);
+    formData.append("outlineColor", document.getElementById("outlineColor").value);
 
     fetch("/transcribe-video", {
       method: "POST",
