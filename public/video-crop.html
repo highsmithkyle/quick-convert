@@ -1,84 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Video Cropper</title>
-    <link rel="stylesheet" href="video-crop-style.css">
- 
-    
-</head>
-<body>
+    <link rel="stylesheet" href="video-crop-style.css" />
+  </head>
+  <body>
+    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
 
-    <div id="processingNotification" style="display:none;">
-        Processing your video, please wait...
-    </div>
-
-<div class="sidebar scrollable-sidebar ">
-
-    <a href="index.html" class="home-button">
-        <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
+    <div class="sidebar scrollable-sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
         <span>Home</span>
-    </a>
+      </a>
 
-    <h2>Crop Video</h2>
-    
-    <form id="uploadForm" enctype="multipart/form-data" method="post">
+      <h2>Crop Video</h2>
+
+      <form id="uploadForm" enctype="multipart/form-data" method="post">
         <div class="form-group">
-            <label for="videoInput">Upload Video:</label>
-            <input type="file" name="video" accept="video/*" id="videoInput" required>
+          <label for="videoInput">Upload Video:</label>
+          <input type="file" name="video" accept="video/*" id="videoInput" style="width: 95%" required />
         </div>
-
-        <div class="form-group">
+        <div class="overlay-group">
+          <div class="form-group">
             <label for="sizeSelector">Select Crop Ratio:</label>
             <select id="sizeSelector">
-                <option value="default">Select Crop Ratio</option>
-                <option value="2:1">2:1</option>
-                <option value="2:1-small">2:1 small</option>
-                <option value="third">3:1</option>
-                <option value="9:16">9:16</option>
+              <option value="default">Select Crop Ratio</option>
+              <option value="2:1">2:1</option>
+              <option value="2:1-small">2:1 small</option>
+              <option value="third">3:1</option>
+              <option value="9:16">9:16</option>
             </select>
-        </div>
+          </div>
 
-        <div class="button-group">
+          <div class="button-group">
             <button type="submit" class="form-button">Crop Video</button>
+          </div>
         </div>
+      </form>
+    </div>
+
+    <form id="cropForm" style="display: none" action="/upload" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="width" id="cropWidth" />
+      <input type="hidden" name="height" id="cropHeight" />
+      <input type="hidden" name="left" id="cropLeft" />
+      <input type="hidden" name="top" id="cropTop" />
+      <input type="hidden" name="videoId" id="videoId" />
     </form>
-    
-
-</div>    
-
-
-
-<form id="cropForm" style="display: none;" action="/upload" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="width" id="cropWidth">
-    <input type="hidden" name="height" id="cropHeight">
-    <input type="hidden" name="left" id="cropLeft">
-    <input type="hidden" name="top" id="cropTop">
-    <input type="hidden" name="videoId" id="videoId">
-</form>
-<div class="columns_container" style="padding-left: 20px; display:flex; flex-direction: row; justify-content: space-between; width: 850px;">
-    
-    <div class="left-column" style="width: 400px;">
+    <div class="columns_container" style="padding-left: 20px; display: flex; flex-direction: row; justify-content: space-between; width: 850px">
+      <div class="left-column" style="width: 400px">
         <h3>Uploaded Video</h3>
         <div id="videoContainer">
-            
-            <video id="videoPlayer" controls></video>
-            <div id="overlay">
-            </div>
+          <video id="videoPlayer" controls></video>
+          <div id="overlay"></div>
         </div>
-    </div>
-    <div class="right_column">
+      </div>
+      <div class="right_column">
         <h3>Cropped Video</h3>
-        <div id="croppedVideoContainer" style="width: 400px;">
-            <video id="croppedVideoPlayer" controls style="max-width: 400px;"></video>
+        <div id="croppedVideoContainer" style="width: 400px">
+          <video id="croppedVideoPlayer" controls style="max-width: 400px"></video>
         </div>
+      </div>
     </div>
-    
-</div>
 
-
-<script src="videoHandler.js"></script>
-
-</body>
+    <script src="videoHandler.js"></script>
+  </body>
 </html>
-
