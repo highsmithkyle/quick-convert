@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gradient Image Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="gradientForm" enctype="multipart/form-data" method="post">
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="gradientType">Gradient Type:</label>
+            <select id="gradientType" name="gradientType">
+              <option value="linear">Linear</option>
+              <option value="radial">Radial</option>
+            </select>
+          </div>
+
+          <div class="form-group color-picker-group">
+            <label id="colorLabel1" for="topColor">Top Color:</label>
+            <input type="color" id="topColor" name="topColor" class="color-picker" value="#94a9c5" required />
+            <span id="topColorValue">#94a9c5</span>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel2" for="bottomColor">Bottom Color:</label>
+            <input type="color" id="bottomColor" name="bottomColor" class="color-picker" value="#1c427d" required />
+            <span id="bottomColorValue">#1c427d</span>
+          </div>
+          <button type="button" id="switchColorsButton" style="font-size: 12px; width: 75px">Swap Colors</button>
+          <!-- <div class="form-group color-picker-group">
+            <label id="colorLabel1" for="topColor">Top Color:</label>
+            <input type="color" id="topColor" name="topColor" class="color-picker" value="#94a9c5" required />
+            <span id="topColorValue">#94a9c5</span>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel2" for="bottomColor">Bottom Color:</label>
+            <input type="color" id="bottomColor" name="bottomColor" class="color-picker" value="#1c427d" required />
+            <span id="bottomColorValue">#1c427d</span>
+          </div> -->
+          <div class="form-group">
+            <label for="size">Size:</label>
+            <select id="size" name="size">
+              <option value="small">Small (600x1000)</option>
+              <option value="medium">Medium (600x1500)</option>
+              <option value="large">Large (600x2000)</option>
+            </select>
+            <span class="help-text" id="helpText">Help</span>
+            <div class="tooltip" id="tooltip">
+              <img src="images/2.jpeg" alt="Help Image" />
+            </div>
+          </div>
+          <div class="form-group-inline" style="display: flex; align-items: center; margin-bottom: 10px">
+            <input type="checkbox" id="showSampleEmail" name="showSampleEmail" style="margin-right: 5px" />
+            <label for="showSampleEmail" style="margin: 0">Show Sample Email</label>
+          </div>
+          <div class="button-group">
+            <button type="button" id="createGradientButton">Create Gradient Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="previewContainer">
+        <!-- <h3>Gradient Background</h3> -->
+        <div id="gradientPreview" class="gradient-preview">
+          <div id="sampleEmail" style="display: none">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tbody>
+                <tr>
+                  <td>
+                    <table align="center" border="0" cellpadding="0" cellspacing="0" class="mobile" style="width: 620px; margin: 0 auto" width="620">
+                      <tbody>
+                        <tr>
+                          <td id="spacing" style="padding-top: 0; padding-bottom: 0" valign="top">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                              <tbody>
+                                <tr>
+                                  <td id="background" style="padding-top: 10px; padding-bottom: 10px; padding-left: 20px; padding-right: 20px" valign="top">
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                      <tbody>
+                                        <tr>
+                                          <td id="dropzone-1" style="font-size: 0px; mso-line-height-rule: exactly; line-height: 0px" valign="top">
+                                            &nbsp;
+                                            <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-title_43mbdocyv6s" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td id="spacing_ez87siwv8hg" style="padding-top: 10px; padding-bottom: 10px">
+                                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td id="background_08a5sr0ejgwj" style="padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0">
+                                                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                              <tbody>
+                                                                <tr>
+                                                                  <td
+                                                                    id="title_3g20triuaay"
+                                                                    style="
+                                                                      color: #7f7f7f;
+                                                                      font-family: Helvetica, Arial, sans-serif;
+                                                                      font-size: 20px;
+                                                                      mso-line-height-rule: exactly;
+                                                                      line-height: 125%;
+                                                                      text-align: left;
+                                                                    "
+                                                                    valign="top"
+                                                                  >
+                                                                    Title
+                                                                  </td>
+                                                                </tr>
+                                                              </tbody>
+                                                            </table>
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+
+                                            <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-image_yau6kvk3umq" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td id="spacing_jvc3gt419zs" style="padding-top: 10px; padding-bottom: 10px">
+                                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td id="background_85ll7viqy53" style="padding-top: 0; padding-bottom: 0">
+                                                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                              <tbody>
+                                                                <tr>
+                                                                  <td
+                                                                    id="image-box_qzaqkzuvsns"
+                                                                    style="padding-top: 0; padding-bottom: 0; font-size: 0px; mso-line-height-rule: exactly; line-height: 0px; text-align: center"
+                                                                    valign="top"
+                                                                  >
+                                                                    <a href="" id="image_orugh8nwbt" target="_blank"
+                                                                      ><img
+                                                                        alt=""
+                                                                        border="0"
+                                                                        class="image tm-widget-resizable-image"
+                                                                        src="https://www.tailorednews.com/images/img620.png"
+                                                                        style="width: 580px; height: auto; display: inline-block; border: none"
+                                                                        width="580"
+                                                                    /></a>
+                                                                  </td>
+                                                                </tr>
+                                                              </tbody>
+                                                            </table>
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+
+                                            <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-article_bts4osqvigh" width="100%">
+                                              <tbody>
+                                                <tr>
+                                                  <td id="spacing_2n62n1znr8c" style="padding-top: 10px; padding-bottom: 10px">
+                                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                      <tbody>
+                                                        <tr>
+                                                          <td id="background_cd857ocszoc" style="padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0">
+                                                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                              <tbody>
+                                                                <tr>
+                                                                  <td
+                                                                    class="font18"
+                                                                    id="content_wxg9y1rvwf9"
+                                                                    style="
+                                                                      color: #7f7f7f;
+                                                                      font-family: Helvetica, Arial, sans-serif;
+                                                                      font-size: 16px;
+                                                                      mso-line-height-rule: exactly;
+                                                                      line-height: 135%;
+                                                                      text-align: left;
+                                                                    "
+                                                                    valign="top"
+                                                                  >
+                                                                    Lorem ipsum dolor sit amet, consectetur quam adipiscing elit. Aenean eu leo. Pellentesque ornare sem lacinia quam venenatis
+                                                                    vestibulum. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Aenean lacinia bibendum nulla sed consectetur. Aenean
+                                                                    lacinia bibendum nulla sed consectetur. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Cum sociis natoque penatibus et
+                                                                    magnis dis parturient montes, nascetur ridiculus mus.
+                                                                  </td>
+                                                                </tr>
+                                                              </tbody>
+                                                            </table>
+                                                          </td>
+                                                        </tr>
+                                                      </tbody>
+                                                    </table>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your image, please wait...</div>
+
+    <script src="image-gradient.js"></script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gradient Image Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="gradientForm" enctype="multipart/form-data" method="post">
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="gradientType">Gradient Type:</label>
+            <select id="gradientType" name="gradientType">
+              <option value="linear">Linear</option>
+              <option value="radial">Radial</option>
+            </select>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel1" for="topColor">Top Color:</label>
+            <input type="color" id="topColor" name="topColor" class="color-picker" value="#ff0000" required />
+            <span id="topColorValue">#ff0000</span>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel2" for="bottomColor">Bottom Color:</label>
+            <input type="color" id="bottomColor" name="bottomColor" class="color-picker" value="#0000ff" required />
+            <span id="bottomColorValue">#0000ff</span>
+          </div>
+          <div class="form-group">
+            <label for="size">Size:</label>
+            <select id="size" name="size">
+              <option value="small">Small (600x1000)</option>
+              <option value="medium">Medium (600x1500)</option>
+              <option value="large">Large (600x2000)</option>
+            </select>
+            <span class="help-text" id="helpText">Help</span>
+            <div class="tooltip" id="tooltip">
+              <img src="images/2.jpeg" alt="Help Image" />
+            </div>
+          </div>
+          <div class="button-group">
+            <button type="button" id="createGradientButton">Create Gradient Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="previewContainer">
+        <h3>Gradient Preview</h3>
+        <div id="gradientPreview" class="gradient-preview">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tbody>
+              <tr>
+                <td>
+                  <table align="center" border="0" cellpadding="0" cellspacing="0" class="mobile" style="width: 620px; margin: 0 auto" width="620">
+                    <tbody>
+                      <tr>
+                        <td id="spacing" style="padding-top: 0; padding-bottom: 0" valign="top">
+                          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                            <tbody>
+                              <tr>
+                                <td id="background" style="padding-top: 10px; padding-bottom: 10px; padding-left: 20px; padding-right: 20px" valign="top">
+                                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tbody>
+                                      <tr>
+                                        <td id="dropzone-1" style="font-size: 0px; mso-line-height-rule: exactly; line-height: 0px" valign="top">
+                                          &nbsp;
+                                          <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-title_43mbdocyv6s" width="100%">
+                                            <tbody>
+                                              <tr>
+                                                <td id="spacing_ez87siwv8hg" style="padding-top: 10px; padding-bottom: 10px">
+                                                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tbody>
+                                                      <tr>
+                                                        <td id="background_08a5sr0ejgwj" style="padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0">
+                                                          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                            <tbody>
+                                                              <tr>
+                                                                <td
+                                                                  id="title_3g20triuaay"
+                                                                  style="
+                                                                    color: #7f7f7f;
+                                                                    font-family: Helvetica, Arial, sans-serif;
+                                                                    font-size: 20px;
+                                                                    mso-line-height-rule: exactly;
+                                                                    line-height: 125%;
+                                                                    text-align: left;
+                                                                  "
+                                                                  valign="top"
+                                                                >
+                                                                  Title
+                                                                </td>
+                                                              </tr>
+                                                            </tbody>
+                                                          </table>
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                  </table>
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+
+                                          <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-image_yau6kvk3umq" width="100%">
+                                            <tbody>
+                                              <tr>
+                                                <td id="spacing_jvc3gt419zs" style="padding-top: 10px; padding-bottom: 10px">
+                                                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tbody>
+                                                      <tr>
+                                                        <td id="background_85ll7viqy53" style="padding-top: 0; padding-bottom: 0">
+                                                          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                            <tbody>
+                                                              <tr>
+                                                                <td
+                                                                  id="image-box_qzaqkzuvsns"
+                                                                  style="padding-top: 0; padding-bottom: 0; font-size: 0px; mso-line-height-rule: exactly; line-height: 0px; text-align: center"
+                                                                  valign="top"
+                                                                >
+                                                                  <a href="" id="image_orugh8nwbt" target="_blank"
+                                                                    ><img
+                                                                      alt=""
+                                                                      border="0"
+                                                                      class="image tm-widget-resizable-image"
+                                                                      src="https://www.tailorednews.com/images/img620.png"
+                                                                      style="width: 580px; height: auto; display: inline-block; border: none"
+                                                                      width="580"
+                                                                  /></a>
+                                                                </td>
+                                                              </tr>
+                                                            </tbody>
+                                                          </table>
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                  </table>
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+
+                                          <table align="center" border="0" cellpadding="0" cellspacing="0" id="widget-article_bts4osqvigh" width="100%">
+                                            <tbody>
+                                              <tr>
+                                                <td id="spacing_2n62n1znr8c" style="padding-top: 10px; padding-bottom: 10px">
+                                                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                    <tbody>
+                                                      <tr>
+                                                        <td id="background_cd857ocszoc" style="padding-top: 0; padding-bottom: 0; padding-left: 0; padding-right: 0">
+                                                          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                                            <tbody>
+                                                              <tr>
+                                                                <td
+                                                                  class="font18"
+                                                                  id="content_wxg9y1rvwf9"
+                                                                  style="
+                                                                    color: #7f7f7f;
+                                                                    font-family: Helvetica, Arial, sans-serif;
+                                                                    font-size: 16px;
+                                                                    mso-line-height-rule: exactly;
+                                                                    line-height: 135%;
+                                                                    text-align: left;
+                                                                  "
+                                                                  valign="top"
+                                                                >
+                                                                  Lorem ipsum dolor sit amet, consectetur quam adipiscing elit. Aenean eu leo. Pellentesque ornare sem lacinia quam venenatis
+                                                                  vestibulum. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Aenean lacinia bibendum nulla sed consectetur. Aenean
+                                                                  lacinia bibendum nulla sed consectetur. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Cum sociis natoque penatibus et
+                                                                  magnis dis parturient montes, nascetur ridiculus mus.
+                                                                </td>
+                                                              </tr>
+                                                            </tbody>
+                                                          </table>
+                                                        </td>
+                                                      </tr>
+                                                    </tbody>
+                                                  </table>
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your image, please wait...</div>
+
+    <script src="image-gradient.js"></script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gradient Image Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="gradientForm" enctype="multipart/form-data" method="post">
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="gradientType">Gradient Type:</label>
+            <select id="gradientType" name="gradientType">
+              <option value="linear">Linear</option>
+              <option value="radial">Radial</option>
+            </select>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel1" for="topColor">Top Color:</label>
+            <input type="color" id="topColor" name="topColor" class="color-picker" value="#ff0000" required />
+            <span id="topColorValue">#ff0000</span>
+          </div>
+          <div class="form-group color-picker-group">
+            <label id="colorLabel2" for="bottomColor">Bottom Color:</label>
+            <input type="color" id="bottomColor" name="bottomColor" class="color-picker" value="#0000ff" required />
+            <span id="bottomColorValue">#0000ff</span>
+          </div>
+          <div class="form-group">
+            <label for="size">Size:</label>
+            <select id="size" name="size">
+              <option value="small">Small (600x1000)</option>
+              <option value="medium">Medium (600x1500)</option>
+              <option value="large">Large (600x2000)</option>
+            </select>
+            <span class="help-text" id="helpText">Help</span>
+            <div class="tooltip" id="tooltip">
+              <img src="images/2.jpeg" alt="Help Image" />
+            </div>
+          </div>
+          <div class="button-group">
+            <button type="button" id="createGradientButton">Create Gradient Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="previewContainer">
+        <h3>Gradient Preview</h3>
+        <div id="gradientPreview" class="gradient-preview"></div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your image, please wait...</div>
+
+    <script src="image-gradient.js"></script>
+  </body>
+</html> -->

@@ -1,4 +1,114 @@
 
+// // for recolor
+
+// app.post('/recolorImage', upload.single('image'), (req, res) => {
+//     const imagePath = req.file.path;
+//     const targetColor = req.body.targetColor;
+//     const outputPath = path.join(__dirname, 'converted', `recolor_${Date.now()}.png`);
+
+//     // Convert target color hex to HSL
+//     const { h, s, l } = hexToHSL(targetColor);
+
+//     const recolorCommand = `convert "${imagePath}" -modulate 100,${s},${h} "${outputPath}"`;
+
+//     exec(recolorCommand, (error, stdout, stderr) => {
+//         if (error) {
+//             console.error('Error recoloring image:', stderr);
+//             fs.unlinkSync(imagePath);
+//             return res.status(500).send('Failed to recolor image.');
+//         }
+
+//         res.sendFile(outputPath, (err) => {
+//             fs.unlinkSync(imagePath);
+//             fs.unlinkSync(outputPath);
+//         });
+//     });
+// });
+
+// function hexToHSL(hex) {
+//     const { r, g, b } = hexToRgb(hex);
+//     return rgbToHsl(r, g, b);
+// }
+
+// function hexToRgb(hex) {
+//     const bigint = parseInt(hex.slice(1), 16);
+//     return {
+//         r: (bigint >> 16) & 255,
+//         g: (bigint >> 8) & 255,
+//         b: bigint & 255
+//     };
+// }
+
+// function rgbToHsl(r, g, b) {
+//     r /= 255;
+//     g /= 255;
+//     b /= 255;
+//     const max = Math.max(r, g, b);
+//     const min = Math.min(r, g, b);
+//     let h, s, l = (max + min) / 2;
+
+//     if (max === min) {
+//         h = s = 0; // achromatic
+//     } else {
+//         const d = max - min;
+//         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+//         switch (max) {
+//             case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+//             case g: h = (b - r) / d + 2; break;
+//             case b: h = (r - g) / d + 4; break;
+//         }
+//         h /= 6;
+//     }
+
+//     return {
+//         h: Math.round(h * 360),
+//         s: Math.round(s * 100),
+//         l: Math.round(l * 100)
+//     };
+// }
+
+// // for video crop
+
+// app.post('/upload', upload.single('video'), (req, res) => {
+//     if (!fs.existsSync('processed')) {
+//         fs.mkdirSync('processed');
+//     }
+
+//     const videoPath = req.file.path;
+//     const timestamp = Date.now();
+//     const outputPath = path.join(__dirname, 'processed', `cropped_video_${timestamp}.mp4`);
+//     const { width, height, left, top } = req.body;
+
+//     const safeWidth = parseInt(width, 10);
+//     const safeHeight = parseInt(height, 10);
+//     const safeLeft = parseInt(left, 10);
+//     const safeTop = parseInt(top, 10);
+
+//     if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+//         return res.status(400).send('Invalid crop dimensions');
+//     }
+
+//     const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
+//     const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+//     exec(ffmpegCommand, (error, stdout, stderr) => {
+//         fs.unlinkSync(videoPath);
+//         if (error) {
+//             console.error(`Exec Error: ${error.message}`);
+//             return res.status(500).send('Error processing video');
+//         }
+
+//         res.sendFile(outputPath, (err) => {
+//             fs.unlinkSync(outputPath);
+//         });
+//     });
+// });
+
+
+
+
+
+
 transcribe
 
 // app.post('/transcribe-video', upload.single('video'), async (req, res) => {
