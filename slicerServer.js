@@ -8,7 +8,6 @@ const express = require("express");
 const multer = require("multer");
 const { exec } = require("child_process");
 const fs = require("fs");
-2;
 const path = require("path");
 const axios = require("axios");
 const FormData = require("form-data");
@@ -75,10 +74,22 @@ app.post("/createGradientImage", (req, res) => {
   const outputFile = path.join(__dirname, "gradient-background", `gradient_${Date.now()}.png`);
   let command;
 
-  if (gradientType === "radial") {
-    command = `convert -size ${dimensions} radial-gradient:#${topColor}-#${bottomColor} ${outputFile}`;
-  } else {
-    command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+  switch (gradientType) {
+    case "radial":
+      command = `convert -size ${dimensions} radial-gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "left-right":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "diagonal-tl-br":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 45 ${outputFile}`;
+      break;
+    case "diagonal-tr-bl":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 135 ${outputFile}`;
+      break;
+    case "linear": // Explicitly handle "Top to Bottom"
+    default:
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
   }
 
   exec(command, (error, stdout, stderr) => {
@@ -90,33 +101,32 @@ app.post("/createGradientImage", (req, res) => {
   });
 });
 
-// youtube downloader
+
+
+
+
+
 
 app.post("/get-formats", async (req, res) => {
   const { url } = req.body;
 
   if (!ytdl.validateURL(url)) {
+    console.log("Invalid URL attempt:", url);
     return res.status(400).send("Invalid YouTube URL.");
   }
 
   try {
     const info = await ytdl.getInfo(url);
-    let formats = ytdl.filterFormats(info.formats, "video");
-    formats = formats.filter((format) => {
-      return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
-    });
-
-    // Remove duplicate formats
-    const seen = new Set();
-    formats = formats.filter((format) => {
-      const key = `${format.qualityLabel}-${format.container}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-
+    const formats = ytdl.filterFormats(info.formats, 'video')
+                        .filter(format => format.qualityLabel && !['144p', '240p'].includes(format.qualityLabel))
+                        .reduce((acc, format) => {
+                          const key = `${format.qualityLabel}-${format.container}`;
+                          if (!acc.seen.has(key)) {
+                            acc.seen.add(key);
+                            acc.result.push(format);
+                          }
+                          return acc;
+                        }, { seen: new Set(), result: [] }).result;
     res.json(formats);
   } catch (error) {
     console.error("Error fetching formats:", error);
@@ -124,18 +134,16 @@ app.post("/get-formats", async (req, res) => {
   }
 });
 
-// Route to download the selected format
 app.post("/download-youtube", async (req, res) => {
   const { url, format } = req.body;
-
   if (!ytdl.validateURL(url)) {
     return res.status(400).send("Invalid YouTube URL.");
   }
 
   try {
     const info = await ytdl.getInfo(url);
-    const formatOptions = info.formats.find((f) => f.itag.toString() === format);
-    if (!formatOptions) {
+    const formatOption = info.formats.find(f => f.itag.toString() === format);
+    if (!formatOption) {
       return res.status(400).send("Invalid format selected.");
     }
 
@@ -144,52 +152,145 @@ app.post("/download-youtube", async (req, res) => {
     const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
 
-    // Download video stream
-    const videoStream = ytdl(url, { quality: formatOptions.itag });
-    const videoWriteStream = fs.createWriteStream(videoPath);
-    videoStream.pipe(videoWriteStream);
-
-    videoWriteStream.on("finish", () => {
-      // Download audio stream
-      const audioStream = ytdl(url, { quality: "highestaudio" });
-      const audioWriteStream = fs.createWriteStream(audioPath);
-      audioStream.pipe(audioWriteStream);
-
-      audioWriteStream.on("finish", () => {
-        const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-        exec(ffmpegCommand, (error, stdout, stderr) => {
-          if (error) {
-            console.error("ffmpeg error:", stderr);
-            return res.status(500).send("Failed to merge video and audio.");
-          }
-
-          res.download(outputPath, (err) => {
-            if (err) {
-              console.error("Download error:", err);
-            }
-            // Clean up files
-            fs.unlinkSync(videoPath);
-            fs.unlinkSync(audioPath);
-            fs.unlinkSync(outputPath);
-          });
-        });
-      });
-
-      audioWriteStream.on("error", (err) => {
-        console.error("Audio stream error:", err);
-        res.status(500).send("Failed to download audio.");
-      });
-    });
-
-    videoWriteStream.on("error", (err) => {
-      console.error("Video stream error:", err);
-      res.status(500).send("Failed to download video.");
-    });
+    const videoStream = ytdl(url, { quality: formatOption.itag });
+    videoStream.pipe(fs.createWriteStream(videoPath))
+               .on('finish', () => {
+                 const audioStream = ytdl(url, { quality: 'highestaudio' });
+                 audioStream.pipe(fs.createWriteStream(audioPath))
+                            .on('finish', () => {
+                              const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+                              exec(ffmpegCommand, (error, stdout, stderr) => {
+                                if (error) {
+                                  console.error("ffmpeg error:", stderr);
+                                  return res.status(500).send("Failed to merge video and audio.");
+                                }
+                                res.download(outputPath, err => {
+                                  if (err) {
+                                    console.error("Download error:", err);
+                                  }
+                                  // Clean up files
+                                  [videoPath, audioPath, outputPath].forEach(file => fs.unlinkSync(file));
+                                });
+                              });
+                            }).on('error', error => {
+                              console.error("Audio download error:", error);
+                              res.status(500).send("Audio processing failed");
+                            });
+               }).on('error', error => {
+                 console.error("Video download error:", error);
+                 res.status(500).send("Video processing failed");
+               });
   } catch (error) {
     console.error("Download error:", error);
     res.status(500).send("Failed to download video.");
   }
 });
+
+
+// youtube downloader
+
+// app.post("/get-formats", async (req, res) => {
+//   const { url } = req.body;
+
+//   if (!ytdl.validateURL(url)) {
+//     return res.status(400).send("Invalid YouTube URL.");
+//   }
+
+//   try {
+//     const info = await ytdl.getInfo(url);
+//     let formats = ytdl.filterFormats(info.formats, "video");
+//     formats = formats.filter((format) => {
+//       return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
+//     });
+
+//     // Remove duplicate formats
+//     const seen = new Set();
+//     formats = formats.filter((format) => {
+//       const key = `${format.qualityLabel}-${format.container}`;
+//       if (seen.has(key)) {
+//         return false;
+//       }
+//       seen.add(key);
+//       return true;
+//     });
+
+//     res.json(formats);
+//   } catch (error) {
+//     console.error("Error fetching formats:", error);
+//     res.status(500).send("Failed to fetch formats.");
+//   }
+// });
+
+
+// app.post("/download-youtube", async (req, res) => {
+//   const { url, format } = req.body;
+
+//   if (!ytdl.validateURL(url)) {
+//     return res.status(400).send("Invalid YouTube URL.");
+//   }
+
+//   try {
+//     const info = await ytdl.getInfo(url);
+//     const formatOptions = info.formats.find((f) => f.itag.toString() === format);
+//     if (!formatOptions) {
+//       return res.status(400).send("Invalid format selected.");
+//     }
+
+//     const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
+//     const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
+//     const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
+//     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
+
+//     // Download video stream
+//     const videoStream = ytdl(url, { quality: formatOptions.itag });
+//     const videoWriteStream = fs.createWriteStream(videoPath);
+//     videoStream.pipe(videoWriteStream);
+
+//     videoWriteStream.on("finish", () => {
+//       // Download audio stream
+//       const audioStream = ytdl(url, { quality: "highestaudio" });
+//       const audioWriteStream = fs.createWriteStream(audioPath);
+//       audioStream.pipe(audioWriteStream);
+
+//       audioWriteStream.on("finish", () => {
+//         const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+//         exec(ffmpegCommand, (error, stdout, stderr) => {
+//           if (error) {
+//             console.error("ffmpeg error:", stderr);
+//             return res.status(500).send("Failed to merge video and audio.");
+//           }
+
+//           res.download(outputPath, (err) => {
+//             if (err) {
+//               console.error("Download error:", err);
+//             }
+//             // Clean up files
+//             fs.unlinkSync(videoPath);
+//             fs.unlinkSync(audioPath);
+//             fs.unlinkSync(outputPath);
+//           });
+//         });
+//       });
+
+//       audioWriteStream.on("error", (err) => {
+//         console.error("Audio stream error:", err);
+//         res.status(500).send("Failed to download audio.");
+//       });
+//     });
+
+//     videoWriteStream.on("error", (err) => {
+//       console.error("Video stream error:", err);
+//       res.status(500).send("Failed to download video.");
+//     });
+//   } catch (error) {
+//     console.error("Download error:", error);
+//     res.status(500).send("Failed to download video.");
+//   }
+// });
+
+
+
+
 
 async function uploadFileToGCS(filePath) {
   const fileName = path.basename(filePath);
