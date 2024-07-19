@@ -53,6 +53,192 @@ process.env.PATH += ":/usr/bin";
 const convertedDir = path.join(__dirname, "converted");
 const compressedDir = path.join(__dirname, "compressed");
 
+app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }]), (req, res) => {
+  const videoPath1 = req.files["video1"][0].path;
+  const videoPath2 = req.files["video2"][0].path;
+  const tempOutputPath1 = path.join(__dirname, "processed", `temp_output1_${Date.now()}.mp4`);
+  const tempOutputPath2 = path.join(__dirname, "processed", `temp_output2_${Date.now()}.mp4`);
+  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+
+  const slices1 = [
+    { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+    { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+    { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+  ];
+
+  const slices2 = [
+    { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+    { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+    { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+  ];
+
+  const processVideo = (videoPath, slices, outputPath) => {
+    return new Promise((resolve, reject) => {
+      let filterComplex = "";
+      let inputs = [];
+
+      slices.forEach((slice, index) => {
+        const { start, end } = slice;
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+          let duration = end - start;
+          filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
+          inputs.push(`[v${index}]`);
+        }
+      });
+
+      if (inputs.length > 0) {
+        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+      } else {
+        return reject("No valid video segments specified.");
+      }
+
+      const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+      exec(ffmpegCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+          return reject("Failed to process video.");
+        }
+        resolve();
+      });
+    });
+  };
+
+  const concatenateVideos = (inputPaths, outputPath) => {
+    return new Promise((resolve, reject) => {
+      const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+      const concatFilePath = path.join(__dirname, "processed", `concat_${Date.now()}.txt`);
+
+      fs.writeFileSync(concatFilePath, concatFileContent);
+
+      const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+      exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error("Error executing FFmpeg concat command:", stderr);
+          return reject("Failed to concatenate videos.");
+        }
+        fs.unlinkSync(concatFilePath);
+        resolve();
+      });
+    });
+  };
+
+  (async () => {
+    try {
+      await processVideo(videoPath1, slices1, tempOutputPath1);
+      await processVideo(videoPath2, slices2, tempOutputPath2);
+
+      await concatenateVideos([tempOutputPath1, tempOutputPath2], finalOutputPath);
+
+      res.download(finalOutputPath, (downloadErr) => {
+        if (downloadErr) {
+          console.error("Error sending the processed video:", downloadErr);
+        }
+        fs.unlinkSync(videoPath1);
+        fs.unlinkSync(videoPath2);
+        fs.unlinkSync(tempOutputPath1);
+        fs.unlinkSync(tempOutputPath2);
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send(error);
+    }
+  })();
+});
+
+// const processSlices = (videoPath, slices, outputPath) => {
+//   return new Promise((resolve, reject) => {
+//     let filterComplex = "";
+//     let inputs = [];
+
+//     slices.forEach((slice, index) => {
+//       const { start, end } = slice;
+//       if (!isNaN(start) && !isNaN(end) && end > start) {
+//         let duration = end - start;
+//         filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
+//         inputs.push(`[v${index}]`);
+//       }
+//     });
+
+//     if (inputs.length > 0) {
+//       filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+//     } else {
+//       return reject("No valid video segments specified.");
+//     }
+
+//     const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+//     exec(ffmpegCommand, (error, stdout, stderr) => {
+//       if (error) {
+//         console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+//         return reject("Failed to process video.");
+//       }
+//       resolve();
+//     });
+//   });
+// };
+
+// const concatenateVideos = (inputPaths, outputPath) => {
+//   return new Promise((resolve, reject) => {
+//     const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+//     const concatFilePath = path.join(__dirname, "processed", `concat_${Date.now()}.txt`);
+
+//     fs.writeFileSync(concatFilePath, concatFileContent);
+
+//     const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+//     exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+//       if (error) {
+//         console.error("Error executing FFmpeg concat command:", stderr);
+//         return reject("Failed to concatenate videos.");
+//       }
+//       fs.unlinkSync(concatFilePath);
+//       resolve();
+//     });
+//   });
+// };
+
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }]), async (req, res) => {
+//   const videoPath1 = req.files["video1"][0].path;
+//   const videoPath2 = req.files["video2"][0].path;
+//   const tempOutputPath1 = path.join(__dirname, "processed", `temp_output1_${Date.now()}.mp4`);
+//   const tempOutputPath2 = path.join(__dirname, "processed", `temp_output2_${Date.now()}.mp4`);
+//   const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+
+//   const slices1 = [
+//     { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+//     { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+//     { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+//   ];
+
+//   const slices2 = [
+//     { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+//     { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+//     { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+//   ];
+
+//   try {
+//     await processSlices(videoPath1, slices1, tempOutputPath1);
+//     await processSlices(videoPath2, slices2, tempOutputPath2);
+
+//     await concatenateVideos([tempOutputPath1, tempOutputPath2], finalOutputPath);
+
+//     res.download(finalOutputPath, (downloadErr) => {
+//       if (downloadErr) {
+//         console.error("Error sending the processed video:", downloadErr);
+//       }
+//       fs.unlinkSync(videoPath1);
+//       fs.unlinkSync(videoPath2);
+//       fs.unlinkSync(tempOutputPath1);
+//       fs.unlinkSync(tempOutputPath2);
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send(error);
+//   }
+// });
+
 app.post("/createGradientImage", (req, res) => {
   const { gradientType, topColor, bottomColor, size } = req.body;
 
@@ -101,12 +287,7 @@ app.post("/createGradientImage", (req, res) => {
   });
 });
 
-
-
-
-
-
-
+// yt downloader
 app.post("/get-formats", async (req, res) => {
   const { url } = req.body;
 
@@ -117,16 +298,20 @@ app.post("/get-formats", async (req, res) => {
 
   try {
     const info = await ytdl.getInfo(url);
-    const formats = ytdl.filterFormats(info.formats, 'video')
-                        .filter(format => format.qualityLabel && !['144p', '240p'].includes(format.qualityLabel))
-                        .reduce((acc, format) => {
-                          const key = `${format.qualityLabel}-${format.container}`;
-                          if (!acc.seen.has(key)) {
-                            acc.seen.add(key);
-                            acc.result.push(format);
-                          }
-                          return acc;
-                        }, { seen: new Set(), result: [] }).result;
+    const formats = ytdl
+      .filterFormats(info.formats, "video")
+      .filter((format) => format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel))
+      .reduce(
+        (acc, format) => {
+          const key = `${format.qualityLabel}-${format.container}`;
+          if (!acc.seen.has(key)) {
+            acc.seen.add(key);
+            acc.result.push(format);
+          }
+          return acc;
+        },
+        { seen: new Set(), result: [] }
+      ).result;
     res.json(formats);
   } catch (error) {
     console.error("Error fetching formats:", error);
@@ -142,7 +327,7 @@ app.post("/download-youtube", async (req, res) => {
 
   try {
     const info = await ytdl.getInfo(url);
-    const formatOption = info.formats.find(f => f.itag.toString() === format);
+    const formatOption = info.formats.find((f) => f.itag.toString() === format);
     if (!formatOption) {
       return res.status(400).send("Invalid format selected.");
     }
@@ -153,39 +338,42 @@ app.post("/download-youtube", async (req, res) => {
     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
 
     const videoStream = ytdl(url, { quality: formatOption.itag });
-    videoStream.pipe(fs.createWriteStream(videoPath))
-               .on('finish', () => {
-                 const audioStream = ytdl(url, { quality: 'highestaudio' });
-                 audioStream.pipe(fs.createWriteStream(audioPath))
-                            .on('finish', () => {
-                              const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-                              exec(ffmpegCommand, (error, stdout, stderr) => {
-                                if (error) {
-                                  console.error("ffmpeg error:", stderr);
-                                  return res.status(500).send("Failed to merge video and audio.");
-                                }
-                                res.download(outputPath, err => {
-                                  if (err) {
-                                    console.error("Download error:", err);
-                                  }
-                                  // Clean up files
-                                  [videoPath, audioPath, outputPath].forEach(file => fs.unlinkSync(file));
-                                });
-                              });
-                            }).on('error', error => {
-                              console.error("Audio download error:", error);
-                              res.status(500).send("Audio processing failed");
-                            });
-               }).on('error', error => {
-                 console.error("Video download error:", error);
-                 res.status(500).send("Video processing failed");
-               });
+    videoStream
+      .pipe(fs.createWriteStream(videoPath))
+      .on("finish", () => {
+        const audioStream = ytdl(url, { quality: "highestaudio" });
+        audioStream
+          .pipe(fs.createWriteStream(audioPath))
+          .on("finish", () => {
+            const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+            exec(ffmpegCommand, (error, stdout, stderr) => {
+              if (error) {
+                console.error("ffmpeg error:", stderr);
+                return res.status(500).send("Failed to merge video and audio.");
+              }
+              res.download(outputPath, (err) => {
+                if (err) {
+                  console.error("Download error:", err);
+                }
+                // Clean up files
+                [videoPath, audioPath, outputPath].forEach((file) => fs.unlinkSync(file));
+              });
+            });
+          })
+          .on("error", (error) => {
+            console.error("Audio download error:", error);
+            res.status(500).send("Audio processing failed");
+          });
+      })
+      .on("error", (error) => {
+        console.error("Video download error:", error);
+        res.status(500).send("Video processing failed");
+      });
   } catch (error) {
     console.error("Download error:", error);
     res.status(500).send("Failed to download video.");
   }
 });
-
 
 // youtube downloader
 
@@ -220,7 +408,6 @@ app.post("/download-youtube", async (req, res) => {
 //     res.status(500).send("Failed to fetch formats.");
 //   }
 // });
-
 
 // app.post("/download-youtube", async (req, res) => {
 //   const { url, format } = req.body;
@@ -288,9 +475,7 @@ app.post("/download-youtube", async (req, res) => {
 //   }
 // });
 
-
-
-
+// subtitles
 
 async function uploadFileToGCS(filePath) {
   const fileName = path.basename(filePath);
@@ -518,7 +703,7 @@ app.post("/cleanup-image", upload.fields([{ name: "image_file" }, { name: "mask_
   }
 });
 
-// uncrop fix
+// uncrop
 
 app.post("/uncrop-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
@@ -557,6 +742,8 @@ app.post("/uncrop-image", upload.single("image"), async (req, res) => {
   }
 });
 
+// reimage
+
 app.post("/reimagine-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -584,7 +771,7 @@ app.post("/reimagine-image", upload.single("image"), async (req, res) => {
   }
 });
 
-//upscale image
+//upscale
 
 app.post("/upscale-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
@@ -618,6 +805,7 @@ app.post("/upscale-image", upload.single("image"), async (req, res) => {
   }
 });
 
+// remove bg
 app.post("/remove-background", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -646,6 +834,7 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
   }
 });
 
+// video-slice
 app.post("/slice", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
   const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
