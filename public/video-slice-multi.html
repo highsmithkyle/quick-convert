@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video Processing Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar scrollable-sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div class="title-group">
+        <h2>Slice/Trim Video</h2>
+      </div>
+
+      <form id="slicerForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <h2 style="font-size: 20px">Video 1</h2>
+          <label for="video1">Upload Video 1:</label>
+          <input type="file" id="video1" name="video1" accept="video/*" required />
+        </div>
+
+        <div class="slice-group">
+          <div>
+            <label>Slice 1: Start</label>
+            <input type="number" name="slice1Start1" min="0" required />
+          </div>
+          <div>
+            <label>Slice 1: End</label>
+            <input type="number" name="slice1End1" min="0" required />
+          </div>
+          <div>
+            <label>Slice 2: Start:</label>
+            <input type="number" name="slice2Start1" min="0" />
+          </div>
+          <div>
+            <label>Slice 2: End</label>
+            <input type="number" name="slice2End1" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: Start:</label>
+            <input type="number" name="slice3Start1" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: End:</label>
+            <input type="number" name="slice3End1" min="0" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <h2 style="font-size: 20px">Video 2</h2>
+          <label for="video2">Upload Video 2:</label>
+          <input type="file" id="video2" name="video2" accept="video/*" required />
+        </div>
+
+        <div class="slice-group">
+          <div>
+            <label>Slice 1: Start</label>
+            <input type="number" name="slice1Start2" min="0" required />
+          </div>
+          <div>
+            <label>Slice 1: End</label>
+            <input type="number" name="slice1End2" min="0" required />
+          </div>
+          <div>
+            <label>Slice 2: Start:</label>
+            <input type="number" name="slice2Start2" min="0" />
+          </div>
+          <div>
+            <label>Slice 2: End</label>
+            <input type="number" name="slice2End2" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: Start:</label>
+            <input type="number" name="slice3Start2" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: End:</label>
+            <input type="number" name="slice3End2" min="0" />
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit">Create Video</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video 1</h3>
+          <video id="uploadedVideo1" controls></video>
+        </div>
+        <div>
+          <h3>Uploaded Video 2</h3>
+          <video id="uploadedVideo2" controls></video>
+        </div>
+        <div>
+          <h3>Sliced Video</h3>
+          <video id="processedVideo" controls></video>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your videos, please wait...</div>
+
+    <script src="video-slice-multi.js"></script>
+  </body>
+</html>

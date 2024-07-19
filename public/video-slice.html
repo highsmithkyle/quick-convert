@@ -1,137 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Video Processing Tool</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-    
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="sidebar scrollable-sidebar">
-       
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
 
+      <div class="title-group">
+        <h2>Slice/Trim Video</h2>
+      </div>
 
-        <div class="title-group">
-            <h2>Slice/Trim Video</h2>
+      <form id="slicerForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload Video:</label>
+          <input type="file" id="video" name="video" accept="video/*" required />
         </div>
-        
-       
-        <form id="slicerForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="video">Upload Video:</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
-
-
 
         <div class="slice-group">
-            
-                <div>
-                    <label>Slice 1: Start</label>
-                    <input type="number" name="slice1Start" min="0" required>
-                </div>
-                <div>
-                    <label>Slice 1: End</label>
-                    <input type="number" name="slice1End" min="0" required>
-                </div>
-                <div>
-                    <label>Slice 2: Start:</label>
-                    <input type="number" name="slice2Start" min="0">
-                </div>
-                <div>
-                    <label>Slice 2: End</label>
-                    <input type="number" name="slice2End" min="0">
-                </div>
-                <div>
-                    <label>Slice 3: Start:</label>
-                    <input type="number" name="slice3Start" min="0">
-                </div>
-                <div>
-                    <label>Slice 3: End:</label>
-                    <input type="number" name="slice3End" min="0">
-                </div>
+          <div>
+            <label>Slice 1: Start</label>
+            <input type="number" name="slice1Start" min="0" required />
+          </div>
+          <div>
+            <label>Slice 1: End</label>
+            <input type="number" name="slice1End" min="0" required />
+          </div>
+          <div>
+            <label>Slice 2: Start:</label>
+            <input type="number" name="slice2Start" min="0" />
+          </div>
+          <div>
+            <label>Slice 2: End</label>
+            <input type="number" name="slice2End" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: Start:</label>
+            <input type="number" name="slice3Start" min="0" />
+          </div>
+          <div>
+            <label>Slice 3: End:</label>
+            <input type="number" name="slice3End" min="0" />
+          </div>
 
-                <div class="button-group">
-                    <button type="submit">Create Video</button>
-                
-                    
-                </div>
-        
-                
-            </div>
-
-        </form>
+          <div class="button-group">
+            <button type="submit">Create Video</button>
+          </div>
+        </div>
+      </form>
     </div>
 
-
-            
-
-<div class="main-content">
-    <div id="videoContainer">
+    <div class="main-content">
+      <div id="videoContainer">
         <div>
-            <h3>Uploaded Video</h3>
-            <video id="uploadedVideo" controls></video>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
         </div>
         <div>
-            <h3>Sliced Video</h3>
-            <video id="processedVideo" controls></video>
+          <h3>Sliced Video</h3>
+          <video id="processedVideo" controls></video>
         </div>
-        
-       
+      </div>
     </div>
-</div>
 
+    <div id="processingNotification">Processing your video, please wait...</div>
 
-    
-<!-- dummy buttons because old code has everything together -->
-<input type="color" id="overlayColor" style="display:none;">
-<input type="range" id="overlayOpacity" style="display:none;">
-<div id="colorValue" style="display:none;"></div>
-<div id="opacityValue" style="display:none;"></div>
-<div id="createOverlayButton" style="display:none;"></div>
-<div id="createGradientOverlayButton" style="display:none;"></div>
-<div id="cropVideoButton" style="display: none;"></div>
-<div id="convertToAvifButton" style="display: none;"></div>
-<div id="convertToWebPButton" style="display: none;"></div>
-<div id="convertToWebPButton" style="display: none;"></div>
-<div id="convertToGifButton" style="display: none;"></div>
-<!-- dummy buttons because old code has everything together -->
-
-
-
-<div id="processingNotification">
-    Processing your video, please wait...
-</div>
-
-
-<script src="video-slice.js"></script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-       
-        var colorPicker = document.getElementById('overlayColor');
-        var colorValueDisplay = document.getElementById('colorValue');
-        
-        colorPicker.addEventListener('input', function() {
-            colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
-        });
-    
-       
-        var opacitySlider = document.getElementById('overlayOpacity');
-        var opacityValueDisplay = document.getElementById('opacityValue');
-        
-        opacitySlider.addEventListener('input', function() {
-            opacityValueDisplay.textContent = opacitySlider.value;
-        });
-    });
-</script>
-    
-
-
-</body>
+    <script src="video-slice.js"></script>
+  </body>
 </html>
