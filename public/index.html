@@ -1,59 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Video Processing Tool</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        <div class="title-group">
-            <h2>Quick Convert</h2>
-            <p>Welcome to Quick Convert!<br><br>
-               
-                Explore the different effects by clicking on the icons.
-            </p>
-        </div>
+      <div class="title-group">
+        <h2>Quick Convert</h2>
+        <p>
+          Welcome to Quick Convert!<br /><br />
+
+          Explore the different effects by clicking on the icons.
+        </p>
+      </div>
     </div>
 
     <div class="main-content">
-        <h2>Video Effects</h2>
-        <div class="image-grid">
-            <button onclick="location.href='video-crop.html'" class="icon-button">
-                <span class="icon-title">Crop Video</span>
-                <img src="images/video_crop_icon.png" alt="Crop_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-slice.html'" class="icon-button">
-                <span class="icon-title">Slice/Trim Video</span>
-                <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-overlay.html'" class="icon-button">
-                <span class="icon-title">Colored Overlay</span>
-                <img src="images/video_colored_overlay_icon.png" alt="overlay_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-gradient.html'" class="icon-button">
-                <span class="icon-title">Gradient Overlay</span>
-                <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-slow.html'" class="icon-button">
-                <span class="icon-title">Slow Video</span>
-                <img src="images/video_slow_icon.png" alt="slow_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-subtitles.html'" class="icon-button">
-                <span class="icon-title">Add Subtitles</span>
-                <img src="images/video_subtitles.png" alt="subtitles_icon" class="icon">
-            </button>
-           <button onclick="location.href='video-convert-gif.html'" class="icon-button">
-                <span class="icon-title">Convert to GIF</span>
-                <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon">
-            </button>
-            <button onclick="location.href='upload-to-gc.html'" class="icon-button">
-                <span class="icon-title">Upload to Cloud</span>
-                <img src="images/cloud-computing.png" alt="cloud" class="icon">
-            </button>
-           
-            <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
+      <h2>Video Effects</h2>
+      <div class="image-grid">
+        <button onclick="location.href='video-crop.html'" class="icon-button">
+          <span class="icon-title">Crop Video</span>
+          <img src="images/video_crop_icon.png" alt="Crop_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-slice.html'" class="icon-button">
+          <span class="icon-title">Slice/Trim Video</span>
+          <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+          <span class="icon-title">Colored Overlay</span>
+          <img src="images/video_colored_overlay_icon.png" alt="overlay_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-gradient.html'" class="icon-button">
+          <span class="icon-title">Gradient Overlay</span>
+          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-slow.html'" class="icon-button">
+          <span class="icon-title">Slow Video</span>
+          <img src="images/video_slow_icon.png" alt="slow_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-subtitles.html'" class="icon-button">
+          <span class="icon-title">Add Subtitles</span>
+          <img src="images/video_subtitles.png" alt="subtitles_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-convert-gif.html'" class="icon-button">
+          <span class="icon-title">Convert to GIF</span>
+          <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon" />
+        </button>
+        <button onclick="location.href='upload-to-gc.html'" class="icon-button">
+          <span class="icon-title">Upload to Cloud</span>
+          <img src="images/cloud-computing.png" alt="cloud" class="icon" />
+        </button>
+        <button onclick="location.href='image-gradient.html'" class="icon-button">
+          <span class="icon-title">Gradient Background</span>
+          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-slice-multi.html'" class="icon-button">
+          <span class="icon-title">Multi Slice</span>
+          <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon" />
+        </button>
+
+        <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
                 <span class="icon-title">Under Construction</span>
                 <img src="images/video_CTA_icon.png" alt="cta_icon" class="icon">
             </button>
@@ -61,8 +69,8 @@
                 <span class="icon-title"></span>
                 <img src="" alt="resize_icon" class="icon">
             </button> -->
-            
-            <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
+
+        <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
                 <span class="icon-title">Convert to AVIF (Under Construction)</span>
                 <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon">
             </button>
@@ -74,58 +82,51 @@
                 <span class="icon-title">Convert to JPEGLX (Under Construction)</span>
                 <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon">
             </button> -->
-        </div>
+      </div>
 
-        <h2>Image Effects</h2>
-        <div class="image-grid-middle"> 
-            <button onclick="location.href='gif-compression.html'" class="icon-button">
-                <span class="icon-title">Compress Image/GIF</span>
-                <img src="images/compress.png" alt="compression" class="icon">
-            </button>
-            <button onclick="location.href='background-remover.html'" class="icon-button">
-                <span class="icon-title">Remove Background</span>
-                <img src="images/remove-bg.png" alt="remove-background" class="icon">
-            </button>
-            <button onclick="location.href='image-uncrop.html'" class="icon-button">
-                <span class="icon-title">Uncrop Image</span>
-                <img src="images/image-upscale2.png" alt="uncrop-image" class="icon">
-            </button>  
-            <button onclick="location.href='image-upscaling.html'" class="icon-button">
-                <span class="icon-title">Upscale Image</span>
-                <img src="images/image-uncrop.png" alt="upscale-image" class="icon">
-            </button>
-            <button onclick="location.href='image-cleanup.html'" class="icon-button">
-                <span class="icon-title">Cleanup Image</span>
-                <img src="images/cleanup-icon.png" alt="cleanup-icon" class="icon">
-            </button>
-        </div>
-
-      
-
+      <h2>Image Effects</h2>
+      <div class="image-grid-middle">
+        <button onclick="location.href='gif-compression.html'" class="icon-button">
+          <span class="icon-title">Compress Image/GIF</span>
+          <img src="images/compress.png" alt="compression" class="icon" />
+        </button>
+        <button onclick="location.href='background-remover.html'" class="icon-button">
+          <span class="icon-title">Remove Background</span>
+          <img src="images/remove-bg.png" alt="remove-background" class="icon" />
+        </button>
+        <button onclick="location.href='image-uncrop.html'" class="icon-button">
+          <span class="icon-title">Uncrop Image</span>
+          <img src="images/image-upscale2.png" alt="uncrop-image" class="icon" />
+        </button>
+        <button onclick="location.href='image-upscaling.html'" class="icon-button">
+          <span class="icon-title">Upscale Image</span>
+          <img src="images/image-uncrop.png" alt="upscale-image" class="icon" />
+        </button>
+        <button onclick="location.href='image-cleanup.html'" class="icon-button">
+          <span class="icon-title">Cleanup Image</span>
+          <img src="images/cleanup-icon.png" alt="cleanup-icon" class="icon" />
+        </button>
+      </div>
     </div>
 
-    <div id="processingNotification">
-        Processing your video, please wait...
-    </div>
+    <div id="processingNotification">Processing your video, please wait...</div>
 
     <script src="videoSlicer.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var colorPicker = document.getElementById('overlayColor');
-            var colorValueDisplay = document.getElementById('colorValue');
-            colorPicker.addEventListener('input', function() {
-                colorValueDisplay.textContent = colorPicker.value.toUpperCase();
-            });
-
-            var opacitySlider = document.getElementById('overlayOpacity');
-            var opacityValueDisplay = document.getElementById('opacityValue');
-            opacitySlider.addEventListener('input', function() {
-                opacityValueDisplay.textContent = opacitySlider.value;
-            });
+      document.addEventListener("DOMContentLoaded", function () {
+        var colorPicker = document.getElementById("overlayColor");
+        var colorValueDisplay = document.getElementById("colorValue");
+        colorPicker.addEventListener("input", function () {
+          colorValueDisplay.textContent = colorPicker.value.toUpperCase();
         });
+
+        var opacitySlider = document.getElementById("overlayOpacity");
+        var opacityValueDisplay = document.getElementById("opacityValue");
+        opacitySlider.addEventListener("input", function () {
+          opacityValueDisplay.textContent = opacitySlider.value;
+        });
+      });
     </script>
-</body>
+  </body>
 </html>
-
-
