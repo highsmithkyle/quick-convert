@@ -1,5 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video Processing Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="slicerForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload Video:</label>
+          <input type="file" id="video" name="video" accept="video/*" required />
+        </div>
+
+        <div class="overlay-group">
+          <div class="form-group color-picker-group">
+            <label for="overlayColor">Overlay Color:</label>
+            <input type="color" id="overlayColor" name="overlayColor" class="color-picker" value="#000000" />
+            <span id="colorValue">#000000</span>
+          </div>
+          <div class="form-group opacity-slider-group">
+            <label for="overlayOpacity">Overlay Opacity:</label>
+            <input type="range" id="overlayOpacity" name="overlayOpacity" class="opacity-slider" min="0.1" max=".7" step="0.1" value="0.5" />
+            <span id="opacityValue">0.5</span>
+          </div>
+          <div class="button-group">
+            <button type="button" id="previewOverlayButton">Preview Overlay</button>
+            <button type="button" id="createOverlayButton">Create Overlay</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
+        </div>
+
+        <div>
+          <h3>Video with Overlay<span id="downloadButtonContainer" style="margin-left: 10px"></span></h3>
+          <video id="colorOverlayVideo" controls></video>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your video, please wait...</div>
+
+    <script src="video-overlay.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var colorPicker = document.getElementById("overlayColor");
+        var colorValueDisplay = document.getElementById("colorValue");
+
+        colorPicker.addEventListener("input", function () {
+          colorValueDisplay.textContent = colorPicker.value.toUpperCase(); //
+        });
+
+        var opacitySlider = document.getElementById("overlayOpacity");
+        var opacityValueDisplay = document.getElementById("opacityValue");
+
+        opacitySlider.addEventListener("input", function () {
+          opacityValueDisplay.textContent = opacitySlider.value;
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Video Processing Tool</title>
@@ -84,4 +161,4 @@
 
 
 </body>
-</html>
+</html> -->

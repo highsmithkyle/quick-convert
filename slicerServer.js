@@ -303,103 +303,103 @@ app.post("/download-youtube", async (req, res) => {
 
 // youtube downloader
 
-// app.post("/get-formats", async (req, res) => {
-//   const { url } = req.body;
+app.post("/get-formats", async (req, res) => {
+  const { url } = req.body;
 
-//   if (!ytdl.validateURL(url)) {
-//     return res.status(400).send("Invalid YouTube URL.");
-//   }
+  if (!ytdl.validateURL(url)) {
+    return res.status(400).send("Invalid YouTube URL.");
+  }
 
-//   try {
-//     const info = await ytdl.getInfo(url);
-//     let formats = ytdl.filterFormats(info.formats, "video");
-//     formats = formats.filter((format) => {
-//       return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
-//     });
+  try {
+    const info = await ytdl.getInfo(url);
+    let formats = ytdl.filterFormats(info.formats, "video");
+    formats = formats.filter((format) => {
+      return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
+    });
 
-//     // Remove duplicate formats
-//     const seen = new Set();
-//     formats = formats.filter((format) => {
-//       const key = `${format.qualityLabel}-${format.container}`;
-//       if (seen.has(key)) {
-//         return false;
-//       }
-//       seen.add(key);
-//       return true;
-//     });
+    // Remove duplicate formats
+    const seen = new Set();
+    formats = formats.filter((format) => {
+      const key = `${format.qualityLabel}-${format.container}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
 
-//     res.json(formats);
-//   } catch (error) {
-//     console.error("Error fetching formats:", error);
-//     res.status(500).send("Failed to fetch formats.");
-//   }
-// });
+    res.json(formats);
+  } catch (error) {
+    console.error("Error fetching formats:", error);
+    res.status(500).send("Failed to fetch formats.");
+  }
+});
 
-// app.post("/download-youtube", async (req, res) => {
-//   const { url, format } = req.body;
+app.post("/download-youtube", async (req, res) => {
+  const { url, format } = req.body;
 
-//   if (!ytdl.validateURL(url)) {
-//     return res.status(400).send("Invalid YouTube URL.");
-//   }
+  if (!ytdl.validateURL(url)) {
+    return res.status(400).send("Invalid YouTube URL.");
+  }
 
-//   try {
-//     const info = await ytdl.getInfo(url);
-//     const formatOptions = info.formats.find((f) => f.itag.toString() === format);
-//     if (!formatOptions) {
-//       return res.status(400).send("Invalid format selected.");
-//     }
+  try {
+    const info = await ytdl.getInfo(url);
+    const formatOptions = info.formats.find((f) => f.itag.toString() === format);
+    if (!formatOptions) {
+      return res.status(400).send("Invalid format selected.");
+    }
 
-//     const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
-//     const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
-//     const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
-//     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
+    const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
+    const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
+    const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
+    const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
 
-//     // Download video stream
-//     const videoStream = ytdl(url, { quality: formatOptions.itag });
-//     const videoWriteStream = fs.createWriteStream(videoPath);
-//     videoStream.pipe(videoWriteStream);
+    // Download video stream
+    const videoStream = ytdl(url, { quality: formatOptions.itag });
+    const videoWriteStream = fs.createWriteStream(videoPath);
+    videoStream.pipe(videoWriteStream);
 
-//     videoWriteStream.on("finish", () => {
-//       // Download audio stream
-//       const audioStream = ytdl(url, { quality: "highestaudio" });
-//       const audioWriteStream = fs.createWriteStream(audioPath);
-//       audioStream.pipe(audioWriteStream);
+    videoWriteStream.on("finish", () => {
+      // Download audio stream
+      const audioStream = ytdl(url, { quality: "highestaudio" });
+      const audioWriteStream = fs.createWriteStream(audioPath);
+      audioStream.pipe(audioWriteStream);
 
-//       audioWriteStream.on("finish", () => {
-//         const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-//         exec(ffmpegCommand, (error, stdout, stderr) => {
-//           if (error) {
-//             console.error("ffmpeg error:", stderr);
-//             return res.status(500).send("Failed to merge video and audio.");
-//           }
+      audioWriteStream.on("finish", () => {
+        const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+        exec(ffmpegCommand, (error, stdout, stderr) => {
+          if (error) {
+            console.error("ffmpeg error:", stderr);
+            return res.status(500).send("Failed to merge video and audio.");
+          }
 
-//           res.download(outputPath, (err) => {
-//             if (err) {
-//               console.error("Download error:", err);
-//             }
-//             // Clean up files
-//             fs.unlinkSync(videoPath);
-//             fs.unlinkSync(audioPath);
-//             fs.unlinkSync(outputPath);
-//           });
-//         });
-//       });
+          res.download(outputPath, (err) => {
+            if (err) {
+              console.error("Download error:", err);
+            }
+            // Clean up files
+            fs.unlinkSync(videoPath);
+            fs.unlinkSync(audioPath);
+            fs.unlinkSync(outputPath);
+          });
+        });
+      });
 
-//       audioWriteStream.on("error", (err) => {
-//         console.error("Audio stream error:", err);
-//         res.status(500).send("Failed to download audio.");
-//       });
-//     });
+      audioWriteStream.on("error", (err) => {
+        console.error("Audio stream error:", err);
+        res.status(500).send("Failed to download audio.");
+      });
+    });
 
-//     videoWriteStream.on("error", (err) => {
-//       console.error("Video stream error:", err);
-//       res.status(500).send("Failed to download video.");
-//     });
-//   } catch (error) {
-//     console.error("Download error:", error);
-//     res.status(500).send("Failed to download video.");
-//   }
-// });
+    videoWriteStream.on("error", (err) => {
+      console.error("Video stream error:", err);
+      res.status(500).send("Failed to download video.");
+    });
+  } catch (error) {
+    console.error("Download error:", error);
+    res.status(500).send("Failed to download video.");
+  }
+});
 
 // subtitles
 
@@ -803,6 +803,48 @@ app.post("/slice", upload.single("video"), (req, res) => {
 });
 
 //colored overlay
+
+app.post("/preview-overlay", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const color = req.body.color.replace("#", "");
+  const opacity = parseFloat(req.body.opacity);
+  const outputPath = path.join(__dirname, "preview", `preview_overlay_video_${Date.now()}.mp4`);
+
+  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    if (error) {
+      console.error("Error getting video size:", error);
+      return res.status(500).send("Failed to get video size.");
+    }
+
+    const [width, height] = stdout.trim().split(",");
+    const overlayPath = path.join(__dirname, "overlay", `preview_overlay_${Date.now()}.png`);
+
+    exec(
+      `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(color.substring(4, 6), 16)},${opacity})" "${overlayPath}"`,
+      (overlayError) => {
+        if (overlayError) {
+          console.error("Error creating overlay:", overlayError);
+          return res.status(500).send("Failed to create overlay.");
+        }
+
+        exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+          if (ffmpegError) {
+            console.error("Error applying overlay:", ffmpegError);
+            return res.status(500).send("Failed to apply overlay.");
+          }
+
+          res.download(outputPath, (downloadErr) => {
+            if (downloadErr) {
+              console.error("Error sending the overlay video:", downloadErr);
+            }
+            fs.unlinkSync(videoPath);
+            fs.unlinkSync(overlayPath);
+          });
+        });
+      }
+    );
+  });
+});
 
 app.post("/overlay", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
