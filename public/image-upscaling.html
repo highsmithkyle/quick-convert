@@ -1,49 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Image Upscale</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
 
-        <div id="processingNotification" style="display:none;">
-            Processing your image, please wait...
+      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+      <h2>Image Upscaling</h2>
+      <form id="uploadFormUpscale" enctype="multipart/form-data" class="form-group">
+        <label for="image">Upload your image:</label>
+        <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required />
+        <label for="upscale_percentage">Upscale Percentage:</label>
+        <input type="range" id="upscale_percentage" name="upscale_percentage" min="100" max="400" value="300" step="50" oninput="updatePercentageDisplay(this.value)" style="width: 80%" />
+        <br />
+        <span id="percentage_display">300%</span>
+
+        <div class="button-group" style="padding-top: 15px">
+          <button type="submit" class="form-button">Upscale Image</button>
         </div>
-
-        <h2>Image Upscaling</h2>
-        <form id="uploadFormUpscale" enctype="multipart/form-data" class="form-group">
-            <label for="image">Upload your image:</label>
-            <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required>
-            <label for="upscale_percentage">Upscale Percentage:</label>
-            <input type="range" id="upscale_percentage" name="upscale_percentage" min="100" max="300" value="150" step="50" oninput="updatePercentageDisplay(this.value)" style="width: 90%">
-            <span id="percentage_display">100%</span>
-
-            <div class="button-group">
-                <button type="submit" class="form-button">Upscale Image</button>
-            </div> 
-        </form>
+      </form>
     </div>
 
     <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Uploaded Image</h3>
-                <img id="uploadedImage" src="" alt="Uploaded Image">
-            </div>
-            <div>
-                <h3>Upscaled Image</h3>
-                <span id="downloadButtonContainer" style="margin-left: 10px; display: none;"></span>
-                <img id="processedImage" src="" alt="Upscaled Image">
-            </div>
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Image</h3>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
         </div>
+        <div>
+          <h3>Upscaled Image</h3>
+          <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          <img id="processedImage" src="" alt="Upscaled Image" />
+        </div>
+      </div>
     </div>
 
     <script src="image-upscaling.js"></script>
-</body>
+  </body>
 </html>
