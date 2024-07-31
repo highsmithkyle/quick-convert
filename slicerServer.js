@@ -18,6 +18,11 @@ const { Translate } = require("@google-cloud/translate").v2;
 const translate = new Translate();
 const { v4: uuidv4 } = require("uuid");
 
+const { execFile } = require("child_process");
+
+const tf = require("@tensorflow/tfjs-node"); // Ensure this is imported
+const { createCanvas, loadImage, ImageData } = require("canvas");
+
 const ytdl = require("ytdl-core");
 
 const speech = require("@google-cloud/speech");
@@ -32,26 +37,124 @@ const storage = new Storage({
 });
 const bucket = storage.bucket("image-2d-to-3d");
 
-const getApiAccessToken = () => {
-  try {
-    const tokenPath = "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/api-access-token.txt";
-    const token = fs.readFileSync(tokenPath, "utf8").trim();
-    console.log("Retrieved API access token:", token);
-    return token;
-  } catch (error) {
-    console.error("Error reading API access token:", error);
-    return null;
-  }
-};
-
 app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
 app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
+app.use(express.urlencoded({ extended: true }));
+app.use(upload.none());
 
 process.env.PATH += ":/usr/bin";
 const convertedDir = path.join(__dirname, "converted");
 const compressedDir = path.join(__dirname, "compressed");
+
+app.post("/text-to-image", async (req, res) => {
+  console.log("Request body:", req.body);
+
+  const { prompt } = req.body;
+
+  if (!prompt) {
+    return res.status(400).send("No prompt provided.");
+  }
+
+  const formData = new FormData();
+  formData.append("prompt", prompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to generate image from text:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to generate image from text");
+  }
+});
+
+// image upscale with TensorFlow -- not working fully
+
+async function logTensorStats(tensor, name) {
+  const min = tensor.min().dataSync()[0];
+  const max = tensor.max().dataSync()[0];
+  const mean = tensor.mean().dataSync()[0];
+  const std = tensor.sub(mean).square().mean().sqrt().dataSync()[0];
+  console.log(`${name} - min: ${min}, max: ${max}, mean: ${mean}, std: ${std}`);
+}
+
+async function upscaleImage(inputPath, outputPath) {
+  try {
+    const image = await loadImage(inputPath);
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+
+    // Convert the canvas image to a tensor and pre-process
+    let inputTensor = tf.browser.fromPixels(canvas).toFloat().div(tf.scalar(255)).expandDims(0);
+    inputTensor = tf.cast(inputTensor, "float32"); // Ensure image is float32
+    console.log("Input Tensor Shape:", inputTensor.shape);
+    await logTensorStats(inputTensor, "Input Tensor");
+
+    const modelPath = "file://./model/model.json";
+    const model = await tf.loadGraphModel(modelPath);
+
+    // Perform the upscaling
+    const outputTensor = model.predict(inputTensor);
+    console.log("Output Tensor Shape:", outputTensor.shape);
+    await logTensorStats(outputTensor, "Output Tensor");
+
+    // Post-process the output tensor: Scale values from [-1, 1] to [0, 255]
+    const scaledTensor = outputTensor.squeeze().add(tf.scalar(1)).mul(tf.scalar(127.5)).cast("int32");
+    await logTensorStats(scaledTensor, "Scaled Tensor");
+
+    // Clip values to the range [0, 255]
+    const clippedTensor = tf.clipByValue(scaledTensor, 0, 255);
+    await logTensorStats(clippedTensor, "Clipped Tensor");
+
+    // Convert the tensor to a PNG image
+    const buffer = await tf.node.encodePng(clippedTensor);
+    fs.writeFileSync(outputPath, buffer);
+
+    inputTensor.dispose();
+    outputTensor.dispose();
+    scaledTensor.dispose();
+    clippedTensor.dispose();
+  } catch (error) {
+    console.error("Error during image upscaling:", error);
+  }
+}
+
+app.post("/upscale-image-new", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No image file uploaded.");
+  }
+
+  const imagePath = req.file.path;
+  const upscaledImagePath = path.join(__dirname, "uploads", `upscaled_${Date.now()}.png`);
+
+  try {
+    await upscaleImage(imagePath, upscaledImagePath);
+
+    res.download(upscaledImagePath, (err) => {
+      if (err) {
+        console.error("Error sending the upscaled image:", err);
+      }
+      fs.unlinkSync(imagePath);
+      fs.unlinkSync(upscaledImagePath);
+    });
+  } catch (error) {
+    console.error("Failed to upscale image:", error);
+    res.status(500).send("Failed to upscale image");
+  }
+});
+
+// new video slice
 
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   const numVideos = parseInt(req.body.numVideos, 10);
@@ -165,6 +268,8 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
   })();
 });
 
+// gradient background
+
 app.post("/createGradientImage", (req, res) => {
   const { gradientType, topColor, bottomColor, size } = req.body;
 
@@ -199,7 +304,7 @@ app.post("/createGradientImage", (req, res) => {
     case "diagonal-tr-bl":
       command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 135 ${outputFile}`;
       break;
-    case "linear": // Explicitly handle "Top to Bottom"
+    case "linear":
     default:
       command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
   }
@@ -214,92 +319,92 @@ app.post("/createGradientImage", (req, res) => {
 });
 
 // yt downloader
-app.post("/get-formats", async (req, res) => {
-  const { url } = req.body;
+// app.post("/get-formats", async (req, res) => {
+//   const { url } = req.body;
 
-  if (!ytdl.validateURL(url)) {
-    console.log("Invalid URL attempt:", url);
-    return res.status(400).send("Invalid YouTube URL.");
-  }
+//   if (!ytdl.validateURL(url)) {
+//     console.log("Invalid URL attempt:", url);
+//     return res.status(400).send("Invalid YouTube URL.");
+//   }
 
-  try {
-    const info = await ytdl.getInfo(url);
-    const formats = ytdl
-      .filterFormats(info.formats, "video")
-      .filter((format) => format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel))
-      .reduce(
-        (acc, format) => {
-          const key = `${format.qualityLabel}-${format.container}`;
-          if (!acc.seen.has(key)) {
-            acc.seen.add(key);
-            acc.result.push(format);
-          }
-          return acc;
-        },
-        { seen: new Set(), result: [] }
-      ).result;
-    res.json(formats);
-  } catch (error) {
-    console.error("Error fetching formats:", error);
-    res.status(500).send("Failed to fetch formats.");
-  }
-});
+//   try {
+//     const info = await ytdl.getInfo(url);
+//     const formats = ytdl
+//       .filterFormats(info.formats, "video")
+//       .filter((format) => format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel))
+//       .reduce(
+//         (acc, format) => {
+//           const key = `${format.qualityLabel}-${format.container}`;
+//           if (!acc.seen.has(key)) {
+//             acc.seen.add(key);
+//             acc.result.push(format);
+//           }
+//           return acc;
+//         },
+//         { seen: new Set(), result: [] }
+//       ).result;
+//     res.json(formats);
+//   } catch (error) {
+//     console.error("Error fetching formats:", error);
+//     res.status(500).send("Failed to fetch formats.");
+//   }
+// });
 
-app.post("/download-youtube", async (req, res) => {
-  const { url, format } = req.body;
-  if (!ytdl.validateURL(url)) {
-    return res.status(400).send("Invalid YouTube URL.");
-  }
+// app.post("/download-youtube", async (req, res) => {
+//   const { url, format } = req.body;
+//   if (!ytdl.validateURL(url)) {
+//     return res.status(400).send("Invalid YouTube URL.");
+//   }
 
-  try {
-    const info = await ytdl.getInfo(url);
-    const formatOption = info.formats.find((f) => f.itag.toString() === format);
-    if (!formatOption) {
-      return res.status(400).send("Invalid format selected.");
-    }
+//   try {
+//     const info = await ytdl.getInfo(url);
+//     const formatOption = info.formats.find((f) => f.itag.toString() === format);
+//     if (!formatOption) {
+//       return res.status(400).send("Invalid format selected.");
+//     }
 
-    const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
-    const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
-    const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
-    const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
+//     const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
+//     const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
+//     const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
+//     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
 
-    const videoStream = ytdl(url, { quality: formatOption.itag });
-    videoStream
-      .pipe(fs.createWriteStream(videoPath))
-      .on("finish", () => {
-        const audioStream = ytdl(url, { quality: "highestaudio" });
-        audioStream
-          .pipe(fs.createWriteStream(audioPath))
-          .on("finish", () => {
-            const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-            exec(ffmpegCommand, (error, stdout, stderr) => {
-              if (error) {
-                console.error("ffmpeg error:", stderr);
-                return res.status(500).send("Failed to merge video and audio.");
-              }
-              res.download(outputPath, (err) => {
-                if (err) {
-                  console.error("Download error:", err);
-                }
-                // Clean up files
-                [videoPath, audioPath, outputPath].forEach((file) => fs.unlinkSync(file));
-              });
-            });
-          })
-          .on("error", (error) => {
-            console.error("Audio download error:", error);
-            res.status(500).send("Audio processing failed");
-          });
-      })
-      .on("error", (error) => {
-        console.error("Video download error:", error);
-        res.status(500).send("Video processing failed");
-      });
-  } catch (error) {
-    console.error("Download error:", error);
-    res.status(500).send("Failed to download video.");
-  }
-});
+//     const videoStream = ytdl(url, { quality: formatOption.itag });
+//     videoStream
+//       .pipe(fs.createWriteStream(videoPath))
+//       .on("finish", () => {
+//         const audioStream = ytdl(url, { quality: "highestaudio" });
+//         audioStream
+//           .pipe(fs.createWriteStream(audioPath))
+//           .on("finish", () => {
+//             const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+//             exec(ffmpegCommand, (error, stdout, stderr) => {
+//               if (error) {
+//                 console.error("ffmpeg error:", stderr);
+//                 return res.status(500).send("Failed to merge video and audio.");
+//               }
+//               res.download(outputPath, (err) => {
+//                 if (err) {
+//                   console.error("Download error:", err);
+//                 }
+//                 // Clean up files
+//                 [videoPath, audioPath, outputPath].forEach((file) => fs.unlinkSync(file));
+//               });
+//             });
+//           })
+//           .on("error", (error) => {
+//             console.error("Audio download error:", error);
+//             res.status(500).send("Audio processing failed");
+//           });
+//       })
+//       .on("error", (error) => {
+//         console.error("Video download error:", error);
+//         res.status(500).send("Video processing failed");
+//       });
+//   } catch (error) {
+//     console.error("Download error:", error);
+//     res.status(500).send("Failed to download video.");
+//   }
+// });
 
 // youtube downloader
 
@@ -802,7 +907,7 @@ app.post("/slice", upload.single("video"), (req, res) => {
   });
 });
 
-//colored overlay
+// background creator
 
 app.post("/preview-overlay", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
@@ -845,6 +950,8 @@ app.post("/preview-overlay", upload.single("video"), (req, res) => {
     );
   });
 });
+
+//colored overlay
 
 app.post("/overlay", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
@@ -1006,8 +1113,6 @@ app.post("/convertToWebP", upload.single("video"), (req, res) => {
     });
   });
 });
-
-const { execFile } = require("child_process");
 
 app.post("/convertToGif", upload.single("video"), (req, res) => {
   if (!req.file) {
