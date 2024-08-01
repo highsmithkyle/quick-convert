@@ -1,3 +1,123 @@
+// image upscale with TensorFlow -- not working
+
+// async function logTensorStats(tensor, name) {
+//   const min = tensor.min().dataSync()[0];
+//   const max = tensor.max().dataSync()[0];
+//   const mean = tensor.mean().dataSync()[0];
+//   const std = tensor.sub(mean).square().mean().sqrt().dataSync()[0];
+//   console.log(`${name} - min: ${min}, max: ${max}, mean: ${mean}, std: ${std}`);
+// }
+
+// async function upscaleImage(inputPath, outputPath) {
+//   try {
+//     const image = await loadImage(inputPath);
+//     const canvas = createCanvas(image.width, image.height);
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(image, 0, 0);
+
+//     // Convert the canvas image to a tensor and pre-process
+//     let inputTensor = tf.browser.fromPixels(canvas).toFloat().div(tf.scalar(255)).expandDims(0);
+//     inputTensor = tf.cast(inputTensor, "float32"); // Ensure image is float32
+//     console.log("Input Tensor Shape:", inputTensor.shape);
+//     await logTensorStats(inputTensor, "Input Tensor");
+
+//     const modelPath = "file://./model/model.json";
+//     const model = await tf.loadGraphModel(modelPath);
+
+//     // Perform the upscaling
+//     const outputTensor = model.predict(inputTensor);
+//     console.log("Output Tensor Shape:", outputTensor.shape);
+//     await logTensorStats(outputTensor, "Output Tensor");
+
+//     // Post-process the output tensor: Scale values from [-1, 1] to [0, 255]
+//     const scaledTensor = outputTensor.squeeze().add(tf.scalar(1)).mul(tf.scalar(127.5)).cast("int32");
+//     await logTensorStats(scaledTensor, "Scaled Tensor");
+
+//     // Clip values to the range [0, 255]
+//     const clippedTensor = tf.clipByValue(scaledTensor, 0, 255);
+//     await logTensorStats(clippedTensor, "Clipped Tensor");
+
+//     // Convert the tensor to a PNG image
+//     const buffer = await tf.node.encodePng(clippedTensor);
+//     fs.writeFileSync(outputPath, buffer);
+
+//     inputTensor.dispose();
+//     outputTensor.dispose();
+//     scaledTensor.dispose();
+//     clippedTensor.dispose();
+//   } catch (error) {
+//     console.error("Error during image upscaling:", error);
+//   }
+// }
+
+package.json
+{
+  "name": "ffmpeg_gif_splicer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "slicerServer.js",
+  "scripts": {
+    "start": "node -r esm slicerServer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/speech": "^6.6.0",
+    "@google-cloud/storage": "^7.11.2",
+    "@google-cloud/translate": "^8.3.0",
+    "@tensorflow/tfjs-converter": "^4.20.0",
+    "@tensorflow/tfjs-core": "^4.20.0",
+    "axios": "^1.7.2",
+    "axios-debug-log": "^1.0.0",
+    "canvas": "^3.0.0-rc2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "esm": "^3.2.25",
+    "express": "^4.18.3",
+    "googleapis": "^137.1.0",
+    "jimp": "^0.22.12",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.4",
+    "tfjs-image-recognition-base": "^0.6.2",
+    "uuid": "^9.0.1",
+    "waifu2x": "^1.4.2",
+    "ytdl-core": "^4.11.5"
+  }
+}
+
+
+
+
+
+
+
+app.post("/upscale-image-new", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No image file uploaded.");
+  }
+
+  const imagePath = req.file.path;
+  const upscaledImagePath = path.join(__dirname, "uploads", `upscaled_${Date.now()}.png`);
+
+  try {
+    await upscaleImage(imagePath, upscaledImagePath);
+
+    res.download(upscaledImagePath, (err) => {
+      if (err) {
+        console.error("Error sending the upscaled image:", err);
+      }
+      fs.unlinkSync(imagePath);
+      fs.unlinkSync(upscaledImagePath);
+    });
+  } catch (error) {
+    console.error("Failed to upscale image:", error);
+    res.status(500).send("Failed to upscale image");
+  }
+});
+
+
 
 // // for recolor
 
