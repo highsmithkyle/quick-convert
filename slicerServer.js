@@ -1,8 +1,8 @@
+require("dotenv").config();
+
 console.log("Google Upload Credentials Path:", process.env.GOOGLE_UPLOAD_CREDENTIALS);
 console.log("Google Application Credentials Path:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
 console.log("Api access token:", process.env.API_ACCESS_TOKEN);
-
-require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
@@ -20,9 +20,6 @@ const { v4: uuidv4 } = require("uuid");
 
 const { execFile } = require("child_process");
 
-const tf = require("@tensorflow/tfjs-node"); // Ensure this is imported
-const { createCanvas, loadImage, ImageData } = require("canvas");
-
 const ytdl = require("ytdl-core");
 
 const speech = require("@google-cloud/speech");
@@ -33,480 +30,34 @@ google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 
 const { Storage } = require("@google-cloud/storage");
 const storage = new Storage({
-  keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS,
+  keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
 });
 const bucket = storage.bucket("image-2d-to-3d");
+
+const getApiAccessToken = () => {
+  try {
+    const tokenPath = "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/api-access-token.txt";
+    const token = fs.readFileSync(tokenPath, "utf8").trim();
+    console.log("Retrieved API access token:", token);
+    return token;
+  } catch (error) {
+    console.error("Error reading API access token:", error);
+    return null;
+  }
+};
 
 app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
 app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
-app.use(express.urlencoded({ extended: true }));
-app.use(upload.none());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(upload.none());
 
 process.env.PATH += ":/usr/bin";
 const convertedDir = path.join(__dirname, "converted");
 const compressedDir = path.join(__dirname, "compressed");
 
-app.post("/text-to-image", async (req, res) => {
-  console.log("Request body:", req.body);
-
-  const { prompt } = req.body;
-
-  if (!prompt) {
-    return res.status(400).send("No prompt provided.");
-  }
-
-  const formData = new FormData();
-  formData.append("prompt", prompt);
-
-  try {
-    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-      },
-      responseType: "arraybuffer",
-    });
-
-    const imageType = response.headers["content-type"];
-    res.setHeader("Content-Type", imageType);
-    res.send(response.data);
-  } catch (error) {
-    console.error("Failed to generate image from text:", error.response ? error.response.data : error.message);
-    res.status(500).send("Failed to generate image from text");
-  }
-});
-
-// image upscale with TensorFlow -- not working fully
-
-async function logTensorStats(tensor, name) {
-  const min = tensor.min().dataSync()[0];
-  const max = tensor.max().dataSync()[0];
-  const mean = tensor.mean().dataSync()[0];
-  const std = tensor.sub(mean).square().mean().sqrt().dataSync()[0];
-  console.log(`${name} - min: ${min}, max: ${max}, mean: ${mean}, std: ${std}`);
-}
-
-async function upscaleImage(inputPath, outputPath) {
-  try {
-    const image = await loadImage(inputPath);
-    const canvas = createCanvas(image.width, image.height);
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(image, 0, 0);
-
-    // Convert the canvas image to a tensor and pre-process
-    let inputTensor = tf.browser.fromPixels(canvas).toFloat().div(tf.scalar(255)).expandDims(0);
-    inputTensor = tf.cast(inputTensor, "float32"); // Ensure image is float32
-    console.log("Input Tensor Shape:", inputTensor.shape);
-    await logTensorStats(inputTensor, "Input Tensor");
-
-    const modelPath = "file://./model/model.json";
-    const model = await tf.loadGraphModel(modelPath);
-
-    // Perform the upscaling
-    const outputTensor = model.predict(inputTensor);
-    console.log("Output Tensor Shape:", outputTensor.shape);
-    await logTensorStats(outputTensor, "Output Tensor");
-
-    // Post-process the output tensor: Scale values from [-1, 1] to [0, 255]
-    const scaledTensor = outputTensor.squeeze().add(tf.scalar(1)).mul(tf.scalar(127.5)).cast("int32");
-    await logTensorStats(scaledTensor, "Scaled Tensor");
-
-    // Clip values to the range [0, 255]
-    const clippedTensor = tf.clipByValue(scaledTensor, 0, 255);
-    await logTensorStats(clippedTensor, "Clipped Tensor");
-
-    // Convert the tensor to a PNG image
-    const buffer = await tf.node.encodePng(clippedTensor);
-    fs.writeFileSync(outputPath, buffer);
-
-    inputTensor.dispose();
-    outputTensor.dispose();
-    scaledTensor.dispose();
-    clippedTensor.dispose();
-  } catch (error) {
-    console.error("Error during image upscaling:", error);
-  }
-}
-
-app.post("/upscale-image-new", upload.single("image"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No image file uploaded.");
-  }
-
-  const imagePath = req.file.path;
-  const upscaledImagePath = path.join(__dirname, "uploads", `upscaled_${Date.now()}.png`);
-
-  try {
-    await upscaleImage(imagePath, upscaledImagePath);
-
-    res.download(upscaledImagePath, (err) => {
-      if (err) {
-        console.error("Error sending the upscaled image:", err);
-      }
-      fs.unlinkSync(imagePath);
-      fs.unlinkSync(upscaledImagePath);
-    });
-  } catch (error) {
-    console.error("Failed to upscale image:", error);
-    res.status(500).send("Failed to upscale image");
-  }
-});
-
-// new video slice
-
-app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
-  const numVideos = parseInt(req.body.numVideos, 10);
-  const videoPaths = [];
-  const tempOutputPaths = [];
-  const slices = [];
-
-  if (numVideos >= 1) {
-    videoPaths.push(req.files["video1"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output1_${Date.now()}.mp4`));
-    slices.push([
-      { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
-      { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
-      { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
-    ]);
-  }
-
-  if (numVideos >= 2) {
-    videoPaths.push(req.files["video2"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output2_${Date.now()}.mp4`));
-    slices.push([
-      { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
-      { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
-      { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
-    ]);
-  }
-
-  if (numVideos === 3) {
-    videoPaths.push(req.files["video3"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output3_${Date.now()}.mp4`));
-    slices.push([
-      { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
-      { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
-      { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
-    ]);
-  }
-
-  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
-
-  const processVideo = (videoPath, slices, outputPath) => {
-    return new Promise((resolve, reject) => {
-      let filterComplex = "";
-      let inputs = [];
-
-      slices.forEach((slice, index) => {
-        const { start, end } = slice;
-        if (!isNaN(start) && !isNaN(end) && end > start) {
-          let duration = end - start;
-          filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
-          inputs.push(`[v${index}]`);
-        }
-      });
-
-      if (inputs.length > 0) {
-        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
-      } else {
-        return reject("No valid video segments specified.");
-      }
-
-      const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
-
-      exec(ffmpegCommand, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
-          return reject("Failed to process video.");
-        }
-        resolve();
-      });
-    });
-  };
-
-  const concatenateVideos = (inputPaths, outputPath) => {
-    return new Promise((resolve, reject) => {
-      const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
-      const concatFilePath = path.join(__dirname, "processed", `concat_${Date.now()}.txt`);
-
-      fs.writeFileSync(concatFilePath, concatFileContent);
-
-      const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
-
-      exec(ffmpegConcatCommand, (error, stdout, stderr) => {
-        if (error) {
-          console.error("Error executing FFmpeg concat command:", stderr);
-          return reject("Failed to concatenate videos.");
-        }
-        fs.unlinkSync(concatFilePath);
-        resolve();
-      });
-    });
-  };
-
-  (async () => {
-    try {
-      for (let i = 0; i < videoPaths.length; i++) {
-        await processVideo(videoPaths[i], slices[i], tempOutputPaths[i]);
-      }
-
-      await concatenateVideos(tempOutputPaths, finalOutputPath);
-
-      res.download(finalOutputPath, (downloadErr) => {
-        if (downloadErr) {
-          console.error("Error sending the processed video:", downloadErr);
-        }
-        videoPaths.forEach((path) => fs.unlinkSync(path));
-        tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).send(error);
-    }
-  })();
-});
-
-// gradient background
-
-app.post("/createGradientImage", (req, res) => {
-  const { gradientType, topColor, bottomColor, size } = req.body;
-
-  let dimensions;
-  switch (size) {
-    case "small":
-      dimensions = "600x1000";
-      break;
-    case "medium":
-      dimensions = "600x1500";
-      break;
-    case "large":
-      dimensions = "600x2000";
-      break;
-    default:
-      dimensions = "600x1000";
-  }
-
-  const outputFile = path.join(__dirname, "gradient-background", `gradient_${Date.now()}.png`);
-  let command;
-
-  switch (gradientType) {
-    case "radial":
-      command = `convert -size ${dimensions} radial-gradient:#${topColor}-#${bottomColor} ${outputFile}`;
-      break;
-    case "left-right":
-      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
-      break;
-    case "diagonal-tl-br":
-      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 45 ${outputFile}`;
-      break;
-    case "diagonal-tr-bl":
-      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 135 ${outputFile}`;
-      break;
-    case "linear":
-    default:
-      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
-  }
-
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      return res.status(500).send("Failed to create gradient image.");
-    }
-    res.sendFile(outputFile);
-  });
-});
-
-// yt downloader
-// app.post("/get-formats", async (req, res) => {
-//   const { url } = req.body;
-
-//   if (!ytdl.validateURL(url)) {
-//     console.log("Invalid URL attempt:", url);
-//     return res.status(400).send("Invalid YouTube URL.");
-//   }
-
-//   try {
-//     const info = await ytdl.getInfo(url);
-//     const formats = ytdl
-//       .filterFormats(info.formats, "video")
-//       .filter((format) => format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel))
-//       .reduce(
-//         (acc, format) => {
-//           const key = `${format.qualityLabel}-${format.container}`;
-//           if (!acc.seen.has(key)) {
-//             acc.seen.add(key);
-//             acc.result.push(format);
-//           }
-//           return acc;
-//         },
-//         { seen: new Set(), result: [] }
-//       ).result;
-//     res.json(formats);
-//   } catch (error) {
-//     console.error("Error fetching formats:", error);
-//     res.status(500).send("Failed to fetch formats.");
-//   }
-// });
-
-// app.post("/download-youtube", async (req, res) => {
-//   const { url, format } = req.body;
-//   if (!ytdl.validateURL(url)) {
-//     return res.status(400).send("Invalid YouTube URL.");
-//   }
-
-//   try {
-//     const info = await ytdl.getInfo(url);
-//     const formatOption = info.formats.find((f) => f.itag.toString() === format);
-//     if (!formatOption) {
-//       return res.status(400).send("Invalid format selected.");
-//     }
-
-//     const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
-//     const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
-//     const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
-//     const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
-
-//     const videoStream = ytdl(url, { quality: formatOption.itag });
-//     videoStream
-//       .pipe(fs.createWriteStream(videoPath))
-//       .on("finish", () => {
-//         const audioStream = ytdl(url, { quality: "highestaudio" });
-//         audioStream
-//           .pipe(fs.createWriteStream(audioPath))
-//           .on("finish", () => {
-//             const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-//             exec(ffmpegCommand, (error, stdout, stderr) => {
-//               if (error) {
-//                 console.error("ffmpeg error:", stderr);
-//                 return res.status(500).send("Failed to merge video and audio.");
-//               }
-//               res.download(outputPath, (err) => {
-//                 if (err) {
-//                   console.error("Download error:", err);
-//                 }
-//                 // Clean up files
-//                 [videoPath, audioPath, outputPath].forEach((file) => fs.unlinkSync(file));
-//               });
-//             });
-//           })
-//           .on("error", (error) => {
-//             console.error("Audio download error:", error);
-//             res.status(500).send("Audio processing failed");
-//           });
-//       })
-//       .on("error", (error) => {
-//         console.error("Video download error:", error);
-//         res.status(500).send("Video processing failed");
-//       });
-//   } catch (error) {
-//     console.error("Download error:", error);
-//     res.status(500).send("Failed to download video.");
-//   }
-// });
-
-// youtube downloader
-
-app.post("/get-formats", async (req, res) => {
-  const { url } = req.body;
-
-  if (!ytdl.validateURL(url)) {
-    return res.status(400).send("Invalid YouTube URL.");
-  }
-
-  try {
-    const info = await ytdl.getInfo(url);
-    let formats = ytdl.filterFormats(info.formats, "video");
-    formats = formats.filter((format) => {
-      return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
-    });
-
-    // Remove duplicate formats
-    const seen = new Set();
-    formats = formats.filter((format) => {
-      const key = `${format.qualityLabel}-${format.container}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-
-    res.json(formats);
-  } catch (error) {
-    console.error("Error fetching formats:", error);
-    res.status(500).send("Failed to fetch formats.");
-  }
-});
-
-app.post("/download-youtube", async (req, res) => {
-  const { url, format } = req.body;
-
-  if (!ytdl.validateURL(url)) {
-    return res.status(400).send("Invalid YouTube URL.");
-  }
-
-  try {
-    const info = await ytdl.getInfo(url);
-    const formatOptions = info.formats.find((f) => f.itag.toString() === format);
-    if (!formatOptions) {
-      return res.status(400).send("Invalid format selected.");
-    }
-
-    const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
-    const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
-    const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
-    const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
-
-    // Download video stream
-    const videoStream = ytdl(url, { quality: formatOptions.itag });
-    const videoWriteStream = fs.createWriteStream(videoPath);
-    videoStream.pipe(videoWriteStream);
-
-    videoWriteStream.on("finish", () => {
-      // Download audio stream
-      const audioStream = ytdl(url, { quality: "highestaudio" });
-      const audioWriteStream = fs.createWriteStream(audioPath);
-      audioStream.pipe(audioWriteStream);
-
-      audioWriteStream.on("finish", () => {
-        const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
-        exec(ffmpegCommand, (error, stdout, stderr) => {
-          if (error) {
-            console.error("ffmpeg error:", stderr);
-            return res.status(500).send("Failed to merge video and audio.");
-          }
-
-          res.download(outputPath, (err) => {
-            if (err) {
-              console.error("Download error:", err);
-            }
-            // Clean up files
-            fs.unlinkSync(videoPath);
-            fs.unlinkSync(audioPath);
-            fs.unlinkSync(outputPath);
-          });
-        });
-      });
-
-      audioWriteStream.on("error", (err) => {
-        console.error("Audio stream error:", err);
-        res.status(500).send("Failed to download audio.");
-      });
-    });
-
-    videoWriteStream.on("error", (err) => {
-      console.error("Video stream error:", err);
-      res.status(500).send("Failed to download video.");
-    });
-  } catch (error) {
-    console.error("Download error:", error);
-    res.status(500).send("Failed to download video.");
-  }
-});
-
-// subtitles
+// Video Subtitles -- Using text-to-speech API
 
 async function uploadFileToGCS(filePath) {
   const fileName = path.basename(filePath);
@@ -636,6 +187,72 @@ function cleanupFiles(videoPath, audioPath, srtPath) {
   // fs.unlinkSync(srtPath);
 }
 
+// app.post("/transcribe-video", upload.single("video"), async (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).send("No video file uploaded.");
+//   }
+
+//   const videoPath = req.file.path;
+//   const audioPath = path.join(__dirname, "subtitles", `${req.file.filename}.flac`);
+//   const srtPath = path.join(__dirname, "subtitles", `${req.file.filename}.srt`);
+//   const outputPath = path.join(__dirname, "subtitles", `${req.file.filename}_subtitled.mp4`);
+//   const fontSize = req.body.fontSize || 24;
+//   const fontFamily = req.body.fontFamily || "Arial";
+//   const fontColor = req.body.fontColor || "#FFFFFF";
+//   const maxWordsPerLine = req.body.maxWordsPerLine || 10;
+//   const maxDurationPerLine = req.body.maxDurationPerLine || 5;
+//   const bufferTime = req.body.bufferTime || 0.1;
+//   const borderStyle = req.body.borderStyle || 1;
+//   const outlineColor = req.body.outlineColor || "#000000";
+
+//   const hexToAssColor = (hex) => {
+//     const alpha = "00";
+//     const red = hex.substring(1, 3);
+//     const green = hex.substring(3, 5);
+//     const blue = hex.substring(5, 7);
+//     return `&H${alpha}${blue}${green}${red}&`;
+//   };
+
+//   const primaryColor = hexToAssColor(fontColor);
+//   const outlineAssColor = hexToAssColor(outlineColor);
+
+//   const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+//   exec(ffmpegExtractAudioCommand, async (error) => {
+//     if (error) {
+//       console.error("Error converting video to audio:", error);
+//       return res.status(500).send("Failed to convert video.");
+//     }
+
+//     try {
+//       const transcriptionResults = await transcribeAudio(audioPath);
+//       createSRT(transcriptionResults, srtPath);
+
+//       // Verify the SRT file exists before running FFmpeg
+//       if (!fs.existsSync(srtPath)) {
+//         console.error("SRT file does not exist:", srtPath);
+//         return res.status(500).send("SRT file creation failed.");
+//       }
+
+//       const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineAssColor},Outline=1,Shadow=0'" -c:v libx264 -c:a copy "${outputPath}"`;
+//       console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`); // Debug log
+//       exec(ffmpegAddSubtitlesCommand, (subError) => {
+//         cleanupFiles(videoPath, audioPath, srtPath);
+
+//         if (subError) {
+//           console.error("Error adding subtitles:", subError);
+//           return res.status(500).send("Failed to add subtitles to video.");
+//         }
+
+//         res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+//       });
+//     } catch (transcriptionError) {
+//       console.error("Transcription error:", transcriptionError);
+//       cleanupFiles(videoPath, audioPath, srtPath);
+//       res.status(500).send("Failed to transcribe audio.");
+//     }
+//   });
+// });
+
 app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No video file uploaded.");
@@ -700,6 +317,467 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
       res.status(500).send("Failed to transcribe audio.");
     }
   });
+});
+
+// new video slice
+
+app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
+  const numVideos = parseInt(req.body.numVideos, 10);
+  const videoPaths = [];
+  const tempOutputPaths = [];
+  const slices = [];
+
+  if (numVideos >= 1) {
+    videoPaths.push(req.files["video1"][0].path);
+    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output1_${Date.now()}.mp4`));
+    slices.push([
+      { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+      { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+      { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+    ]);
+  }
+
+  if (numVideos >= 2) {
+    videoPaths.push(req.files["video2"][0].path);
+    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output2_${Date.now()}.mp4`));
+    slices.push([
+      { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+      { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+      { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+    ]);
+  }
+
+  if (numVideos === 3) {
+    videoPaths.push(req.files["video3"][0].path);
+    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output3_${Date.now()}.mp4`));
+    slices.push([
+      { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
+      { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
+      { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
+    ]);
+  }
+
+  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+
+  const processVideo = (videoPath, slices, outputPath) => {
+    return new Promise((resolve, reject) => {
+      let filterComplex = "";
+      let inputs = [];
+
+      slices.forEach((slice, index) => {
+        const { start, end } = slice;
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+          let duration = end - start;
+          filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
+          inputs.push(`[v${index}]`);
+        }
+      });
+
+      if (inputs.length > 0) {
+        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+      } else {
+        return reject("No valid video segments specified.");
+      }
+
+      const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+      exec(ffmpegCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+          return reject("Failed to process video.");
+        }
+        resolve();
+      });
+    });
+  };
+
+  const concatenateVideos = (inputPaths, outputPath) => {
+    return new Promise((resolve, reject) => {
+      const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+      const concatFilePath = path.join(__dirname, "processed", `concat_${Date.now()}.txt`);
+
+      fs.writeFileSync(concatFilePath, concatFileContent);
+
+      const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+      exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error("Error executing FFmpeg concat command:", stderr);
+          return reject("Failed to concatenate videos.");
+        }
+        fs.unlinkSync(concatFilePath);
+        resolve();
+      });
+    });
+  };
+
+  (async () => {
+    try {
+      for (let i = 0; i < videoPaths.length; i++) {
+        await processVideo(videoPaths[i], slices[i], tempOutputPaths[i]);
+      }
+
+      await concatenateVideos(tempOutputPaths, finalOutputPath);
+
+      res.download(finalOutputPath, (downloadErr) => {
+        if (downloadErr) {
+          console.error("Error sending the processed video:", downloadErr);
+        }
+        videoPaths.forEach((path) => fs.unlinkSync(path));
+        tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send(error);
+    }
+  })();
+});
+
+// video-slice - old, single video version
+app.post("/slice", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+
+  let filterComplex = "";
+  let inputs = [];
+
+  for (let i = 1; i <= 3; i++) {
+    const start = parseFloat(req.body[`slice${i}Start`]);
+    const end = parseFloat(req.body[`slice${i}End`]);
+
+    if (!isNaN(start) && !isNaN(end) && end > start) {
+      let duration = end - start;
+      filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${i}]; `;
+      inputs.push(`[v${i}]`);
+    }
+  }
+
+  if (inputs.length > 0) {
+    filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+  } else {
+    return res.status(400).send("No valid video segments specified.");
+  }
+
+  const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${finalOutputPath}"`;
+
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    if (error) {
+      console.error("Error executing FFmpeg command:", stderr);
+      return res.status(500).send("Failed to process video.");
+    }
+
+    res.download(finalOutputPath, (downloadErr) => {
+      if (downloadErr) {
+        console.error("Error sending the processed video:", downloadErr);
+      }
+      fs.unlinkSync(videoPath);
+    });
+  });
+});
+
+//colored overlay
+
+app.post("/overlay", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const color = req.body.color.replace("#", "");
+  const opacity = parseFloat(req.body.opacity);
+  const outputPath = path.join(__dirname, "processed", `overlay_video_${Date.now()}.mp4`);
+
+  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    if (error) {
+      console.error("Error getting video size:", error);
+      return res.status(500).send("Failed to get video size.");
+    }
+
+    const [width, height] = stdout.trim().split(",");
+    const overlayPath = path.join(__dirname, "overlay", `overlay_${Date.now()}.png`);
+
+    exec(
+      `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(color.substring(4, 6), 16)},${opacity})" "${overlayPath}"`,
+      (overlayError) => {
+        if (overlayError) {
+          console.error("Error creating overlay:", overlayError);
+          return res.status(500).send("Failed to create overlay.");
+        }
+
+        exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+          if (ffmpegError) {
+            console.error("Error applying overlay:", ffmpegError);
+            return res.status(500).send("Failed to apply overlay.");
+          }
+
+          res.download(outputPath, (downloadErr) => {
+            if (downloadErr) {
+              console.error("Error sending the overlay video:", downloadErr);
+            }
+            fs.unlinkSync(videoPath);
+            fs.unlinkSync(overlayPath);
+          });
+        });
+      }
+    );
+  });
+});
+
+// gradient overlay
+
+app.post("/gradientOverlay", upload.single("video"), (req, res) => {
+  console.log("Request Body:", req.body); // Log form fields
+  console.log("Uploaded Files:", req.file); // Log uploaded files
+
+  if (!req.file) {
+    return res.status(400).send("No video file uploaded.");
+  }
+
+  const videoPath = req.file.path;
+  const gradientType = req.body.gradientType;
+  const gradientColor = req.body.gradientColor.replace("#", "");
+  const outputPath = path.join(__dirname, "processed", `gradient_overlay_video_${Date.now()}.mp4`);
+
+  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    if (error) {
+      console.error("Error getting video size:", error);
+      return res.status(500).send("Failed to get video size.");
+    }
+
+    const [width, height] = stdout.trim().split(",");
+    const gradientPath = path.join(__dirname, "overlay", `gradient_${Date.now()}.png`);
+    let gradientSize, overlayPosition;
+
+    switch (gradientType) {
+      case "full":
+        gradientSize = `${width}x${height}`;
+        overlayPosition = "0:0";
+        break;
+      case "half":
+        gradientSize = `${width}x${parseInt(height / 2)}`;
+        overlayPosition = `0:${parseInt(height / 2)}`;
+        break;
+      case "quarter":
+        gradientSize = `${width}x${parseInt(height / 4)}`;
+        overlayPosition = `0:${3 * parseInt(height / 4)}`;
+        break;
+    }
+
+    const gradientCommand = `convert -size ${gradientSize} gradient:#00000000-#${gradientColor} "${gradientPath}"`;
+
+    exec(gradientCommand, (gradientError) => {
+      if (gradientError) {
+        console.error("Error creating gradient:", gradientError);
+        return res.status(500).send("Failed to create gradient.");
+      }
+
+      // Apply the gradient
+      const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition} [outv]" -map "[outv]" -map 0:a? -c:a copy "${outputPath}"`;
+
+      exec(ffmpegCommand, (ffmpegError) => {
+        if (ffmpegError) {
+          console.error("Error applying gradient overlay:", ffmpegError);
+          return res.status(500).send("Failed to apply gradient overlay.");
+        }
+
+        res.download(outputPath, (downloadErr) => {
+          if (downloadErr) {
+            console.error("Error sending the gradient overlay video:", downloadErr);
+          }
+          fs.unlinkSync(videoPath);
+          fs.unlinkSync(gradientPath);
+        });
+      });
+    });
+  });
+});
+
+// slow video
+
+app.post("/slowVideo", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const slowFactor = parseFloat(req.body.slowFactor);
+  const outputPath = path.join(__dirname, "processed", `slowed_video_${Date.now()}.mp4`);
+
+  exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    let ffmpegCommand;
+
+    if (stdout) {
+      // has audio
+      ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "[0:v]setpts=${slowFactor}*PTS[v];[0:a]atempo=1/${slowFactor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
+    } else {
+      // no audio
+      ffmpegCommand = `ffmpeg -i "${videoPath}" -filter:v "setpts=${slowFactor}*PTS" "${outputPath}"`;
+    }
+
+    exec(ffmpegCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Error executing FFmpeg command:", stderr);
+        return res.status(500).send("Failed to slow down video.");
+      }
+
+      res.download(outputPath, (downloadErr) => {
+        if (downloadErr) {
+          console.error("Error sending the slowed video:", downloadErr);
+        }
+
+        fs.unlinkSync(videoPath);
+      });
+    });
+  });
+});
+
+// ------- Convert to ------- //
+
+app.post("/convertToWebP", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
+
+  const convertCommand = `ffmpeg -i "${videoPath}" -vf scale=iw:ih -vcodec libwebp -compression_level 6 -q:v 30 -preset picture -an -loop 0 -vsync 0 "${outputPath}"`;
+
+  exec(convertCommand, (error, stdout, stderr) => {
+    if (error) {
+      console.error("Error converting video to WebP:", stderr);
+      return res.status(500).send("Error converting video to WebP.");
+    }
+
+    res.setHeader("Content-Type", "image/webp");
+    res.download(outputPath, "video.webp", (downloadErr) => {
+      if (downloadErr) {
+        console.error("Error sending the WebP file:", downloadErr);
+      }
+
+      fs.unlinkSync(videoPath);
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
+
+app.post("/convertToAvif", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const outputPath = path.join(convertedDir, `converted_${Date.now()}.avif`);
+
+  console.log(`Starting conversion for ${videoPath}`);
+  const convertCommand = `ffmpeg -y -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
+
+  exec(convertCommand, (convertError) => {
+    if (convertError) {
+      console.error("Conversion Error:", convertError);
+      return res.status(500).send("Error converting video to AVIF.");
+    }
+
+    fs.access(outputPath, fs.constants.F_OK, (err) => {
+      if (err) {
+        console.error("Converted file does not exist:", err);
+        return res.status(404).send("Converted file not found.");
+      }
+
+      res.download(outputPath, "video.avif", (downloadErr) => {
+        if (downloadErr) {
+          console.error("SendFile Error:", downloadErr.message);
+          return res.status(500).send("Error sending the converted file.");
+        }
+
+        fs.unlink(outputPath, (unlinkErr) => {
+          if (unlinkErr) {
+            console.error(`Error deleting output file: ${outputPath}`, unlinkErr);
+          }
+        });
+      });
+    });
+  });
+});
+
+app.post("/convertToGif", upload.single("video"), (req, res) => {
+  if (!req.file) {
+    console.error("No file uploaded.");
+    return res.status(400).send("No file uploaded.");
+  }
+
+  const videoPath = req.file.path;
+  const framesDir = path.join(__dirname, `frames_${Date.now()}`);
+  const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.gif`);
+
+  fs.mkdirSync(framesDir, { recursive: true });
+
+  const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=15 "${path.join(framesDir, "frame_%04d.png")}"`;
+
+  exec(extractFramesCommand, (extractError) => {
+    if (extractError) {
+      console.error("Error extracting frames:", extractError);
+      cleanup(videoPath, framesDir);
+      return res.status(500).send("Error extracting frames.");
+    }
+
+    fs.readdir(framesDir, (err, files) => {
+      if (err) {
+        console.error("Error reading frames directory:", err);
+        cleanup(videoPath, framesDir);
+        return res.status(500).send("Could not read frames directory.");
+      }
+
+      files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
+      const frameFiles = files.map((file) => path.join(framesDir, file));
+
+      execFile("gifski", ["-o", outputPath, "--fps", "15", "--quality", "80", ...frameFiles], (gifskiError, stdout, stderr) => {
+        if (gifskiError) {
+          console.error("Error creating GIF with gifski:", gifskiError);
+          console.error("stderr:", stderr);
+          cleanup(videoPath, framesDir);
+          return res.status(500).send("Error creating GIF with gifski.");
+        }
+
+        res.download(outputPath, () => {
+          cleanup(videoPath, framesDir, outputPath);
+        });
+      });
+    });
+  });
+});
+
+const cleanup = (videoPath, framesDir, outputPath) => {
+  fs.unlink(videoPath, (err) => {
+    if (err) console.error(`Error deleting video file: ${videoPath}`, err);
+  });
+
+  fs.rmdir(framesDir, { recursive: true }, (err) => {
+    if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
+  });
+
+  if (outputPath) {
+    fs.unlink(outputPath, (err) => {
+      if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
+    });
+  }
+};
+
+// ------ Clipdrop API EFFECTS ------ //
+
+app.post("/text-to-image", async (req, res) => {
+  console.log("Request body:", req.body);
+
+  const { prompt } = req.body;
+
+  if (!prompt) {
+    return res.status(400).send("No prompt provided.");
+  }
+
+  const formData = new FormData();
+  formData.append("prompt", prompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to generate image from text:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to generate image from text");
+  }
 });
 
 //cleanup
@@ -865,49 +943,9 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
   }
 });
 
-// video-slice
-app.post("/slice", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+//----- Extra Features -------//
 
-  let filterComplex = "";
-  let inputs = [];
-
-  for (let i = 1; i <= 3; i++) {
-    const start = parseFloat(req.body[`slice${i}Start`]);
-    const end = parseFloat(req.body[`slice${i}End`]);
-
-    if (!isNaN(start) && !isNaN(end) && end > start) {
-      let duration = end - start;
-      filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${i}]; `;
-      inputs.push(`[v${i}]`);
-    }
-  }
-
-  if (inputs.length > 0) {
-    filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
-  } else {
-    return res.status(400).send("No valid video segments specified.");
-  }
-
-  const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${finalOutputPath}"`;
-
-  exec(ffmpegCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.error("Error executing FFmpeg command:", stderr);
-      return res.status(500).send("Failed to process video.");
-    }
-
-    res.download(finalOutputPath, (downloadErr) => {
-      if (downloadErr) {
-        console.error("Error sending the processed video:", downloadErr);
-      }
-      fs.unlinkSync(videoPath);
-    });
-  });
-});
-
-// background creator
+// gradient background creator
 
 app.post("/preview-overlay", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
@@ -951,266 +989,152 @@ app.post("/preview-overlay", upload.single("video"), (req, res) => {
   });
 });
 
-//colored overlay
+app.post("/createGradientImage", (req, res) => {
+  const { gradientType, topColor, bottomColor, size } = req.body;
 
-app.post("/overlay", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const color = req.body.color.replace("#", "");
-  const opacity = parseFloat(req.body.opacity);
-  const outputPath = path.join(__dirname, "processed", `overlay_video_${Date.now()}.mp4`);
+  let dimensions;
+  switch (size) {
+    case "small":
+      dimensions = "600x1000";
+      break;
+    case "medium":
+      dimensions = "600x1500";
+      break;
+    case "large":
+      dimensions = "600x2000";
+      break;
+    default:
+      dimensions = "600x1000";
+  }
 
-  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+  const outputFile = path.join(__dirname, "gradient-background", `gradient_${Date.now()}.png`);
+  let command;
+
+  switch (gradientType) {
+    case "radial":
+      command = `convert -size ${dimensions} radial-gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "left-right":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "diagonal-tl-br":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 45 ${outputFile}`;
+      break;
+    case "diagonal-tr-bl":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 135 ${outputFile}`;
+      break;
+    case "linear":
+    default:
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+  }
+
+  exec(command, (error, stdout, stderr) => {
     if (error) {
-      console.error("Error getting video size:", error);
-      return res.status(500).send("Failed to get video size.");
+      console.error(`exec error: ${error}`);
+      return res.status(500).send("Failed to create gradient image.");
+    }
+    res.sendFile(outputFile);
+  });
+});
+
+// youtube downloader
+
+app.post("/get-formats", async (req, res) => {
+  const { url } = req.body;
+
+  if (!ytdl.validateURL(url)) {
+    return res.status(400).send("Invalid YouTube URL.");
+  }
+
+  try {
+    const info = await ytdl.getInfo(url);
+    let formats = ytdl.filterFormats(info.formats, "video");
+    formats = formats.filter((format) => {
+      return format.qualityLabel && !["144p", "240p"].includes(format.qualityLabel);
+    });
+
+    // Remove duplicate formats
+    const seen = new Set();
+    formats = formats.filter((format) => {
+      const key = `${format.qualityLabel}-${format.container}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
+    res.json(formats);
+  } catch (error) {
+    console.error("Error fetching formats:", error);
+    res.status(500).send("Failed to fetch formats.");
+  }
+});
+
+app.post("/download-youtube", async (req, res) => {
+  const { url, format } = req.body;
+
+  if (!ytdl.validateURL(url)) {
+    return res.status(400).send("Invalid YouTube URL.");
+  }
+
+  try {
+    const info = await ytdl.getInfo(url);
+    const formatOptions = info.formats.find((f) => f.itag.toString() === format);
+    if (!formatOptions) {
+      return res.status(400).send("Invalid format selected.");
     }
 
-    const [width, height] = stdout.trim().split(",");
-    const overlayPath = path.join(__dirname, "overlay", `overlay_${Date.now()}.png`);
+    const videoTitle = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, "_");
+    const videoPath = path.join(__dirname, "downloads", `${videoTitle}.mp4`);
+    const audioPath = path.join(__dirname, "downloads", `${videoTitle}.mp3`);
+    const outputPath = path.join(__dirname, "downloads", `${videoTitle}_final.mp4`);
 
-    exec(
-      `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(color.substring(4, 6), 16)},${opacity})" "${overlayPath}"`,
-      (overlayError) => {
-        if (overlayError) {
-          console.error("Error creating overlay:", overlayError);
-          return res.status(500).send("Failed to create overlay.");
-        }
+    // Download video stream
+    const videoStream = ytdl(url, { quality: formatOptions.itag });
+    const videoWriteStream = fs.createWriteStream(videoPath);
+    videoStream.pipe(videoWriteStream);
 
-        exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
-          if (ffmpegError) {
-            console.error("Error applying overlay:", ffmpegError);
-            return res.status(500).send("Failed to apply overlay.");
+    videoWriteStream.on("finish", () => {
+      // Download audio stream
+      const audioStream = ytdl(url, { quality: "highestaudio" });
+      const audioWriteStream = fs.createWriteStream(audioPath);
+      audioStream.pipe(audioWriteStream);
+
+      audioWriteStream.on("finish", () => {
+        const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -strict experimental "${outputPath}"`;
+        exec(ffmpegCommand, (error, stdout, stderr) => {
+          if (error) {
+            console.error("ffmpeg error:", stderr);
+            return res.status(500).send("Failed to merge video and audio.");
           }
 
-          res.download(outputPath, (downloadErr) => {
-            if (downloadErr) {
-              console.error("Error sending the overlay video:", downloadErr);
+          res.download(outputPath, (err) => {
+            if (err) {
+              console.error("Download error:", err);
             }
+            // Clean up files
             fs.unlinkSync(videoPath);
-            fs.unlinkSync(overlayPath);
+            fs.unlinkSync(audioPath);
+            fs.unlinkSync(outputPath);
           });
         });
-      }
-    );
-  });
-});
+      });
 
-// gradient overlay
-
-app.post("/gradientOverlay", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const gradientType = req.body.gradientType;
-  const gradientColor = req.body.gradientColor.replace("#", "");
-  const outputPath = path.join(__dirname, "processed", `gradient_overlay_video_${Date.now()}.mp4`);
-
-  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
-    if (error) {
-      console.error("Error getting video size:", error);
-      return res.status(500).send("Failed to get video size.");
-    }
-
-    const [width, height] = stdout.trim().split(",");
-    const gradientPath = path.join(__dirname, "overlay", `gradient_${Date.now()}.png`);
-    let gradientSize, overlayPosition;
-
-    switch (gradientType) {
-      case "full":
-        gradientSize = `${width}x${height}`;
-        overlayPosition = "0:0";
-        break;
-      case "half":
-        gradientSize = `${width}x${parseInt(height / 2)}`;
-        overlayPosition = `0:${parseInt(height / 2)}`;
-        break;
-      case "quarter":
-        gradientSize = `${width}x${parseInt(height / 4)}`;
-        overlayPosition = `0:${3 * parseInt(height / 4)}`;
-        break;
-    }
-
-    const gradientCommand = `convert -size ${gradientSize} gradient:#00000000-#${gradientColor} "${gradientPath}"`;
-
-    exec(gradientCommand, (gradientError) => {
-      if (gradientError) {
-        console.error("Error creating gradient:", gradientError);
-        return res.status(500).send("Failed to create gradient.");
-      }
-
-      // Apply the gradient
-      const ffmpegCommand = `ffmpeg -i "${videoPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition} [outv]" -map "[outv]" -map 0:a? -c:a copy "${outputPath}"`;
-
-      exec(ffmpegCommand, (ffmpegError) => {
-        if (ffmpegError) {
-          console.error("Error applying gradient overlay:", ffmpegError);
-          return res.status(500).send("Failed to apply gradient overlay.");
-        }
-
-        res.download(outputPath, (downloadErr) => {
-          if (downloadErr) {
-            console.error("Error sending the gradient overlay video:", downloadErr);
-          }
-          fs.unlinkSync(videoPath);
-          fs.unlinkSync(gradientPath);
-        });
+      audioWriteStream.on("error", (err) => {
+        console.error("Audio stream error:", err);
+        res.status(500).send("Failed to download audio.");
       });
     });
-  });
-});
 
-app.post("/slowVideo", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const slowFactor = parseFloat(req.body.slowFactor);
-  const outputPath = path.join(__dirname, "processed", `slowed_video_${Date.now()}.mp4`);
-
-  exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${videoPath}"`, (error, stdout) => {
-    let ffmpegCommand;
-
-    if (stdout) {
-      // has audio
-      ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "[0:v]setpts=${slowFactor}*PTS[v];[0:a]atempo=1/${slowFactor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
-    } else {
-      // no audio
-      ffmpegCommand = `ffmpeg -i "${videoPath}" -filter:v "setpts=${slowFactor}*PTS" "${outputPath}"`;
-    }
-
-    exec(ffmpegCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error("Error executing FFmpeg command:", stderr);
-        return res.status(500).send("Failed to slow down video.");
-      }
-
-      res.download(outputPath, (downloadErr) => {
-        if (downloadErr) {
-          console.error("Error sending the slowed video:", downloadErr);
-        }
-
-        fs.unlinkSync(videoPath);
-      });
+    videoWriteStream.on("error", (err) => {
+      console.error("Video stream error:", err);
+      res.status(500).send("Failed to download video.");
     });
-  });
-});
-
-app.post("/convertToWebP", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
-
-  const convertCommand = `ffmpeg -i "${videoPath}" -vf scale=iw:ih -vcodec libwebp -compression_level 6 -q:v 30 -preset picture -an -loop 0 -vsync 0 "${outputPath}"`;
-
-  exec(convertCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.error("Error converting video to WebP:", stderr);
-      return res.status(500).send("Error converting video to WebP.");
-    }
-
-    res.setHeader("Content-Type", "image/webp");
-    res.download(outputPath, "video.webp", (downloadErr) => {
-      if (downloadErr) {
-        console.error("Error sending the WebP file:", downloadErr);
-      }
-
-      fs.unlinkSync(videoPath);
-      fs.unlinkSync(outputPath);
-    });
-  });
-});
-
-app.post("/convertToGif", upload.single("video"), (req, res) => {
-  if (!req.file) {
-    console.error("No file uploaded.");
-    return res.status(400).send("No file uploaded.");
+  } catch (error) {
+    console.error("Download error:", error);
+    res.status(500).send("Failed to download video.");
   }
-
-  const videoPath = req.file.path;
-  const framesDir = path.join(__dirname, `frames_${Date.now()}`);
-  const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.gif`);
-
-  fs.mkdirSync(framesDir, { recursive: true });
-
-  const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=15 "${path.join(framesDir, "frame_%04d.png")}"`;
-
-  exec(extractFramesCommand, (extractError) => {
-    if (extractError) {
-      console.error("Error extracting frames:", extractError);
-      cleanup(videoPath, framesDir);
-      return res.status(500).send("Error extracting frames.");
-    }
-
-    fs.readdir(framesDir, (err, files) => {
-      if (err) {
-        console.error("Error reading frames directory:", err);
-        cleanup(videoPath, framesDir);
-        return res.status(500).send("Could not read frames directory.");
-      }
-
-      files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
-
-      const frameFiles = files.map((file) => path.join(framesDir, file));
-
-      execFile("gifski", ["-o", outputPath, "--fps", "15", "--quality", "80", ...frameFiles], (gifskiError, stdout, stderr) => {
-        if (gifskiError) {
-          console.error("Error creating GIF with gifski:", gifskiError);
-          console.error("stderr:", stderr);
-          cleanup(videoPath, framesDir);
-          return res.status(500).send("Error creating GIF with gifski.");
-        }
-
-        res.download(outputPath, () => {
-          cleanup(videoPath, framesDir, outputPath);
-        });
-      });
-    });
-  });
-});
-
-const cleanup = (videoPath, framesDir, outputPath) => {
-  fs.unlink(videoPath, (err) => {
-    if (err) console.error(`Error deleting video file: ${videoPath}`, err);
-  });
-
-  fs.rmdir(framesDir, { recursive: true }, (err) => {
-    if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
-  });
-
-  if (outputPath) {
-    fs.unlink(outputPath, (err) => {
-      if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
-    });
-  }
-};
-
-app.post("/convertToAvif", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const outputPath = path.join(convertedDir, `converted_${Date.now()}.avif`);
-
-  console.log(`Starting conversion for ${videoPath}`);
-  const convertCommand = `ffmpeg -y -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
-
-  exec(convertCommand, (convertError) => {
-    if (convertError) {
-      console.error("Conversion Error:", convertError);
-      return res.status(500).send("Error converting video to AVIF.");
-    }
-
-    fs.access(outputPath, fs.constants.F_OK, (err) => {
-      if (err) {
-        console.error("Converted file does not exist:", err);
-        return res.status(404).send("Converted file not found.");
-      }
-
-      res.download(outputPath, "video.avif", (downloadErr) => {
-        if (downloadErr) {
-          console.error("SendFile Error:", downloadErr.message);
-          return res.status(500).send("Error sending the converted file.");
-        }
-
-        fs.unlink(outputPath, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error(`Error deleting output file: ${outputPath}`, unlinkErr);
-          }
-        });
-      });
-    });
-  });
 });
 
 app.listen(3000, "0.0.0.0", () => {

@@ -1,91 +1,157 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video Processing Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="slicerForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload Video:</label>
+          <input type="file" id="video" name="video" accept="video/*" required />
+        </div>
+
+        <div class="overlay-group">
+          <div class="form-group color-picker-group">
+            <label for="gradientColor">Gradient Color:</label>
+            <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000" />
+            <span id="colorValue">#000000</span>
+          </div>
+          <div class="form-group">
+            <label for="gradientDirection">Gradient Size:</label>
+            <select id="gradientDirection" name="gradientDirection">
+              <option value="full">Full</option>
+              <option value="half">Half</option>
+              <option value="quarter">Quarter</option>
+            </select>
+          </div>
+          <div class="button-group">
+            <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
+        </div>
+
+        <div>
+          <h3>Video with Overlay<span id="downloadButtonContainer" style="margin-left: 10px"></span></h3>
+          <video id="overlayVideo" controls></video>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification">Processing your video, please wait...</div>
+
+    <script src="video-gradient.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var colorPicker = document.getElementById("overlayColor");
+        var colorValueDisplay = document.getElementById("colorValue");
+
+        colorPicker.addEventListener("input", function () {
+          colorValueDisplay.textContent = colorPicker.value.toUpperCase(); //
+        });
+
+        var opacitySlider = document.getElementById("overlayOpacity");
+        var opacityValueDisplay = document.getElementById("opacityValue");
+
+        opacitySlider.addEventListener("input", function () {
+          opacityValueDisplay.textContent = opacitySlider.value;
+        });
+      });
+    </script>
+  </body>
+</html> -->
+
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Video Processing Tool</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>
-        
-        <form id="slicerForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="video">Upload Video:</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
 
-            <div class="overlay-group">
-                <div class="form-group color-picker-group">
-                    <label for="gradientColor">Gradient Color:</label>
-                    <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000">
-                    <span id="colorValue">#000000</span>
-                </div>
-                <div class="form-group">
-                    <label for="gradientDirection">Gradient Size:</label>
-                    <select id="gradientDirection" name="gradientDirection">
-                        <option value="full">Full</option>
-                        <option value="half">Half</option>
-                        <option value="quarter">Quarter</option> 
-                    </select>
-                </div>
-                <div class="button-group">
-                    <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
-                </div>
-            </div>
+      <form id="slicerForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload Video:</label>
+          <input type="file" id="video" name="video" accept="video/*" required />
+        </div>
 
-        </form>
+        <div class="overlay-group">
+          <div class="form-group color-picker-group">
+            <label for="gradientColor">Gradient Color:</label>
+            <input type="color" id="gradientColor" name="gradientColor" class="color-picker" value="#000000" />
+            <span id="colorValue">#000000</span>
+          </div>
+          <div class="form-group">
+            <label for="gradientDirection">Gradient Size:</label>
+            <select id="gradientDirection" name="gradientDirection">
+              <option value="full">Full</option>
+              <option value="half">Half</option>
+              <option value="quarter">Quarter</option>
+            </select>
+          </div>
+          <div class="button-group">
+            <button type="button" id="createGradientOverlayButton">Create Gradient Overlay</button>
+          </div>
+        </div>
+      </form>
     </div>
 
-    
-
-
-<div class="main-content">
-    <div id="videoContainer">
+    <div class="main-content">
+      <div id="videoContainer">
         <div>
-            <h3>Uploaded Video</h3>
-            <video id="uploadedVideo" controls></video>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
         </div>
-        
+
         <div>
-            <h3>Video with Overlay<span id="downloadButtonContainer" style="margin-left: 10px;"></span></h3>
-            <video id="overlayVideo" controls></video>
+          <h3>Video with Overlay<span id="downloadButtonContainer" style="margin-left: 10px"></span></h3>
+          <video id="overlayVideo" controls></video>
         </div>
-        
+      </div>
     </div>
-</div>
 
-<div id="processingNotification">
-    Processing your video, please wait...
-</div>
+    <div id="processingNotification">Processing your video, please wait...</div>
 
-<script src="video-gradient.js"></script>
+    <script src="video-gradient.js"></script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-       
-        var colorPicker = document.getElementById('overlayColor');
-        var colorValueDisplay = document.getElementById('colorValue');
-        
-        colorPicker.addEventListener('input', function() {
-            colorValueDisplay.textContent = colorPicker.value.toUpperCase(); // 
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var colorPicker = document.getElementById("gradientColor"); // Corrected ID
+        var colorValueDisplay = document.getElementById("colorValue");
+
+        colorPicker.addEventListener("input", function () {
+          colorValueDisplay.textContent = colorPicker.value.toUpperCase(); //
         });
-    
-       
-        var opacitySlider = document.getElementById('overlayOpacity');
-        var opacityValueDisplay = document.getElementById('opacityValue');
-        
-        opacitySlider.addEventListener('input', function() {
-            opacityValueDisplay.textContent = opacitySlider.value;
+
+        var opacitySlider = document.getElementById("overlayOpacity");
+        var opacityValueDisplay = document.getElementById("opacityValue");
+
+        opacitySlider.addEventListener("input", function () {
+          opacityValueDisplay.textContent = opacitySlider.value;
         });
-    });
-</script>
-    
-
-
-</body>
+      });
+    </script>
+  </body>
 </html>
