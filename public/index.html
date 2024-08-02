@@ -48,24 +48,6 @@
           <span class="icon-title">Convert to GIF</span>
           <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon" />
         </button>
-        <!-- <button onclick="location.href='upload-to-gc.html'" class="icon-button">
-          <span class="icon-title">Upload to Cloud</span>
-          <img src="images/cloud-computing.png" alt="cloud" class="icon" />
-        </button> -->
-
-        <!-- <button onclick="location.href='video-slice-multi.html'" class="icon-button">
-          <span class="icon-title">Multi Slice</span>
-          <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon" />
-        </button> -->
-
-        <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
-                <span class="icon-title">Under Construction</span>
-                <img src="images/video_CTA_icon.png" alt="cta_icon" class="icon">
-            </button>
-            <button onclick="location.href='video-overlay.html'" style="display: hidden" class="icon-button">
-                <span class="icon-title"></span>
-                <img src="" alt="resize_icon" class="icon">
-            </button> -->
 
         <!-- <button onclick="location.href='video-overlay.html'" class="icon-button">
                 <span class="icon-title">Convert to AVIF (Under Construction)</span>
@@ -83,11 +65,6 @@
 
       <h2>Image Effects</h2>
       <div class="image-grid-middle">
-        <!-- <button onclick="location.href='image-gradient.html'" class="icon-button">
-          <span class="icon-title">Gradient Background</span>
-          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
-        </button> -->
-
         <button onclick="location.href='text-to-image.html'" class="icon-button">
           <span class="icon-title">Text to Image</span>
           <img src="images/text-to-image.png" alt="gradient_icon" class="icon" />
@@ -113,26 +90,22 @@
           <img src="images/remove-bg.png" alt="remove-background" class="icon" />
         </button>
       </div>
+
+      <!-- <h2>Extra Features</h2>
+      <div class="image-grid-middle">
+        <button onclick="location.href='image-gradient.html'" class="icon-button">
+          <span class="icon-title">Gradient Background</span>
+          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
+        </button>
+        <button onclick="location.href='upload-to-gc.html'" class="icon-button">
+          <span class="icon-title">Host Image/Video</span>
+          <img src="images/cloud-computing.png" alt="cloud" class="icon" />
+        </button>
+      </div>
+    </div> -->
     </div>
 
     <div id="processingNotification">Processing your video, please wait...</div>
-
     <script src="videoSlicer.js"></script>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        var colorPicker = document.getElementById("overlayColor");
-        var colorValueDisplay = document.getElementById("colorValue");
-        colorPicker.addEventListener("input", function () {
-          colorValueDisplay.textContent = colorPicker.value.toUpperCase();
-        });
-
-        var opacitySlider = document.getElementById("overlayOpacity");
-        var opacityValueDisplay = document.getElementById("opacityValue");
-        opacitySlider.addEventListener("input", function () {
-          opacityValueDisplay.textContent = opacitySlider.value;
-        });
-      });
-    </script>
   </body>
 </html>
