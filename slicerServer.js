@@ -47,13 +47,15 @@ const compressedDir = path.join(__dirname, "compressed");
 
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   const numVideos = parseInt(req.body.numVideos, 10);
+  const outputWidth = parseInt(req.body.outputWidth, 10);
+  const outputHeight = parseInt(req.body.outputHeight, 10);
   const videoPaths = [];
   const tempOutputPaths = [];
   const slices = [];
 
   if (numVideos >= 1) {
     videoPaths.push(req.files["video1"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output1_${Date.now()}.mp4`));
+    tempOutputPaths.push(path.join(__dirname, `processed/temp_output1_${Date.now()}.mp4`));
     slices.push([
       { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
       { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
@@ -63,7 +65,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 
   if (numVideos >= 2) {
     videoPaths.push(req.files["video2"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output2_${Date.now()}.mp4`));
+    tempOutputPaths.push(path.join(__dirname, `processed/temp_output2_${Date.now()}.mp4`));
     slices.push([
       { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
       { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
@@ -73,7 +75,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 
   if (numVideos === 3) {
     videoPaths.push(req.files["video3"][0].path);
-    tempOutputPaths.push(path.join(__dirname, "processed", `temp_output3_${Date.now()}.mp4`));
+    tempOutputPaths.push(path.join(__dirname, `processed/temp_output3_${Date.now()}.mp4`));
     slices.push([
       { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
       { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
@@ -81,9 +83,9 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     ]);
   }
 
-  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+  const finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
 
-  const processVideo = (videoPath, slices, outputPath) => {
+  const processVideo = (videoPath, slices, outputPath, targetWidth, targetHeight) => {
     return new Promise((resolve, reject) => {
       let filterComplex = "";
       let inputs = [];
@@ -92,13 +94,14 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
         const { start, end } = slice;
         if (!isNaN(start) && !isNaN(end) && end > start) {
           let duration = end - start;
-          filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
+          // Added crop filter to crop video to target dimensions from the center
+          filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,crop=${targetWidth}:${targetHeight}:(in_w-out_w)/2:(in_h-out_h)/2[v${index}]; `;
           inputs.push(`[v${index}]`);
         }
       });
 
       if (inputs.length > 0) {
-        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
       } else {
         return reject("No valid video segments specified.");
       }
@@ -118,7 +121,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
   const concatenateVideos = (inputPaths, outputPath) => {
     return new Promise((resolve, reject) => {
       const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
-      const concatFilePath = path.join(__dirname, "processed", `concat_${Date.now()}.txt`);
+      const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
 
       fs.writeFileSync(concatFilePath, concatFileContent);
 
@@ -138,7 +141,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
   (async () => {
     try {
       for (let i = 0; i < videoPaths.length; i++) {
-        await processVideo(videoPaths[i], slices[i], tempOutputPaths[i]);
+        await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], outputWidth, outputHeight);
       }
 
       await concatenateVideos(tempOutputPaths, finalOutputPath);
@@ -156,6 +159,365 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     }
   })();
 });
+
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
+//   const numVideos = parseInt(req.body.numVideos, 10);
+//   const videoPaths = [];
+//   const tempOutputPaths = [];
+//   const slices = [];
+
+//   if (numVideos >= 1) {
+//     videoPaths.push(req.files["video1"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output1_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+//       { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+//       { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+//     ]);
+//   }
+
+//   if (numVideos >= 2) {
+//     videoPaths.push(req.files["video2"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output2_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+//       { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+//       { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+//     ]);
+//   }
+
+//   if (numVideos === 3) {
+//     videoPaths.push(req.files["video3"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output3_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
+//       { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
+//       { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
+//     ]);
+//   }
+
+//   const finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
+
+//   const getVideoDimensions = (videoPath) => {
+//     return new Promise((resolve, reject) => {
+//       const ffprobeCommand = `ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 "${videoPath}"`;
+//       exec(ffprobeCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error(`Error getting video dimensions for ${videoPath}:`, stderr);
+//           return reject("Failed to get video dimensions.");
+//         }
+//         const matches = stdout.match(/width=(\d+)\nheight=(\d+)/);
+//         if (matches) {
+//           resolve({ width: parseInt(matches[1], 10), height: parseInt(matches[2], 10) });
+//         } else {
+//           reject("Failed to parse video dimensions.");
+//         }
+//       });
+//     });
+//   };
+
+//   const processVideo = (videoPath, slices, outputPath, targetWidth, targetHeight) => {
+//     return new Promise((resolve, reject) => {
+//       let filterComplex = "";
+//       let inputs = [];
+
+//       slices.forEach((slice, index) => {
+//         const { start, end } = slice;
+//         if (!isNaN(start) && !isNaN(end) && end > start) {
+//           let duration = end - start;
+//           // Added crop filter to crop video to target dimensions
+//           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,crop=${targetWidth}:${targetHeight},scale=${targetWidth}:${targetHeight}[v${index}]; `;
+//           inputs.push(`[v${index}]`);
+//         }
+//       });
+
+//       if (inputs.length > 0) {
+//         filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
+//       } else {
+//         return reject("No valid video segments specified.");
+//       }
+
+//       const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+//       exec(ffmpegCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+//           return reject("Failed to process video.");
+//         }
+//         resolve();
+//       });
+//     });
+//   };
+
+//   const concatenateVideos = (inputPaths, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+//       const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
+
+//       fs.writeFileSync(concatFilePath, concatFileContent);
+
+//       const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+//       exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error("Error executing FFmpeg concat command:", stderr);
+//           return reject("Failed to concatenate videos.");
+//         }
+//         fs.unlinkSync(concatFilePath);
+//         resolve();
+//       });
+//     });
+//   };
+
+//   (async () => {
+//     try {
+//       // Get dimensions of all videos
+//       const dimensions = await Promise.all(videoPaths.map(getVideoDimensions));
+//       const minWidth = Math.min(...dimensions.map((d) => d.width));
+//       const minHeight = Math.min(...dimensions.map((d) => d.height));
+
+//       for (let i = 0; i < videoPaths.length; i++) {
+//         await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], minWidth, minHeight);
+//       }
+
+//       await concatenateVideos(tempOutputPaths, finalOutputPath);
+
+//       res.download(finalOutputPath, (downloadErr) => {
+//         if (downloadErr) {
+//           console.error("Error sending the processed video:", downloadErr);
+//         }
+//         videoPaths.forEach((path) => fs.unlinkSync(path));
+//         tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).send(error);
+//     }
+//   })();
+// });
+
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
+//   const numVideos = parseInt(req.body.numVideos, 10);
+//   const videoPaths = [];
+//   const tempOutputPaths = [];
+//   const slices = [];
+//   const targetResolution = "1280x720"; // Add target resolution for scaling
+
+//   if (numVideos >= 1) {
+//     videoPaths.push(req.files["video1"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output1_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+//       { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+//       { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+//     ]);
+//   }
+
+//   if (numVideos >= 2) {
+//     videoPaths.push(req.files["video2"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output2_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+//       { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+//       { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+//     ]);
+//   }
+
+//   if (numVideos === 3) {
+//     videoPaths.push(req.files["video3"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output3_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
+//       { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
+//       { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
+//     ]);
+//   }
+
+//   const finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
+//   const processVideo = (videoPath, slices, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       let filterComplex = "";
+//       let inputs = [];
+
+//       slices.forEach((slice, index) => {
+//         const { start, end } = slice;
+//         if (!isNaN(start) && !isNaN(end) && end > start) {
+//           let duration = end - start;
+//           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,scale=${targetResolution}[v${index}]; `; // Added scale filter
+//           inputs.push(`[v${index}]`);
+//         }
+//       });
+
+//       if (inputs.length > 0) {
+//         filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
+//       } else {
+//         return reject("No valid video segments specified.");
+//       }
+
+//       const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+//       exec(ffmpegCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+//           return reject("Failed to process video.");
+//         }
+//         resolve();
+//       });
+//     });
+//   };
+
+//   const concatenateVideos = (inputPaths, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+//       const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
+
+//       fs.writeFileSync(concatFilePath, concatFileContent);
+
+//       const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+//       exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error("Error executing FFmpeg concat command:", stderr);
+//           return reject("Failed to concatenate videos.");
+//         }
+//         fs.unlinkSync(concatFilePath);
+//         resolve();
+//       });
+//     });
+//   };
+
+//   (async () => {
+//     try {
+//       for (let i = 0; i < videoPaths.length; i++) {
+//         await processVideo(videoPaths[i], slices[i], tempOutputPaths[i]);
+//       }
+
+//       await concatenateVideos(tempOutputPaths, finalOutputPath);
+
+//       res.download(finalOutputPath, (downloadErr) => {
+//         if (downloadErr) {
+//           console.error("Error sending the processed video:", downloadErr);
+//         }
+//         videoPaths.forEach((path) => fs.unlinkSync(path));
+//         tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).send(error);
+//     }
+//   })();
+// });
+
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
+//   const numVideos = parseInt(req.body.numVideos, 10);
+//   const videoPaths = [];
+//   const tempOutputPaths = [];
+//   const slices = [];
+
+//   if (numVideos >= 1) {
+//     videoPaths.push(req.files["video1"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output1_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+//       { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+//       { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+//     ]);
+//   }
+
+//   if (numVideos >= 2) {
+//     videoPaths.push(req.files["video2"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output2_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+//       { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+//       { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+//     ]);
+//   }
+
+//   if (numVideos === 3) {
+//     videoPaths.push(req.files["video3"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output3_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
+//       { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
+//       { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
+//     ]);
+//   }
+
+//   const finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
+//   const processVideo = (videoPath, slices, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       let filterComplex = "";
+//       let inputs = [];
+
+//       slices.forEach((slice, index) => {
+//         const { start, end } = slice;
+//         if (!isNaN(start) && !isNaN(end) && end > start) {
+//           let duration = end - start;
+//           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${index}]; `;
+//           inputs.push(`[v${index}]`);
+//         }
+//       });
+
+//       if (inputs.length > 0) {
+//         filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
+//       } else {
+//         return reject("No valid video segments specified.");
+//       }
+
+//       const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+//       exec(ffmpegCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+//           return reject("Failed to process video.");
+//         }
+//         resolve();
+//       });
+//     });
+//   };
+
+//   const concatenateVideos = (inputPaths, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+//       const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
+
+//       fs.writeFileSync(concatFilePath, concatFileContent);
+
+//       const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+//       exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error("Error executing FFmpeg concat command:", stderr);
+//           return reject("Failed to concatenate videos.");
+//         }
+//         fs.unlinkSync(concatFilePath);
+//         resolve();
+//       });
+//     });
+//   };
+
+//   (async () => {
+//     try {
+//       for (let i = 0; i < videoPaths.length; i++) {
+//         await processVideo(videoPaths[i], slices[i], tempOutputPaths[i]);
+//       }
+
+//       await concatenateVideos(tempOutputPaths, finalOutputPath);
+
+//       res.download(finalOutputPath, (downloadErr) => {
+//         if (downloadErr) {
+//           console.error("Error sending the processed video:", downloadErr);
+//         }
+//         videoPaths.forEach((path) => fs.unlinkSync(path));
+//         tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).send(error);
+//     }
+//   })();
+// });
 
 // video-slice - old, single video version
 app.post("/slice", upload.single("video"), (req, res) => {
