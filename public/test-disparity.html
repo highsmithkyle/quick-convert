@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Disparity Map</title>
+  </head>
+  <body>
+    <h1>Test Disparity Map Generation</h1>
+    <form id="disparityForm">
+      <label for="inputImageUrl">Input Image URL:</label>
+      <input type="url" id="inputImageUrl" name="inputImageUrl" required />
+      <button type="submit">Generate Disparity Map</button>
+    </form>
+    <div id="result" style="display: none">
+      <h2>Disparity Map Result</h2>
+      <p id="disparityUrl"></p>
+      <img id="disparityImage" src="" alt="Disparity Map" style="max-width: 100%" />
+    </div>
+
+    <script>
+      document.getElementById("disparityForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const inputImageUrl = document.getElementById("inputImageUrl").value;
+        const response = await fetch("/generate-disparity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inputImageUrl }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById("disparityUrl").textContent = data.disparityMapUrl;
+          document.getElementById("disparityImage").src = data.disparityMapUrl;
+          document.getElementById("result").style.display = "block";
+        } else {
+          alert("Failed to generate disparity map");
+        }
+      });
+    </script>
+  </body>
+</html>

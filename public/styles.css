@@ -403,3 +403,29 @@ input[type="number"] {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+
+.checkbox-container {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  margin-bottom: 20px;
+}
+
+.form-group-inline {
+  display: flex;
+  align-items: center;
+}
+.form-group-inline input[type="checkbox"] {
+  margin-right: 10px;
+}
+.overlay-controls {
+  display: none;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  margin-bottom: 20px;
+}
