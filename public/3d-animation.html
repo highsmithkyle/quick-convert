@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>3D Animation</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+      <h2>3D Animation</h2>
+      <form id="uploadFormAnimation" class="form-group">
+        <label for="inputImageUrl">Input Image URL:</label>
+        <input type="url" id="inputImageUrl" name="inputImageUrl" value="https://t4.ftcdn.net/jpg/02/95/56/79/360_F_295567963_h56R5KH5MxJXYusnFs8VWJZAzs0A1pbY.jpg" style="width: 90%" required />
+
+        <label for="inputDisparityUrl">Input Disparity URL:</label>
+        <input
+          type="url"
+          id="inputDisparityUrl"
+          name="inputDisparityUrl"
+          value="https://leia-storage-service-production.s3.us-east-1.amazonaws.com/timed/D001/f005e24c-c2d3-44e8-86c6-ca52e851dd63/e5e3d5a3-a35d-4c2f-9f9e-5324f5f402ec/bec3a092-cf65-4620-91c0-43ed26d517c5/61a277e7-acd2-4b13-aceb-f585d8adf111.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIASC7ECGJVHARKLZ6E%2F20240806%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240806T133348Z&X-Amz-Expires=86400&X-Amz-Signature=6360e308daade7d10f30b682d94c921017d21895bbfe161dbc931e884dba4c27&X-Amz-SignedHeaders=host&x-id=GetObject"
+          style="width: 90%"
+          required
+        />
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Generate Animation</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Input Image</h3>
+          <img id="uploadedImage" src="https://t4.ftcdn.net/jpg/02/95/56/79/360_F_295567963_h56R5KH5MxJXYusnFs8VWJZAzs0A1pbY.jpg" alt="Input Image" style="width: 450px" />
+        </div>
+        <div>
+          <h3>3D Animation</h3>
+          <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          <video id="processedAnimation" controls style="width: 450px"></video>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById("uploadFormAnimation").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        const requestBody = {};
+        formData.forEach((value, key) => {
+          requestBody[key] = value;
+        });
+
+        console.log("Request body:", requestBody);
+
+        const notification = document.getElementById("processingNotification");
+        notification.style.display = "block";
+
+        try {
+          const response = await fetch("/generate-animation", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || "Failed to generate animation");
+          }
+
+          document.getElementById("processedAnimation").src = data.downloadUrl;
+          document.getElementById("downloadButtonContainer").innerHTML = `<a href="${data.downloadUrl}" download="3d_animation.mp4">Download Animation</a>`;
+          document.getElementById("downloadButtonContainer").style.display = "block";
+        } catch (err) {
+          console.error("Error:", err);
+          alert("Failed to generate animation: " + err.message);
+        } finally {
+          notification.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>
