@@ -271,14 +271,12 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
       exec(extractFramesCommand, (extractError) => {
         if (extractError) {
           console.error("Error extracting frames:", extractError);
-          cleanup(videoPath, framesDir);
           return reject("Error extracting frames.");
         }
 
         fs.readdir(framesDir, (err, files) => {
           if (err) {
             console.error("Error reading frames directory:", err);
-            cleanup(videoPath, framesDir);
             return reject("Could not read frames directory.");
           }
 
@@ -290,7 +288,6 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
             if (gifskiError) {
               console.error("Error creating GIF with gifski:", gifskiError);
               console.error("stderr:", stderr);
-              cleanup(videoPath, framesDir);
               return reject("Error creating GIF with gifski.");
             }
 
@@ -299,22 +296,6 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
         });
       });
     });
-  };
-
-  const cleanup = (videoPath, framesDir, outputPath) => {
-    fs.unlink(videoPath, (err) => {
-      if (err) console.error(`Error deleting video file: ${videoPath}`, err);
-    });
-
-    fs.rmdir(framesDir, { recursive: true }, (err) => {
-      if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
-    });
-
-    if (outputPath) {
-      fs.unlink(outputPath, (err) => {
-        if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
-      });
-    }
   };
 
   (async () => {
@@ -328,42 +309,26 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
       if (enableOverlay) {
         const overlayedOutputPath = path.join(__dirname, `processed/final_output_overlayed_${Date.now()}.mp4`);
         await applyOverlay(finalOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
-        fs.unlinkSync(finalOutputPath);
         finalOutputPath = overlayedOutputPath;
       }
 
       if (enableGradientOverlay) {
         const gradientOverlayedOutputPath = path.join(__dirname, `processed/final_output_gradient_overlayed_${Date.now()}.mp4`);
         await applyGradientOverlay(finalOutputPath, gradientOverlayedOutputPath, gradientColor, gradientDirection);
-        fs.unlinkSync(finalOutputPath);
         finalOutputPath = gradientOverlayedOutputPath;
       }
 
       if (enableSlowVideo) {
         const slowedOutputPath = path.join(__dirname, `processed/final_output_slowed_${Date.now()}.mp4`);
         await applySlowVideo(finalOutputPath, slowedOutputPath, slowFactor);
-        fs.unlinkSync(finalOutputPath);
         finalOutputPath = slowedOutputPath;
       }
 
       if (enableGifConversion) {
         const gifOutputPath = await convertToGif(finalOutputPath, gifFps, gifQuality);
-        fs.unlinkSync(finalOutputPath);
-        res.download(gifOutputPath, (downloadErr) => {
-          if (downloadErr) {
-            console.error("Error sending the converted GIF:", downloadErr);
-          }
-          videoPaths.forEach((path) => fs.unlinkSync(path));
-          tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-        });
+        res.download(gifOutputPath);
       } else {
-        res.download(finalOutputPath, (downloadErr) => {
-          if (downloadErr) {
-            console.error("Error sending the processed video:", downloadErr);
-          }
-          videoPaths.forEach((path) => fs.unlinkSync(path));
-          tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-        });
+        res.download(finalOutputPath);
       }
     } catch (error) {
       console.error(error);
@@ -377,15 +342,16 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //   const outputWidth = parseInt(req.body.outputWidth, 10);
 //   const outputHeight = parseInt(req.body.outputHeight, 10);
 //   const enableOverlay = req.body.enableOverlay === "on";
-//   const enableGradientOverlay = req.body.enableGradientOverlay === "on";
-//   const enableSlowVideo = req.body.enableSlowVideo === "on";
-
-//   // checks to avoid errors
 //   const overlayColor = req.body.overlayColor || "";
 //   const overlayOpacity = parseFloat(req.body.overlayOpacity || "0");
+//   const enableGradientOverlay = req.body.enableGradientOverlay === "on";
 //   const gradientColor = req.body.gradientColor ? req.body.gradientColor.replace("#", "") : "";
 //   const gradientDirection = req.body.gradientDirection || "";
+//   const enableSlowVideo = req.body.enableSlowVideo === "on";
 //   const slowFactor = parseFloat(req.body.slowFactor || "1");
+//   const enableGifConversion = req.body.enableGifConversion === "on";
+//   const gifFps = parseInt(req.body.gifFps || "15", 10);
+//   const gifQuality = parseInt(req.body.gifQuality || "80", 10);
 
 //   const videoPaths = [];
 //   const tempOutputPaths = [];
@@ -564,8 +530,10 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //         let ffmpegCommand;
 
 //         if (stdout) {
+//           // has audio
 //           ffmpegCommand = `ffmpeg -i "${inputPath}" -filter_complex "[0:v]setpts=${factor}*PTS[v];[0:a]atempo=1/${factor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
 //         } else {
+//           // no audio
 //           ffmpegCommand = `ffmpeg -i "${inputPath}" -filter:v "setpts=${factor}*PTS" "${outputPath}"`;
 //         }
 
@@ -581,6 +549,65 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
+//   const convertToGif = (videoPath, fps, quality) => {
+//     return new Promise((resolve, reject) => {
+//       const framesDir = path.join(__dirname, `frames_${Date.now()}`);
+//       const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.gif`);
+
+//       fs.mkdirSync(framesDir, { recursive: true });
+
+//       const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=${fps} "${path.join(framesDir, "frame_%04d.png")}"`;
+
+//       exec(extractFramesCommand, (extractError) => {
+//         if (extractError) {
+//           console.error("Error extracting frames:", extractError);
+//           cleanup(videoPath, framesDir);
+//           return reject("Error extracting frames.");
+//         }
+
+//         fs.readdir(framesDir, (err, files) => {
+//           if (err) {
+//             console.error("Error reading frames directory:", err);
+//             cleanup(videoPath, framesDir);
+//             return reject("Could not read frames directory.");
+//           }
+
+//           files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
+//           const frameFiles = files.map((file) => path.join(framesDir, file));
+
+//           execFile("gifski", ["-o", outputPath, "--fps", `${fps}`, "--quality", `${quality}`, ...frameFiles], (gifskiError, stdout, stderr) => {
+//             if (gifskiError) {
+//               console.error("Error creating GIF with gifski:", gifskiError);
+//               console.error("stderr:", stderr);
+//               cleanup(videoPath, framesDir);
+//               return reject("Error creating GIF with gifski.");
+//             }
+
+//             resolve(outputPath);
+//             cleanup(videoPath, framesDir, outputPath);
+//           });
+//         });
+//       });
+//     });
+//   };
+
+//   const cleanup = (videoPath, framesDir, outputPath) => {
+//     fs.unlink(videoPath, (err) => {
+//       if (err) console.error(`Error deleting video file: ${videoPath}`, err);
+//     });
+
+//     fs.rmdir(framesDir, { recursive: true }, (err) => {
+//       if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
+//     });
+
+//     if (outputPath) {
+//       fs.unlink(outputPath, (err) => {
+//         if (err) console.error(`Error deleting output GIF: ${outputPath}`, err);
+//       });
+//     }
+//   };
+
 //   (async () => {
 //     try {
 //       for (let i = 0; i < videoPaths.length; i++) {
@@ -594,7 +621,9 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //         await applyOverlay(finalOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
 //         fs.unlinkSync(finalOutputPath);
 //         finalOutputPath = overlayedOutputPath;
-//       } else if (enableGradientOverlay) {
+//       }
+
+//       if (enableGradientOverlay) {
 //         const gradientOverlayedOutputPath = path.join(__dirname, `processed/final_output_gradient_overlayed_${Date.now()}.mp4`);
 //         await applyGradientOverlay(finalOutputPath, gradientOverlayedOutputPath, gradientColor, gradientDirection);
 //         fs.unlinkSync(finalOutputPath);
@@ -608,13 +637,25 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //         finalOutputPath = slowedOutputPath;
 //       }
 
-//       res.download(finalOutputPath, (downloadErr) => {
-//         if (downloadErr) {
-//           console.error("Error sending the processed video:", downloadErr);
-//         }
-//         videoPaths.forEach((path) => fs.unlinkSync(path));
-//         tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-//       });
+//       if (enableGifConversion) {
+//         const gifOutputPath = await convertToGif(finalOutputPath, gifFps, gifQuality);
+//         fs.unlinkSync(finalOutputPath);
+//         res.download(gifOutputPath, (downloadErr) => {
+//           if (downloadErr) {
+//             console.error("Error sending the converted GIF:", downloadErr);
+//           }
+//           videoPaths.forEach((path) => fs.unlinkSync(path));
+//           tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//         });
+//       } else {
+//         res.download(finalOutputPath, (downloadErr) => {
+//           if (downloadErr) {
+//             console.error("Error sending the processed video:", downloadErr);
+//           }
+//           videoPaths.forEach((path) => fs.unlinkSync(path));
+//           tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//         });
+//       }
 //     } catch (error) {
 //       console.error(error);
 //       res.status(500).send(error);
@@ -1362,7 +1403,7 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
 
 //----- Extra Features -------//
 
-//animation with Immersity.ai API -- desparity map working, ERROR_UNKNOWN when applying to image
+//animation with Immersity.ai API -- desparity map creation is working, ERROR_UNKNOWN when creating animation
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "views", "3d-animation.html"));
