@@ -1,48 +1,45 @@
 require("dotenv").config();
 
-// console.log("Google Upload Credentials Path:", process.env.GOOGLE_UPLOAD_CREDENTIALS);
-// console.log("Google Application Credentials Path:", process.env.GOOGLE_APPLICATION_CREDENTIALS);
-// console.log("Api access token path:", process.env.API_ACCESS_TOKEN_PATH);
-
 const express = require("express");
 const multer = require("multer");
-const { exec } = require("child_process");
+const { exec, execFile } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 const FormData = require("form-data");
-const app = express();
-const upload = multer({ dest: "uploads/" });
-const cors = require("cors");
-
 const { v4: uuidv4 } = require("uuid");
-const getAccessToken = require("./auth");
-const getDisparityMap = require("./getDisparityMap");
-const { execFile } = require("child_process");
-
+const cors = require("cors");
 const ytdl = require("ytdl-core");
-
-const speech = require("@google-cloud/speech");
-const speechClient = new speech.SpeechClient();
-
 const { google } = require("googleapis");
-google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
-
 const { Storage } = require("@google-cloud/storage");
+const speech = require("@google-cloud/speech");
+
+// Google Cloud
+google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
+const speechClient = new speech.SpeechClient();
 const storage = new Storage({
   keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
 });
 const bucket = storage.bucket("image-2d-to-3d");
 
+// Express
+const app = express();
+const upload = multer({ dest: "uploads/" });
+
 app.use(cors());
 app.use(express.static("public"));
 app.use(express.json());
-express.urlencoded({ extended: true });
+app.use(express.urlencoded({ extended: true }));
 app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
 
+// Environment Path
 process.env.PATH += ":/usr/bin";
 const convertedDir = path.join(__dirname, "converted");
 const compressedDir = path.join(__dirname, "compressed");
+
+// TensorFlow
+const getAccessToken = require("./auth");
+const getDisparityMap = require("./getDisparityMap");
 
 // video-slice-multi-video + crop + gradient + colored overlay + slow
 
@@ -1106,6 +1103,40 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
 });
 
 //----- Extra Features -------//
+
+// clean up - cleans up folders (compressed, converted, grad,overlay, subtitles, uploads
+
+const clearFolders = () => {
+  const folders = ["compressed", "converted", "gradient-background", "overlay", "subtitles", "uploads", "processed"];
+
+  folders.forEach((folder) => {
+    fs.readdir(path.join(__dirname, folder), (err, files) => {
+      if (err) {
+        console.error(`Error reading folder ${folder}:`, err);
+        return;
+      }
+
+      files.forEach((file) => {
+        const filePath = path.join(__dirname, folder, file);
+        if (file !== ".gitkeep") {
+          if (fs.existsSync(filePath)) {
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error(`Error deleting file ${file} in folder ${folder}:`, err);
+              }
+            });
+          } else {
+            console.warn(`File ${file} not found in folder ${folder}, skipping deletion.`);
+          }
+        }
+      });
+    });
+  });
+};
+
+clearFolders(); // clear folders on server startup
+
+setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
 
 //animation with Immersity.ai API -- desparity map creation is working, ERROR_UNKNOWN when creating animation
 

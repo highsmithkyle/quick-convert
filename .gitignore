@@ -20,3 +20,4 @@ downloads/*
 
 node_modules
 
+auth.js
