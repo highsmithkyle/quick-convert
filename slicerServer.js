@@ -214,7 +214,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
             break;
         }
 
-        const gradientCommand = `magick -size ${gradientSize} gradient:#00000000-#${color} "${gradientPath}"`;
+        const gradientCommand = `convert -size ${gradientSize} gradient:#00000000-#${color} "${gradientPath}"`;
 
         exec(gradientCommand, (gradientError) => {
           if (gradientError) {
