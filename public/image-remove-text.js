@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const imageInput = document.getElementById("image");
-  const uploadFormUpscaleNew = document.getElementById("uploadFormUpscaleNew");
+  const uploadFormRemoveText = document.getElementById("uploadFormRemoveText");
   const notification = document.getElementById("processingNotification");
 
   imageInput.addEventListener("change", function () {
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  uploadFormUpscaleNew.addEventListener("submit", function (e) {
+  uploadFormRemoveText.addEventListener("submit", function (e) {
     e.preventDefault();
 
     const formData = new FormData();
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     notification.style.display = "block";
 
-    fetch("/upscale-image-new", {
+    fetch("/remove-text", {
       method: "POST",
       body: formData,
     })
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .catch((err) => {
         console.error("Error:", err);
-        alert("Failed to upscale the image. " + err.message);
+        alert("Failed to remove text from the image. " + err.message);
         notification.style.display = "none";
       });
   });

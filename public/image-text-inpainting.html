@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Text Inpainting</title>
+    <link rel="stylesheet" href="image-cleanup-styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification">Processing your image, please wait...</div>
+
+      <h2>Text Inpainting</h2>
+
+      <div class="title-group">
+        <p style="font-size: 14px">
+          Draw over the areas of the image you want to replace, provide a text description of what should replace them, and click Inpaint Text. This tool will replace the marked areas based on your
+          description.
+        </p>
+      </div>
+
+      <form id="uploadForm" enctype="multipart/form-data" class="form-group">
+        <label for="image">Upload your image:</label>
+        <input type="file" id="image" name="image" accept="image/*" required />
+        <label for="textPrompt">Text Description:</label>
+        <input type="text" id="textPrompt" name="textPrompt" placeholder="Describe what should replace the selected area" required />
+        <label for="brushSize">Brush Size:</label>
+        <input type="range" id="brushSize" name="brushSize" min="10" max="100" value="30" style="width: 80%" />
+        <div class="button-group">
+          <button type="button" id="inpaintButton" class="form-button">Inpaint Text</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="imageContainer">
+        <div>
+          <canvas id="imageCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+    <script src="image-text-inpainting.js"></script>
+  </body>
+</html>

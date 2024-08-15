@@ -14,6 +14,8 @@ const { google } = require("googleapis");
 const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 
+// remove-text
+
 // Google Cloud
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 const speechClient = new speech.SpeechClient();
@@ -40,6 +42,104 @@ const compressedDir = path.join(__dirname, "compressed");
 // TensorFlow
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
+
+app.post("/text-inpainting", upload.fields([{ name: "image_file" }, { name: "mask_file" }]), async (req, res) => {
+  const imagePath = req.files["image_file"][0].path;
+  const maskPath = req.files["mask_file"][0].path;
+  const textPrompt = req.body.text_prompt;
+
+  const formData = new FormData();
+  formData.append("image_file", fs.createReadStream(imagePath));
+  formData.append("mask_file", fs.createReadStream(maskPath));
+  formData.append("text_prompt", textPrompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-inpainting/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    fs.unlinkSync(imagePath);
+    fs.unlinkSync(maskPath);
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to inpaint text:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to inpaint text.");
+  }
+});
+
+app.post("/remove-text", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No image file uploaded.");
+  }
+
+  const imagePath = req.file.path;
+
+  const formData = new FormData();
+  formData.append("image_file", fs.createReadStream(imagePath));
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/remove-text/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    fs.unlinkSync(imagePath);
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to remove text from image:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to remove text from image.");
+  }
+});
+
+// crop
+
+app.post("/upload", upload.single("video"), (req, res) => {
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const videoPath = req.file.path;
+  const timestamp = Date.now();
+  const outputPath = path.join(__dirname, "processed", `cropped_video_${timestamp}.mp4`);
+  const { width, height, left, top } = req.body;
+
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+    return res.status(400).send("Invalid crop dimensions");
+  }
+
+  const cropCommand = `crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}`;
+  const ffmpegCommand = `ffmpeg -i "${videoPath}" -vf "${cropCommand}" -c:a copy "${outputPath}"`;
+
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(videoPath);
+    if (error) {
+      console.error(`Exec Error: ${error.message}`);
+      return res.status(500).send("Error processing video");
+    }
+
+    res.sendFile(outputPath, (err) => {
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
 
 // video-slice-multi-video + crop + gradient + colored overlay + slow
 
