@@ -43,69 +43,9 @@ const compressedDir = path.join(__dirname, "compressed");
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
 
-app.post("/text-inpainting", upload.fields([{ name: "image_file" }, { name: "mask_file" }]), async (req, res) => {
-  const imagePath = req.files["image_file"][0].path;
-  const maskPath = req.files["mask_file"][0].path;
-  const textPrompt = req.body.text_prompt;
-
-  const formData = new FormData();
-  formData.append("image_file", fs.createReadStream(imagePath));
-  formData.append("mask_file", fs.createReadStream(maskPath));
-  formData.append("text_prompt", textPrompt);
-
-  try {
-    const response = await axios.post("https://clipdrop-api.co/text-inpainting/v1", formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-      },
-      responseType: "arraybuffer",
-    });
-
-    fs.unlinkSync(imagePath);
-    fs.unlinkSync(maskPath);
-
-    const imageType = response.headers["content-type"];
-    res.setHeader("Content-Type", imageType);
-    res.send(response.data);
-  } catch (error) {
-    console.error("Failed to inpaint text:", error.response ? error.response.data : error.message);
-    res.status(500).send("Failed to inpaint text.");
-  }
-});
-
-app.post("/remove-text", upload.single("image"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No image file uploaded.");
-  }
-
-  const imagePath = req.file.path;
-
-  const formData = new FormData();
-  formData.append("image_file", fs.createReadStream(imagePath));
-
-  try {
-    const response = await axios.post("https://clipdrop-api.co/remove-text/v1", formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-      },
-      responseType: "arraybuffer",
-    });
-
-    fs.unlinkSync(imagePath);
-
-    const imageType = response.headers["content-type"];
-    res.setHeader("Content-Type", imageType);
-    res.send(response.data);
-  } catch (error) {
-    console.error("Failed to remove text from image:", error.response ? error.response.data : error.message);
-    res.status(500).send("Failed to remove text from image.");
-  }
-});
+// ----- Video Effects ---- //
 
 // crop
-
 app.post("/upload", upload.single("video"), (req, res) => {
   if (!fs.existsSync("processed")) {
     fs.mkdirSync("processed");
@@ -142,7 +82,6 @@ app.post("/upload", upload.single("video"), (req, res) => {
 });
 
 // video-slice-multi-video + crop + gradient + colored overlay + slow
-
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   const numVideos = parseInt(req.body.numVideos, 10);
   const outputWidth = parseInt(req.body.outputWidth, 10);
@@ -507,7 +446,6 @@ app.post("/slice", upload.single("video"), (req, res) => {
 });
 
 //colored overlay
-
 app.post("/overlay", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
   const color = req.body.color.replace("#", "");
@@ -551,7 +489,6 @@ app.post("/overlay", upload.single("video"), (req, res) => {
 });
 
 // gradient overlay
-
 app.post("/gradientOverlay", upload.single("video"), (req, res) => {
   console.log("Request Body:", req.body); // Log form fields
   console.log("Uploaded Files:", req.file); // Log uploaded files
@@ -620,7 +557,6 @@ app.post("/gradientOverlay", upload.single("video"), (req, res) => {
 });
 
 // slow video
-
 app.post("/slowVideo", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
   const slowFactor = parseFloat(req.body.slowFactor);
@@ -654,8 +590,9 @@ app.post("/slowVideo", upload.single("video"), (req, res) => {
   });
 });
 
-// ----- Video Subtitles with Text-to-speech API ------ //
+// ----- Video Subtitles with speech-to-text API ------ //
 
+// upload to Google Cloud Storage bucket
 async function uploadFileToGCS(filePath) {
   const fileName = path.basename(filePath);
   await bucket.upload(filePath, {
@@ -664,6 +601,7 @@ async function uploadFileToGCS(filePath) {
   return `gs://${bucket.name}/${fileName}`;
 }
 
+// sends audio to speech-to-text api
 async function transcribeAudio(filePath) {
   const gcsUri = await uploadFileToGCS(filePath);
 
@@ -700,6 +638,7 @@ async function transcribeAudio(filePath) {
   return transcriptionResults;
 }
 
+// creates SRT (SubRip Subtitle) file from the transcription results.
 function createSRT(transcriptionResults, srtPath) {
   let srtContent = [];
   let index = 1;
@@ -757,6 +696,7 @@ function createSRT(transcriptionResults, srtPath) {
   console.log(`SRT file content:\n${srtContent.join("\n\n")}`);
 }
 
+// converts time value to subtitle time format (HH:MM:SS,mmm)
 function formatSRTTime(rawTime) {
   const time = parseFloat(rawTime);
   let hours = Math.floor(time / 3600);
@@ -771,38 +711,13 @@ function formatSRTTime(rawTime) {
 
   return `${hours}:${minutes}:${seconds},${milliseconds}`;
 }
-
+// converts SRT time back into seconds
 function parseSRTTime(srtTime) {
   const [hours, minutes, seconds] = srtTime.split(":");
   const [secs, millis] = seconds.split(",");
   return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(secs) + parseFloat(millis) / 1000;
 }
-
-function cleanupFiles(videoPath, audioPath, srtPath) {
-  fs.unlinkSync(videoPath);
-  fs.unlinkSync(audioPath);
-  // fs.unlinkSync(srtPath);
-}
-
-async function checkAudioQuality(videoPath) {
-  return new Promise((resolve, reject) => {
-    const checkCommand = `ffmpeg -i "${videoPath}" -af volumedetect -f null /dev/null`;
-    exec(checkCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error("Audio quality check failed:", stderr);
-        reject("Audio quality check failed.");
-      } else {
-        const meanVolumeMatch = stderr.match(/mean_volume:\s(-?\d+(\.\d+)?)/);
-        if (meanVolumeMatch && parseFloat(meanVolumeMatch[1]) < -30) {
-          reject("Audio too quiet to transcribe.");
-        } else {
-          resolve("Audio quality is sufficient.");
-        }
-      }
-    });
-  });
-}
-
+// Transcribes audio from a video file and returns the transcript with word timestamps
 app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No video file uploaded.");
@@ -822,7 +737,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   const outlineColor = req.body.outlineColor || "#000000";
   const subtitlePosition = req.body.subtitlePosition || "bottom";
 
-  const hexToAssColor = (hex) => {
+  const convertHexToSubtitleColor = (hex) => {
     const alpha = "00";
     const red = hex.substring(1, 3);
     const green = hex.substring(3, 5);
@@ -830,13 +745,11 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
     return `&H${alpha}${blue}${green}${red}&`;
   };
 
-  const primaryColor = hexToAssColor(fontColor);
-  const outlineAssColor = hexToAssColor(outlineColor);
+  const primaryColor = convertHexToSubtitleColor(fontColor);
+  const outlineSubtitleColor = convertHexToSubtitleColor(outlineColor);
   const alignment = subtitlePosition === "top" ? 6 : 2;
 
   try {
-    await checkAudioQuality(videoPath);
-
     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
     exec(ffmpegExtractAudioCommand, async (error) => {
       if (error) {
@@ -857,7 +770,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
           return res.status(500).send("SRT file creation failed.");
         }
 
-        const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineAssColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
+        const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineSubtitleColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
         console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`);
         exec(ffmpegAddSubtitlesCommand, (subError) => {
           cleanupFiles(videoPath, audioPath, srtPath);
@@ -882,7 +795,56 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   }
 });
 
+function cleanupFiles(videoPath, audioPath, srtPath) {
+  fs.unlinkSync(videoPath);
+  fs.unlinkSync(audioPath);
+  fs.unlinkSync(srtPath);
+}
+
 // ------- Convert to ------- //
+
+app.post("/convertToMp4", upload.single("video"), (req, res) => {
+  if (!req.file) {
+    console.error("No file uploaded.");
+    return res.status(400).send("No file uploaded.");
+  }
+
+  const videoPath = req.file.path;
+  const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.mp4`);
+
+  const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
+
+  exec(convertCommand, (convertError) => {
+    if (convertError) {
+      console.error("Error converting video to MP4:", convertError);
+      return res.status(500).send("Error converting video to MP4.");
+    }
+
+    res.download(outputPath, () => {
+      fs.unlinkSync(videoPath);
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
+
+app.post("/convertToWebm", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.webm`);
+
+  const convertCommand = `ffmpeg -i "${videoPath}" -c:v libvpx -b:v 1M -c:a libvorbis "${outputPath}"`;
+
+  exec(convertCommand, (convertError) => {
+    if (convertError) {
+      console.error("Error converting video to WEBM:", convertError);
+      return res.status(500).send("Error converting video to WEBM.");
+    }
+
+    res.download(outputPath, () => {
+      fs.unlinkSync(videoPath);
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
 
 app.post("/convertToWebP", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
@@ -1009,6 +971,71 @@ const cleanup = (videoPath, framesDir, outputPath) => {
 
 // ------ Clipdrop API Effects ------ //
 
+// inpaint
+
+app.post("/text-inpainting", upload.fields([{ name: "image_file" }, { name: "mask_file" }]), async (req, res) => {
+  const imagePath = req.files["image_file"][0].path;
+  const maskPath = req.files["mask_file"][0].path;
+  const textPrompt = req.body.text_prompt;
+
+  const formData = new FormData();
+  formData.append("image_file", fs.createReadStream(imagePath));
+  formData.append("mask_file", fs.createReadStream(maskPath));
+  formData.append("text_prompt", textPrompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-inpainting/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    fs.unlinkSync(imagePath);
+    fs.unlinkSync(maskPath);
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to inpaint text:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to inpaint text.");
+  }
+});
+
+// remove text
+app.post("/remove-text", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No image file uploaded.");
+  }
+
+  const imagePath = req.file.path;
+
+  const formData = new FormData();
+  formData.append("image_file", fs.createReadStream(imagePath));
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/remove-text/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    fs.unlinkSync(imagePath);
+
+    const imageType = response.headers["content-type"];
+    res.setHeader("Content-Type", imageType);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Failed to remove text from image:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to remove text from image.");
+  }
+});
+
+// text to image
 app.post("/text-to-image", async (req, res) => {
   console.log("Request body:", req.body);
 
@@ -1072,7 +1099,6 @@ app.post("/cleanup-image", upload.fields([{ name: "image_file" }, { name: "mask_
 });
 
 // uncrop
-
 app.post("/uncrop-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -1111,7 +1137,6 @@ app.post("/uncrop-image", upload.single("image"), async (req, res) => {
 });
 
 // reimage
-
 app.post("/reimagine-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -1140,7 +1165,6 @@ app.post("/reimagine-image", upload.single("image"), async (req, res) => {
 });
 
 //upscale
-
 app.post("/upscale-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -1204,7 +1228,7 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
 
 //----- Extra Features -------//
 
-// clean up - cleans up folders (compressed, converted, grad,overlay, subtitles, uploads
+// cleans up folders (compressed, converted, grad,overlay, subtitles, uploads)
 
 const clearFolders = () => {
   const folders = ["compressed", "converted", "gradient-background", "overlay", "subtitles", "uploads", "processed"];
@@ -1233,7 +1257,6 @@ const clearFolders = () => {
     });
   });
 };
-
 clearFolders(); // clear folders on server startup
 
 setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
