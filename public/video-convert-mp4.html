@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Convert to MP4</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <form id="mp4Form" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="videoInput">Upload Video:</label>
+          <input type="file" id="videoInput" name="video" accept="video/*" required />
+        </div>
+        <div class="button-group">
+          <button type="button" id="convertToMp4Button">Convert to MP4</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
+        </div>
+        <div>
+          <h3>MP4<span id="downloadButtonContainer" style="margin-left: 10px; font-size: 14px; font-weight: normal"></span></h3>
+          <video id="mp4Video" controls style="display: none"></video>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your video, please wait. This may take s</div>
+
+    <script src="video-convert-mp4.js" defer></script>
+  </body>
+</html>
