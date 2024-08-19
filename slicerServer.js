@@ -803,6 +803,45 @@ function cleanupFiles(videoPath, audioPath, srtPath) {
 
 // ------- Convert to ------- //
 
+app.post("/convertToPng", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputPath = path.join(convertedDir, `converted_${Date.now()}.png`);
+
+  const convertCommand = `convert "${imagePath}" "${outputPath}"`;
+
+  exec(convertCommand, (error) => {
+    if (error) {
+      console.error("Error converting image to PNG:", error);
+      return res.status(500).send("Error converting image to PNG.");
+    }
+
+    res.download(outputPath, () => {
+      fs.unlinkSync(imagePath);
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
+
+// Convert to JPEG
+app.post("/convertToJpeg", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputPath = path.join(convertedDir, `converted_${Date.now()}.jpeg`);
+
+  const convertCommand = `convert "${imagePath}" "${outputPath}"`;
+
+  exec(convertCommand, (error) => {
+    if (error) {
+      console.error("Error converting image to JPEG:", error);
+      return res.status(500).send("Error converting image to JPEG.");
+    }
+
+    res.download(outputPath, () => {
+      fs.unlinkSync(imagePath);
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
+
 app.post("/convertToMp4", upload.single("video"), (req, res) => {
   if (!req.file) {
     console.error("No file uploaded.");
