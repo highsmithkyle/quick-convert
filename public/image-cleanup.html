@@ -1,52 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Image Cleanup</title>
-    <link rel="stylesheet" href="image-cleanup-styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="image-cleanup-styles.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
 
-    <div id="processingNotification">
-        Processing your image, please wait...
-    </div>
+      <div id="processingNotification">Processing your image, please wait...</div>
 
-<h2>Image Cleanup</h2>
+      <h2>Image Cleanup</h2>
 
-<div class="title-group">
-    
-    <p style="font-size: 14px;">
-        Draw over the areas of the image you want to remove and click Cleanup Image. This tool will clean up and remove the marked areas.
-    </p>
-</div>
+      <div class="title-group">
+        <p style="font-size: 14px">Draw over the areas of the image you want to remove and click Cleanup Image. This tool will clean up and remove the marked areas.</p>
+      </div>
 
-<form id="uploadForm" enctype="multipart/form-data" class="form-group">
-    <label for="image">Upload your image:</label>
-    <input type="file" id="image" name="image" accept="image/*" required>
-    <label for="mode">Processing Mode:</label>
-    <select id="mode" name="mode">
-        <option value="fast">Fast</option>
-        <option value="quality">Quality</option>
-    </select>
-    <label for="brushSize">Brush Size:</label>
-    <input type="range" id="brushSize" name="brushSize" min="10" max="100" value="30" style="width: 80%;">
-    <div class="button-group">
-        <button type="button" id="cleanupButton" class="form-button">Cleanup Image</button>
-    </div> 
-</form>
-</div>
-<div class="main-content">
-    <div id="imageContainer">
-        <div>
-            <canvas id="imageCanvas"></canvas>
+      <form id="uploadForm" enctype="multipart/form-data" class="form-group">
+        <label for="image">Upload your image:</label>
+        <input type="file" id="image" name="image" accept="image/*" required />
+        <label for="mode">Processing Mode:</label>
+        <select id="mode" name="mode">
+          <option value="quality">Quality</option>
+          <option value="fast">Fast</option>
+        </select>
+        <label for="brushSize">Brush Size:</label>
+        <input type="range" id="brushSize" name="brushSize" min="10" max="120" value="50" style="width: 80%" />
+
+        <div class="button-group">
+          <button type="button" id="cleanupButton" class="form-button">Cleanup Image</button>
         </div>
+
+        <div class="button-group">
+          <button type="button" id="clearButton" class="form-button" style="display: none">Clear</button>
+        </div>
+      </form>
     </div>
-</div>
-<script src="image-cleanup.js"></script>
-</body>
+
+    <div class="main-content">
+      <div id="imageContainer">
+        <div>
+          <canvas id="imageCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script src="image-cleanup.js"></script>
+  </body>
 </html>
