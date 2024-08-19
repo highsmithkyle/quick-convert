@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const videoInput = document.getElementById("videoInput");
   const uploadedVideo = document.getElementById("uploadedVideo");
-  const convertedImage = document.getElementById("convertedImage");
+  const convertedMedia = document.getElementById("convertedMedia");
   const notification = document.getElementById("processingNotification");
   const convertButton = document.getElementById("convertButton");
   const downloadButtonContainer = document.getElementById("downloadButtonContainer");
@@ -48,13 +48,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return fetch(endpoint, { method: "POST", body: formData });
       })
-      .then((response) => response.blob())
-      .then((blob) => {
+      .then((response) => {
+        const contentType = response.headers.get("content-type");
+        return response.blob().then((blob) => ({ blob, contentType }));
+      })
+      .then(({ blob, contentType }) => {
         notification.style.display = "none";
-        convertedImage.src = URL.createObjectURL(blob);
-        convertedImage.style.display = "block";
 
-        downloadButtonContainer.innerHTML = "";
+        // Clear previous content
+        convertedMedia.innerHTML = "";
+
+        if (contentType === "image/gif") {
+          // Handle GIF
+          const gifImage = new Image();
+          gifImage.src = URL.createObjectURL(blob);
+          gifImage.style.width = "100%"; // Match the video element's width
+          convertedMedia.appendChild(gifImage);
+        } else {
+          // Handle video formats
+          const videoElement = document.createElement("video");
+          videoElement.src = URL.createObjectURL(blob);
+          videoElement.controls = true;
+          videoElement.style.width = "100%"; // Match the existing container width
+          convertedMedia.appendChild(videoElement);
+        }
+
+        // Create and append the download button
+        downloadButtonContainer.innerHTML = ""; // Clear any previous buttons
         const downloadButton = document.createElement("button");
         downloadButton.textContent = `Download ${formatSelect.options[formatSelect.selectedIndex].text.toUpperCase()}`;
         downloadButton.className = "download-button";
@@ -70,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         downloadButton.addEventListener("click", function () {
           const a = document.createElement("a");
-          a.href = convertedImage.src;
+          a.href = URL.createObjectURL(blob);
           a.download = `converted_video.${selectedFormat}`;
           document.body.appendChild(a);
           a.click();
