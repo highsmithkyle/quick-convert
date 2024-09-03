@@ -1,0 +1,114 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+  display: flex;
+  min-height: 100vh;
+}
+
+#uploadForm {
+  margin-bottom: 20px;
+}
+
+#imageContainer {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 20px;
+}
+
+#imageDisplay {
+  width: 100%;
+  display: block;
+}
+
+#overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  outline: 2px dashed red;
+  display: none;
+  pointer-events: all;
+}
+
+.scrollable-sidebar {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar {
+  width: 300px;
+  background-color: #fff;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.overlay-group {
+  display: grid;
+  grid-template-rows: auto;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  margin-bottom: 20px;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056cc;
+}
+
+#processingNotification {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 20px;
+  border-radius: 5px;
+  z-index: 999;
+}
+
+#overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  outline: 2px dashed red;
+  display: none; /* Ensure it's hidden initially */
+  pointer-events: all;
+  z-index: 1000;
+  min-width: 50px;
+  min-height: 50px;
+}
+
+.resize-handle {
+  display: none; /* Ensure handles are hidden initially */
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: blue;
+  border: 2px solid yellow;
+  pointer-events: all;
+  z-index: 1100;
+}
+
+#bottom-right {
+  bottom: -10px;
+  right: -10px;
+  cursor: nwse-resize;
+}
+
+#videoContainer {
+  position: relative;
+  overflow: visible;
+}

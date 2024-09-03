@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Video Cropper</title>
+    <title>Image Cropper</title>
     <link rel="stylesheet" href="video-crop-style.css" />
   </head>
   <body>
-    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
+    <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
 
     <div class="sidebar scrollable-sidebar">
       <a href="index.html" class="home-button">
@@ -14,12 +14,12 @@
         <span>Home</span>
       </a>
 
-      <h2>Crop Video</h2>
+      <h2>Crop Image</h2>
 
       <form id="uploadForm" enctype="multipart/form-data" method="post">
         <div class="form-group">
-          <label for="videoInput">Upload Video:</label>
-          <input type="file" name="media" accept="video/*,image/*" id="mediaInput" style="width: 95%" required />
+          <label for="mediaInput">Upload Image:</label>
+          <input type="file" name="media" accept="image/*" id="mediaInput" style="width: 95%" required />
         </div>
         <div class="overlay-group">
           <div class="form-group">
@@ -28,42 +28,41 @@
               <option value="default">Select Crop Ratio</option>
               <option value="2:1">2:1</option>
               <option value="2:1-small">2:1 small</option>
-              <option value="third">3:1</option>
+              <option value="3:1">3:1</option>
               <option value="9:16">9:16</option>
               <option value="custom">Custom</option>
             </select>
           </div>
 
           <div class="button-group">
-            <button type="submit" class="form-button">Crop Video</button>
+            <button type="submit" class="form-button">Crop Image</button>
           </div>
         </div>
       </form>
     </div>
 
-    <form id="cropForm" style="display: none" action="/upload" method="post" enctype="multipart/form-data">
-      <input type="hidden" name="width" id="cropWidth" />
-      <input type="hidden" name="height" id="cropHeight" />
-      <input type="hidden" name="left" id="cropLeft" />
-      <input type="hidden" name="top" id="cropTop" />
-      <input type="hidden" name="videoId" id="videoId" />
-    </form>
     <div class="columns_container" style="padding-left: 20px; display: flex; flex-direction: row; justify-content: space-between; width: 1050px">
       <div class="left-column" style="width: 500px">
-        <h3>Uploaded Video</h3>
+        <h3>Uploaded Image</h3>
         <div id="videoContainer">
-          <video id="videoPlayer" controls></video>
-          <div id="overlay"></div>
+          <img id="imageDisplay" src="" alt="Uploaded Image" style="display: none" />
+          <div id="overlay" style="display: none; position: absolute; top: 50px; left: 50px; width: 200px; height: 150px; outline: 2px dashed red">
+            <div
+              id="bottom-right"
+              class="resize-handle"
+              style="display: none; width: 20px; height: 20px; background-color: blue; border: 2px solid yellow; position: absolute; bottom: -10px; right: -10px"
+            ></div>
+          </div>
         </div>
       </div>
       <div class="right_column">
-        <h3>Cropped Video</h3>
+        <h3>Cropped Image</h3>
         <div id="croppedVideoContainer" style="width: 500px">
-          <video id="croppedVideoPlayer" controls style="max-width: 500px"></video>
+          <img id="croppedImageDisplay" style="max-width: 500px" />
         </div>
       </div>
     </div>
 
-    <script src="videoHandler.js"></script>
+    <script src="imageHandler.js"></script>
   </body>
 </html>
