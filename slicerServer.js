@@ -83,43 +83,9 @@ app.post("/upload-image", upload.single("media"), (req, res) => {
   });
 });
 
-// app.post("/upload-image", upload.single("image"), (req, res) => {
-//   if (!fs.existsSync("processed")) {
-//     fs.mkdirSync("processed");
-//   }
-
-//   const imagePath = req.file.path;
-//   const timestamp = Date.now();
-//   const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.png`);
-//   const { width, height, left, top } = req.body;
-
-//   const safeWidth = parseInt(width, 10);
-//   const safeHeight = parseInt(height, 10);
-//   const safeLeft = parseInt(left, 10);
-//   const safeTop = parseInt(top, 10);
-
-//   if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
-//     return res.status(400).send("Invalid crop dimensions");
-//   }
-
-//   const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
-
-//   exec(cropCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       console.error(`Exec Error: ${error.message}`);
-//       return res.status(500).send("Error processing image");
-//     }
-
-//     res.sendFile(outputPath, (err) => {
-//       fs.unlinkSync(outputPath);
-//     });
-//   });
-// });
-
 // ----- Video Effects ---- //
 
-// crop
+// video-crop
 app.post("/upload", upload.single("video"), (req, res) => {
   if (!fs.existsSync("processed")) {
     fs.mkdirSync("processed");

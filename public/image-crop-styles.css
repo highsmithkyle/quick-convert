@@ -84,7 +84,7 @@ button:hover {
   top: 0;
   left: 0;
   outline: 2px dashed red;
-  display: none; /* Ensure it's hidden initially */
+  display: none;
   pointer-events: all;
   z-index: 1000;
   min-width: 50px;
@@ -92,12 +92,12 @@ button:hover {
 }
 
 .resize-handle {
-  display: none; /* Ensure handles are hidden initially */
+  display: none;
   position: absolute;
   width: 20px;
   height: 20px;
-  background-color: blue;
-  border: 2px solid yellow;
+  background-color: black;
+  border: 2px solid black;
   pointer-events: all;
   z-index: 1100;
 }

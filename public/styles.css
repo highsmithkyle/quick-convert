@@ -438,3 +438,36 @@ input[type="number"] {
   background-color: #f9f9f9;
   margin-bottom: 20px;
 }
+
+.title-with-button {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.title-with-button h3 {
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.title-with-button span {
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+button.download-button-sidebar {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+}
+
+button.download-button-sidebar:hover {
+  background-color: #218838;
+}

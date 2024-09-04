@@ -26,18 +26,23 @@
         <div class="button-group" style="padding-top: 15px">
           <button type="submit" class="form-button">Upscale Image</button>
         </div>
+
+        <div class="button-group" style="padding-top: 15px; display: none" id="downloadButtonContainer"></div>
       </form>
     </div>
 
     <div class="main-content">
       <div id="videoContainer">
         <div>
-          <h3>Uploaded Image</h3>
+          <h3 style="display: inline-block; margin-right: 10px">Uploaded Image</h3>
+          <span id="uploadedImageSize" style="font-size: 14px; font-weight: normal; margin-right: 10px"></span>
+          <span id="uploadedImageDimensions" style="font-size: 14px; font-weight: normal"></span>
           <img id="uploadedImage" src="" alt="Uploaded Image" />
         </div>
         <div>
-          <h3>Upscaled Image</h3>
-          <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          <h3 style="display: inline-block; margin-right: 10px">Upscaled Image</h3>
+          <span id="croppedImageSize" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          <span id="croppedImageDimensions" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
           <img id="processedImage" src="" alt="Upscaled Image" />
         </div>
       </div>
