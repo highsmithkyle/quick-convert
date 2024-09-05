@@ -43,6 +43,45 @@ const compressedDir = path.join(__dirname, "compressed");
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
 
+// image resize
+
+app.post("/resize-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const targetWidth = parseInt(req.body.target_width, 10);
+  const targetHeight = parseInt(req.body.target_height, 10);
+
+  const outputFileName = `resized_${Date.now()}.png`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  // Use ImageMagick to resize the image
+  const resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} "${outputFilePath}"`;
+
+  exec(resizeCommand, (error, stdout, stderr) => {
+    // Clean up the uploaded file
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error resizing image:", stderr);
+      return res.status(500).send("Failed to resize image.");
+    }
+
+    // Send the resized image back to the client
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending resized image:", err);
+        return res.status(500).send("Error sending resized image.");
+      }
+
+      // Optionally delete the resized image after sending
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
 // Image Crop
 
 app.post("/upload-image", upload.single("media"), (req, res) => {
