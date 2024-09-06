@@ -1,10 +1,10 @@
 import kaggle
 import os
 
-# Set Kaggle API credentials
+# set credentials 
 os.environ['KAGGLE_CONFIG_DIR'] = '/Users/kyle/.kaggle'
 
-# Define the path to save the model
+# Define the path
 model_path = '/Users/kyle/Desktop/FFMPEG_GIF_Slicer/model'
 
 # Create the directory if it doesn't exist
