@@ -53,9 +53,15 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
   const outputFileName = `resized_${Date.now()}.png`;
   const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  // Use ImageMagick to resize the image
   const resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} "${outputFilePath}"`;
 
   exec(resizeCommand, (error, stdout, stderr) => {
+    // Clean up the uploaded file
     fs.unlinkSync(imagePath);
 
     if (error) {
@@ -63,51 +69,18 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
       return res.status(500).send("Failed to resize image.");
     }
 
-    const identifyCommand = `identify -format "%wx%h" "${outputFilePath}"`;
-    exec(identifyCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error("Error identifying image size:", stderr);
-        return res.status(500).send("Failed to get image dimensions.");
+    // Send the resized image back to the client
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending resized image:", err);
+        return res.status(500).send("Error sending resized image.");
       }
 
-      const actualDimensions = stdout.trim();
-
-      res.json({
-        imageUrl: `/processed/${outputFileName}`,
-        dimensions: actualDimensions,
-      });
+      // Optionally delete the resized image after sending
+      fs.unlinkSync(outputFilePath);
     });
   });
 });
-
-// app.post("/resize-image", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const targetWidth = parseInt(req.body.target_width, 10);
-//   const targetHeight = parseInt(req.body.target_height, 10);
-
-//   const outputFileName = `resized_${Date.now()}.png`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} "${outputFilePath}"`;
-
-//   exec(resizeCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-
-//     if (error) {
-//       console.error("Error resizing image:", stderr);
-//       return res.status(500).send("Failed to resize image.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending resized image:", err);
-//         return res.status(500).send("Error sending resized image.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
 
 // Image Crop
 
