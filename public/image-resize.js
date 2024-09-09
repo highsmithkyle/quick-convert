@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const resizePercentageSlider = document.getElementById("resize_percentage");
   const resizeWidthInput = document.getElementById("resize_width");
-  const resizeHeightInput = document.getElementById("resize_height");
   const percentageDisplay = document.getElementById("percentage_display");
 
   const uploadedImageSize = document.getElementById("uploadedImageSize");
@@ -33,7 +32,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Update resize mode when dropdown changes
   resizeModeSelect.addEventListener("change", updateResizeMode);
 
   window.updatePercentageDisplay = updatePercentageDisplay;
@@ -43,7 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const file = this.files[0];
       const reader = new FileReader();
 
-      // Reset the resized image and its info
       processedImage.src = "";
       resizedImageDimensions.textContent = "";
       resizedImageSize.textContent = "";
@@ -79,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
       targetHeight = Math.round(img.naturalHeight * scale);
     } else if (mode === "dimensions") {
       targetWidth = resizeWidthInput.value || img.naturalWidth;
-      targetHeight = resizeHeightInput.value || img.naturalHeight;
+      targetHeight = Math.round((targetWidth / img.naturalWidth) * img.naturalHeight);
     }
 
     const formData = new FormData();
@@ -109,7 +106,6 @@ document.addEventListener("DOMContentLoaded", function () {
         notification.style.display = "none";
       })
       .catch((err) => {
-        console.error("Error:", err);
         alert("Failed to resize the image. " + err.message);
         notification.style.display = "none";
       });
