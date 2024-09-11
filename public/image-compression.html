@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Compression Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="uploadFormCompression" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="image">Upload Image (JPEG, PNG, WebP, or GIF):</label>
+          <input type="file" id="image" name="image" accept="image/jpeg, image/png, image/webp, image/gif" required />
+        </div>
+
+        <div class="overlay-group" id="qualitySection" style="display: none">
+          <div class="form-group">
+            <label for="compressionLevel"
+              >Compression Level <br /><br />
+              0 = Best Quality,<br /><br />
+              100 = Highest Compression:</label
+            >
+            <input type="range" id="compressionLevel" name="compressionLevel" min="0" max="100" value="20" oninput="updateCompressionDisplay(this.value)" style="width: 80%" />
+            <span id="compression_display">20% Compression</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Compress Image</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Compressed Image</h3>
+            <span id="compressedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="compressedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="processedImage" src="" alt="Compressed Image" />
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+    <script src="image-compression.js"></script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Compression Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <form id="uploadFormCompression" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="image">Upload Image (JPEG, PNG, or WebP):</label>
+          <input type="file" id="image" name="image" accept="image/jpeg, image/png, image/webp" required />
+        </div>
+
+        <div class="overlay-group" id="qualitySection" style="display: none">
+          <div class="form-group">
+            <label for="compressionLevel"
+              >Compression Level <br /><br />
+              0 = Best Quality,<br /><br />
+              100 = Highest Compression:</label
+            >
+            <input type="range" id="compressionLevel" name="compressionLevel" min="0" max="100" value="20" oninput="updateCompressionDisplay(this.value)" style="width: 80%" />
+            <span id="compression_display">20% Compression</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Compress Image</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Compressed Image</h3>
+            <span id="compressedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="compressedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="processedImage" src="" alt="Compressed Image" />
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+    <script src="image-compression.js"></script>
+  </body>
+</html> -->
