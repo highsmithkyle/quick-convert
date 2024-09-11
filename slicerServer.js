@@ -19,9 +19,9 @@ const speech = require("@google-cloud/speech");
 // Google Cloud
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 const speechClient = new speech.SpeechClient();
-const storage = new Storage({
-  keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
-});
+// const storage = new Storage({
+//   keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
+// });
 const bucket = storage.bucket("image-2d-to-3d");
 
 // Express
