@@ -12,7 +12,6 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/speech": "^6.6.0",
-    "@google-cloud/storage": "^7.11.2",
     "axios": "^1.7.2",
     "axios-debug-log": "^1.0.0",
     "cors": "^2.8.5",
