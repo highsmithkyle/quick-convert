@@ -43,6 +43,144 @@ const compressedDir = path.join(__dirname, "compressed");
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
 
+//compress
+
+app.post("/compress-gif", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      console.error("Error compressing GIF:", error);
+      return res.status(500).send("Failed to compress GIF.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed GIF:", err);
+        return res.status(500).send("Error sending compressed GIF.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+app.post("/compress-webp", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const compressionLevel = parseInt(req.body.compression_level, 10);
+  const outputFileName = `compressed_${Date.now()}.webp`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) return res.status(500).send("Failed to compress WebP.");
+    res.sendFile(outputFilePath, () => {
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+app.post("/compress-jpeg", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const compressionLevel = parseInt(req.body.compression_level, 10);
+  const outputFileName = `compressed_${Date.now()}.jpg`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing JPEG:", stderr);
+      return res.status(500).send("Failed to compress JPEG.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed JPEG:", err);
+        return res.status(500).send("Error sending compressed JPEG.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+// Compress PNG
+app.post("/compress-png", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.png`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const compressCommand = `pngquant --quality=30-80 --speed 1 --force --output "${outputFilePath}" "${imagePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing PNG:", stderr);
+      return res.status(500).send("Failed to compress PNG.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed PNG:", err);
+        return res.status(500).send("Error sending compressed PNG.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+//image compress
+
+app.post("/compress-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const compressionLevel = parseInt(req.body.compression_level, 10);
+  const outputFileName = `compressed_${Date.now()}.jpg`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing image:", stderr);
+      return res.status(500).send("Failed to compress image.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed image:", err);
+        return res.status(500).send("Error sending compressed image.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
 // image resize
 
 app.post("/resize-image", upload.single("image"), (req, res) => {
@@ -50,10 +188,6 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
   const targetWidth = parseInt(req.body.target_width, 10);
   const outputFileName = `resized_${Date.now()}.png`;
   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
 
   const resizeCommand = `convert "${imagePath}" -resize ${targetWidth} "${outputFilePath}"`;
 

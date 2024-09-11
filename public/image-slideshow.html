@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Slideshow Creator</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* Style for the image containers */
+      .slideshow-image {
+        max-width: 100%; /* Scale image to container width */
+        height: auto; /* Maintain aspect ratio */
+        border-radius: 4px;
+      }
+
+      /* Container for duration label, input, and 's' suffix */
+      .duration-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 5px;
+      }
+
+      /* Duration input field */
+      .duration-input {
+        width: 50px; /* Adjust input width */
+        margin-left: 5px; /* Space between label and input */
+      }
+
+      /* Duration label */
+      .duration-label {
+        font-size: 14px; /* Adjust font size */
+        margin-right: 5px; /* Space between label and input */
+        text-align: left; /* Align text left */
+      }
+
+      /* 's' suffix after the input */
+      .duration-container span.suffix {
+        font-size: 14px; /* Font size for 's' */
+        margin-left: 5px; /* Space between input and 's' */
+      }
+
+      /* Image title styling */
+      .image-title {
+        padding: 0; /* Remove padding */
+        text-align: left; /* Align title to the left */
+        margin-top: 5px; /* Adjust margin */
+        font-size: 14px; /* Adjust font size */
+      }
+
+      /* Image container styles */
+      .image-container {
+        background-color: #fff;
+        width: 180px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 2px dashed #ccc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start; /* Align items at the top */
+        margin-right: 20px;
+        margin-bottom: 20px; /* Add some spacing between rows */
+        height: auto; /* Ensure the container adapts to content */
+      }
+
+      /* Add Image box style */
+      .add-image-container {
+        background-color: #f4f4f4;
+        width: 180px;
+        height: 240px;
+        border-radius: 8px;
+        border: 2px dashed #ccc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      /* Hover effect for the Add Image box */
+      .add-image-container:hover {
+        background-color: #e0e0e0;
+      }
+
+      /* Container for image grid */
+      #imageContainer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        margin-top: 20px;
+      }
+
+      /* Styling for the icon in the add image box */
+      .add-image-icon {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+
+      /* Styling for the text in the add image box */
+      .add-image-text {
+        font-size: 14px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar with home button and form -->
+    <div class="sidebar scrollable-sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div class="title-group">
+        <h2>Image Slideshow</h2>
+      </div>
+
+      <form id="slideshowForm" enctype="multipart/form-data" method="post" style="display: none">
+        <input type="file" id="images" name="images" class="form-control" accept="image/*" multiple required />
+      </form>
+    </div>
+
+    <!-- Main content where the image grid should be -->
+    <div class="main-content">
+      <!-- Image grid with inputs for each image's display duration -->
+      <div id="imageContainer">
+        <!-- Add Image Box -->
+        <div class="add-image-container" id="addImageButton">
+          <div class="add-image-icon">+</div>
+          <div class="add-image-text">Add Image</div>
+        </div>
+      </div>
+
+      <!-- Created MP4 section centered below -->
+      <div id="createdMp4Container" class="videoContainer" style="margin-top: 40px">
+        <h3>Created MP4</h3>
+        <video id="processedVideo" controls style="width: 600px; display: block"></video>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your images, please wait...</div>
+
+    <script src="image-slideshow.js"></script>
+  </body>
+</html>
