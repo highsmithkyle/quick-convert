@@ -11,7 +11,7 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 const ytdl = require("ytdl-core");
 const { google } = require("googleapis");
-const { Storage } = require("@google-cloud/storage");
+// const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 
 // remove-text
