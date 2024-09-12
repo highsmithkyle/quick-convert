@@ -14,8 +14,6 @@ const { google } = require("googleapis");
 // const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 
-const ffmpeg = require("fluent-ffmpeg");
-
 // remove-text
 
 // Google Cloud
