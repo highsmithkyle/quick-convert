@@ -14,6 +14,8 @@ const { google } = require("googleapis");
 // const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 
+const ffmpeg = require("fluent-ffmpeg");
+
 // remove-text
 
 // Google Cloud
@@ -27,6 +29,7 @@ const speechClient = new speech.SpeechClient();
 // Express
 const app = express();
 const upload = multer({ dest: "uploads/" });
+app.use("/videos", express.static(path.join(__dirname, "videos")));
 
 app.use(cors());
 app.use(express.static("public"));
@@ -43,6 +46,72 @@ const compressedDir = path.join(__dirname, "compressed");
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
 
+// NEW FEATURE SLIDESHOW
+
+app.post("/create-video", upload.array("images"), (req, res) => {
+  const files = req.files;
+  const durations = JSON.parse(req.body.durations); // Array of durations for each image
+
+  if (!fs.existsSync("videos")) {
+    fs.mkdirSync("videos");
+  }
+
+  const imageInputs = files.map((file, index) => {
+    const inputFile = file.path;
+    const outputFile = `image_${index}.png`;
+    const duration = durations[index];
+
+    return { inputFile, outputFile, duration };
+  });
+
+  // Create an FFmpeg concat script for the images
+  const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
+  let concatFileContent = "";
+
+  imageInputs.forEach(({ inputFile, duration }, index) => {
+    const outputFile = `image_${index}.png`;
+    const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
+
+    // Move file to the correct location
+    try {
+      fs.renameSync(inputFile, fullOutputFilePath); // Ensure the path is correct
+      concatFileContent += `file '${fullOutputFilePath}'\n`;
+      concatFileContent += `duration ${duration}\n`; // Set duration for each image
+    } catch (err) {
+      console.error(`Error moving file: ${inputFile} to ${fullOutputFilePath}`, err);
+    }
+  });
+
+  concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`; // Last image displayed indefinitely
+
+  fs.writeFileSync(concatFilePath, concatFileContent); // Save concat file
+
+  const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+
+  const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720" -pix_fmt yuv420p -c:v libx264 -y "${outputVideoPath}"`;
+
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    if (error) {
+      console.error("Error creating video:", stderr);
+      return res.status(500).send("Failed to create video");
+    }
+
+    res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
+
+    // Clean up: check if files exist before deleting
+    fs.unlinkSync(concatFilePath);
+    imageInputs.forEach(({ outputFile }) => {
+      const filePath = path.join(__dirname, "videos", outputFile);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath); // Delete file only if it exists
+        } catch (err) {
+          console.error(`Error deleting file: ${filePath}`, err);
+        }
+      }
+    });
+  });
+});
 //compress
 
 app.post("/compress-gif", upload.single("image"), (req, res) => {
