@@ -50,6 +50,15 @@ app.post("/create-video", upload.array("images"), (req, res) => {
   const files = req.files;
   const durations = JSON.parse(req.body.durations); // Array of durations for each image
 
+  if (!files || files.length === 0) {
+    return res.status(400).send("No images provided or empty request.");
+  }
+
+  if (files.length !== durations.length) {
+    console.error("Mismatch between images and durations.");
+    return res.status(400).send("Mismatch between images and durations.");
+  }
+
   if (!fs.existsSync("videos")) {
     fs.mkdirSync("videos");
   }
@@ -62,7 +71,6 @@ app.post("/create-video", upload.array("images"), (req, res) => {
     return { inputFile, outputFile, duration };
   });
 
-  // Create an FFmpeg concat script for the images
   const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
   let concatFileContent = "";
 
@@ -70,46 +78,135 @@ app.post("/create-video", upload.array("images"), (req, res) => {
     const outputFile = `image_${index}.png`;
     const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
 
-    // Move file to the correct location
     try {
-      fs.renameSync(inputFile, fullOutputFilePath); // Ensure the path is correct
+      fs.renameSync(inputFile, fullOutputFilePath);
       concatFileContent += `file '${fullOutputFilePath}'\n`;
-      concatFileContent += `duration ${duration}\n`; // Set duration for each image
+      concatFileContent += `duration ${duration}\n`;
+      console.log(`Image ${index + 1}: Moved to ${fullOutputFilePath}, Duration: ${duration}s`);
     } catch (err) {
       console.error(`Error moving file: ${inputFile} to ${fullOutputFilePath}`, err);
+      return res.status(500).send(`Error moving file: ${err.message}`);
     }
   });
 
-  concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`; // Last image displayed indefinitely
+  concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`;
+  concatFileContent += `duration ${imageInputs[imageInputs.length - 1].duration}\n`;
 
-  fs.writeFileSync(concatFilePath, concatFileContent); // Save concat file
+  try {
+    fs.writeFileSync(concatFilePath, concatFileContent);
+    console.log(`Concat file written at ${concatFilePath}`);
+  } catch (err) {
+    console.error("Error writing concat file:", err);
+    return res.status(500).send(`Error writing concat file: ${err.message}`);
+  }
 
   const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+  const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -loglevel verbose -y "${outputVideoPath}"`;
 
-  const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720" -pix_fmt yuv420p -c:v libx264 -y "${outputVideoPath}"`;
+  console.log("Executing FFmpeg command:", ffmpegCommand);
 
   exec(ffmpegCommand, (error, stdout, stderr) => {
     if (error) {
-      console.error("Error creating video:", stderr);
-      return res.status(500).send("Failed to create video");
+      console.error("FFmpeg error:", stderr);
+      return res.status(500).send(`FFmpeg error: ${stderr}`);
     }
 
+    console.log("FFmpeg output:", stdout || stderr);
     res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
 
-    // Clean up: check if files exist before deleting
-    fs.unlinkSync(concatFilePath);
-    imageInputs.forEach(({ outputFile }) => {
-      const filePath = path.join(__dirname, "videos", outputFile);
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath); // Delete file only if it exists
-        } catch (err) {
-          console.error(`Error deleting file: ${filePath}`, err);
-        }
+    try {
+      if (fs.existsSync(concatFilePath)) {
+        fs.unlinkSync(concatFilePath);
       }
-    });
+
+      imageInputs.forEach(({ outputFile }) => {
+        const filePath = path.join(__dirname, "videos", outputFile);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    } catch (cleanupErr) {
+      console.error("Error cleaning up files:", cleanupErr);
+    }
   });
 });
+
+// app.post("/create-video", upload.array("images"), (req, res) => {
+//   const files = req.files;
+//   const durations = JSON.parse(req.body.durations); // Array of durations for each image
+
+//   if (!fs.existsSync("videos")) {
+//     fs.mkdirSync("videos");
+//   }
+
+//   const imageInputs = files.map((file, index) => {
+//     const inputFile = file.path;
+//     const outputFile = `image_${index}.png`;
+//     const duration = durations[index];
+
+//     return { inputFile, outputFile, duration };
+//   });
+
+//   const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
+//   let concatFileContent = "";
+
+//   imageInputs.forEach(({ inputFile, duration }, index) => {
+//     const outputFile = `image_${index}.png`;
+//     const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
+
+//     try {
+//       fs.renameSync(inputFile, fullOutputFilePath);
+//       concatFileContent += `file '${fullOutputFilePath}'\n`;
+//       concatFileContent += `duration ${duration}\n`;
+//       console.log(`Image ${index + 1}: Moved to ${fullOutputFilePath}, Duration: ${duration}s`);
+//     } catch (err) {
+//       console.error(`Error moving file: ${inputFile} to ${fullOutputFilePath}`, err);
+//       return res.status(500).send(`Error moving file: ${err.message}`);
+//     }
+//   });
+
+//   concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`;
+//   concatFileContent += `duration ${imageInputs[imageInputs.length - 1].duration}\n`;
+
+//   try {
+//     fs.writeFileSync(concatFilePath, concatFileContent);
+//     console.log(`Concat file written at ${concatFilePath}`);
+//   } catch (err) {
+//     console.error("Error writing concat file:", err);
+//     return res.status(500).send(`Error writing concat file: ${err.message}`);
+//   }
+
+//   const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+//   const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -loglevel verbose -y "${outputVideoPath}"`;
+
+//   console.log("Executing FFmpeg command:", ffmpegCommand);
+
+//   exec(ffmpegCommand, (error, stdout, stderr) => {
+//     if (error) {
+//       console.error("FFmpeg error:", stderr);
+//       return res.status(500).send(`FFmpeg error: ${stderr}`);
+//     }
+
+//     console.log("FFmpeg output:", stdout || stderr);
+//     res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
+
+//     try {
+//       if (fs.existsSync(concatFilePath)) {
+//         fs.unlinkSync(concatFilePath);
+//       }
+
+//       imageInputs.forEach(({ outputFile }) => {
+//         const filePath = path.join(__dirname, "videos", outputFile);
+//         if (fs.existsSync(filePath)) {
+//           fs.unlinkSync(filePath);
+//         }
+//       });
+//     } catch (cleanupErr) {
+//       console.error("Error cleaning up files:", cleanupErr);
+//     }
+//   });
+// });
+
 //compress
 
 app.post("/compress-gif", upload.single("image"), (req, res) => {
@@ -185,35 +282,6 @@ app.post("/compress-jpeg", upload.single("image"), (req, res) => {
 });
 
 // Compress PNG
-app.post("/compress-png", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const outputFileName = `compressed_${Date.now()}.png`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const compressCommand = `pngquant --quality=30-80 --speed 1 --force --output "${outputFilePath}" "${imagePath}"`;
-
-  exec(compressCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error compressing PNG:", stderr);
-      return res.status(500).send("Failed to compress PNG.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed PNG:", err);
-        return res.status(500).send("Error sending compressed PNG.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
 
 //image compress
 
