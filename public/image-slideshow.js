@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const createVideoButton = document.getElementById("createVideoButton");
   const processingNotification = document.getElementById("processingNotification");
   let selectedFiles = [];
+  let durations = [];
 
   addImageButton.addEventListener("click", function () {
     const imagesInput = document.createElement("input");
@@ -16,8 +17,9 @@ document.addEventListener("DOMContentLoaded", function () {
     imagesInput.addEventListener("change", function (event) {
       const files = event.target.files;
 
-      Array.from(files).forEach((file, index) => {
+      Array.from(files).forEach((file) => {
         selectedFiles.push(file);
+        durations.push(3); // Default duration for each image
 
         const container = document.createElement("div");
         container.classList.add("image-container");
@@ -38,13 +40,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const durationInput = document.createElement("input");
         durationInput.type = "number";
-        durationInput.name = `duration${selectedFiles.length - 1}`;
         durationInput.min = "1";
         durationInput.value = "3";
         durationInput.classList.add("duration-input");
 
         const durationSuffix = document.createElement("span");
         durationSuffix.textContent = "s";
+
+        durationInput.addEventListener("change", function () {
+          const index = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
+          durations[index] = durationInput.value; // Update corresponding duration
+          console.log("Updated duration at index:", index, "to", durationInput.value);
+        });
 
         durationContainer.appendChild(durationLabel);
         durationContainer.appendChild(durationInput);
@@ -53,9 +60,24 @@ document.addEventListener("DOMContentLoaded", function () {
         const closeButton = document.createElement("div");
         closeButton.classList.add("close-button");
         closeButton.addEventListener("click", function () {
+          // Get the index of the image to remove
           const index = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
-          selectedFiles.splice(index, 1);
-          container.remove();
+
+          if (index >= 0 && index < selectedFiles.length) {
+            // Remove the selected file and corresponding duration
+            selectedFiles.splice(index, 1);
+            durations.splice(index, 1);
+
+            // Remove the DOM element
+            container.remove();
+
+            // Update titles and any other relevant state
+            updateTitles();
+
+            console.log("Image removed at index:", index);
+            console.log("Updated selectedFiles:", selectedFiles);
+            console.log("Updated durations:", durations);
+          }
         });
 
         container.appendChild(closeButton);
@@ -70,43 +92,62 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  function updateTitles() {
+    const containers = document.querySelectorAll(".image-container:not(.add-image-container)");
+    containers.forEach((container, index) => {
+      const title = container.querySelector(".image-title");
+      title.textContent = `Image ${index + 1}`;
+    });
+  }
+
   function initializeSortable() {
     new Sortable(imageContainer, {
       animation: 150,
       ghostClass: "dragging",
-      onEnd: function (event) {
-        const containers = document.querySelectorAll(".image-container");
+      onEnd: function () {
+        const containers = Array.from(imageContainer.children).filter((el) => el !== addImageButton);
         const newSelectedFiles = [];
+        const newDurations = [];
 
-        containers.forEach((container, index) => {
-          const title = container.querySelector(".image-title");
-          if (title) {
-            title.textContent = `Image ${index + 1}`;
+        containers.forEach((container) => {
+          const imageIndex = container.querySelector(".image-title").textContent.split(" ")[1] - 1;
+          if (selectedFiles[imageIndex]) {
+            newSelectedFiles.push(selectedFiles[imageIndex]);
+            newDurations.push(durations[imageIndex]);
           }
-
-          const imageIndex = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
-          newSelectedFiles.push(selectedFiles[imageIndex]);
         });
 
+        // Update the selectedFiles and durations after reordering
         selectedFiles = newSelectedFiles;
+        durations = newDurations;
+
+        console.log("Updated selectedFiles after reorder:", selectedFiles);
+        console.log("Updated durations after reorder:", durations);
+
+        updateTitles();
       },
     });
   }
 
   createVideoButton.addEventListener("click", function () {
-    const imageContainers = document.querySelectorAll(".image-container");
-    const durations = [];
+    const imageContainers = document.querySelectorAll(".image-container:not(.add-image-container)");
     const formData = new FormData();
+
+    if (selectedFiles.length === 0) {
+      alert("No images selected.");
+      return;
+    }
 
     processingNotification.style.display = "block";
 
     imageContainers.forEach((container, index) => {
-      const duration = container.querySelector(".duration-input").value;
-      durations.push(duration);
       formData.append("images", selectedFiles[index]);
+      formData.append(`duration${index}`, durations[index]);
     });
 
     formData.append("durations", JSON.stringify(durations));
+
+    console.log("Sending files and durations:", selectedFiles, durations);
 
     fetch("/create-video", {
       method: "POST",
@@ -134,6 +175,7 @@ document.addEventListener("DOMContentLoaded", function () {
 //   const createVideoButton = document.getElementById("createVideoButton");
 //   const processingNotification = document.getElementById("processingNotification");
 //   let selectedFiles = [];
+//   let durations = [];
 
 //   addImageButton.addEventListener("click", function () {
 //     const imagesInput = document.createElement("input");
@@ -146,8 +188,9 @@ document.addEventListener("DOMContentLoaded", function () {
 //     imagesInput.addEventListener("change", function (event) {
 //       const files = event.target.files;
 
-//       Array.from(files).forEach((file, index) => {
+//       Array.from(files).forEach((file) => {
 //         selectedFiles.push(file);
+//         durations.push(3); // Default duration for each image
 
 //         const container = document.createElement("div");
 //         container.classList.add("image-container");
@@ -168,13 +211,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //         const durationInput = document.createElement("input");
 //         durationInput.type = "number";
-//         durationInput.name = `duration${selectedFiles.length - 1}`;
 //         durationInput.min = "1";
 //         durationInput.value = "3";
 //         durationInput.classList.add("duration-input");
 
 //         const durationSuffix = document.createElement("span");
 //         durationSuffix.textContent = "s";
+
+//         durationInput.addEventListener("change", function () {
+//           const index = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
+//           durations[index] = durationInput.value; // Update corresponding duration
+//           console.log("Updated duration at index:", index, "to", durationInput.value);
+//         });
 
 //         durationContainer.appendChild(durationLabel);
 //         durationContainer.appendChild(durationInput);
@@ -183,9 +231,24 @@ document.addEventListener("DOMContentLoaded", function () {
 //         const closeButton = document.createElement("div");
 //         closeButton.classList.add("close-button");
 //         closeButton.addEventListener("click", function () {
+//           // Get the index of the image to remove
 //           const index = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
-//           selectedFiles.splice(index, 1);
-//           container.remove();
+
+//           if (index >= 0 && index < selectedFiles.length) {
+//             // Remove the selected file and corresponding duration
+//             selectedFiles.splice(index, 1);
+//             durations.splice(index, 1);
+
+//             // Remove the DOM element
+//             container.remove();
+
+//             // Update titles and any other relevant state
+//             updateTitles();
+
+//             console.log("Image removed at index:", index);
+//             console.log("Updated selectedFiles:", selectedFiles);
+//             console.log("Updated durations:", durations);
+//           }
 //         });
 
 //         container.appendChild(closeButton);
@@ -200,43 +263,90 @@ document.addEventListener("DOMContentLoaded", function () {
 //     });
 //   });
 
+//   function updateTitles() {
+//     const containers = document.querySelectorAll(".image-container:not(.add-image-container)");
+//     containers.forEach((container, index) => {
+//       const title = container.querySelector(".image-title");
+//       title.textContent = `Image ${index + 1}`;
+//     });
+//   }
+
 //   function initializeSortable() {
 //     new Sortable(imageContainer, {
 //       animation: 150,
 //       ghostClass: "dragging",
-//       onEnd: function (event) {
-//         const containers = document.querySelectorAll(".image-container");
+//       onEnd: function () {
+//         const containers = Array.from(imageContainer.children).filter((el) => el !== addImageButton);
 //         const newSelectedFiles = [];
+//         const newDurations = [];
 
-//         containers.forEach((container, index) => {
-//           const title = container.querySelector(".image-title");
-//           if (title) {
-//             title.textContent = `Image ${index + 1}`;
+//         containers.forEach((container, newIndex) => {
+//           const imageIndex = container.querySelector(".image-title").textContent.split(" ")[1] - 1;
+//           if (selectedFiles[imageIndex]) {
+//             newSelectedFiles.push(selectedFiles[imageIndex]);
+//             newDurations.push(durations[imageIndex]);
 //           }
-
-//           const imageIndex = Array.prototype.indexOf.call(imageContainer.children, container) - 1;
-//           newSelectedFiles.push(selectedFiles[imageIndex]);
 //         });
 
+//         // Update the selectedFiles and durations after reordering
 //         selectedFiles = newSelectedFiles;
+//         durations = newDurations;
+
+//         console.log("Updated selectedFiles after reorder:", selectedFiles);
+//         console.log("Updated durations after reorder:", durations);
+
+//         updateTitles();
+//       },
+//     });
+//   }
+//   function initializeSortable() {
+//     new Sortable(imageContainer, {
+//       animation: 150,
+//       ghostClass: "dragging",
+//       onEnd: function () {
+//         const containers = Array.from(imageContainer.children).filter((el) => el !== addImageButton);
+//         const newSelectedFiles = [];
+//         const newDurations = [];
+
+//         containers.forEach((container, newIndex) => {
+//           const imageIndex = container.querySelector(".image-title").textContent.split(" ")[1] - 1;
+//           if (selectedFiles[imageIndex]) {
+//             newSelectedFiles.push(selectedFiles[imageIndex]);
+//             newDurations.push(durations[imageIndex]);
+//           }
+//         });
+
+//         // Update the selectedFiles and durations after reordering
+//         selectedFiles = newSelectedFiles;
+//         durations = newDurations;
+
+//         console.log("Updated selectedFiles after reorder:", selectedFiles);
+//         console.log("Updated durations after reorder:", durations);
+
+//         updateTitles();
 //       },
 //     });
 //   }
 
 //   createVideoButton.addEventListener("click", function () {
-//     const imageContainers = document.querySelectorAll(".image-container");
-//     const durations = [];
+//     const imageContainers = document.querySelectorAll(".image-container:not(.add-image-container)");
 //     const formData = new FormData();
+
+//     if (selectedFiles.length === 0) {
+//       alert("No images selected.");
+//       return;
+//     }
 
 //     processingNotification.style.display = "block";
 
 //     imageContainers.forEach((container, index) => {
-//       const duration = container.querySelector(".duration-input").value;
-//       durations.push(duration);
 //       formData.append("images", selectedFiles[index]);
+//       formData.append(`duration${index}`, durations[index]);
 //     });
 
 //     formData.append("durations", JSON.stringify(durations));
+
+//     console.log("Sending files and durations:", selectedFiles, durations);
 
 //     fetch("/create-video", {
 //       method: "POST",
