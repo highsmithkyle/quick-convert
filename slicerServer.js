@@ -46,9 +46,11 @@ const getDisparityMap = require("./getDisparityMap");
 
 // NEW FEATURE SLIDESHOW
 
-app.post("/create-video", upload.array("images"), (req, res) => {
+app.post("/create-video", upload.array("images"), async (req, res) => {
   const files = req.files;
-  const durations = JSON.parse(req.body.durations); // Array of durations for each image
+  const durations = JSON.parse(req.body.durations); // Parse durations array
+
+  console.log("Received durations:", durations);
 
   if (!files || files.length === 0) {
     return res.status(400).send("No images provided or empty request.");
@@ -59,153 +61,75 @@ app.post("/create-video", upload.array("images"), (req, res) => {
     return res.status(400).send("Mismatch between images and durations.");
   }
 
-  if (!fs.existsSync("videos")) {
-    fs.mkdirSync("videos");
-  }
-
-  const imageInputs = files.map((file, index) => {
-    const inputFile = file.path;
-    const outputFile = `image_${index}.png`;
-    const duration = durations[index];
-
-    return { inputFile, outputFile, duration };
-  });
-
-  const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
-  let concatFileContent = "";
-
-  imageInputs.forEach(({ inputFile, duration }, index) => {
-    const outputFile = `image_${index}.png`;
-    const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
-
-    try {
-      fs.renameSync(inputFile, fullOutputFilePath);
-      concatFileContent += `file '${fullOutputFilePath}'\n`;
-      concatFileContent += `duration ${duration}\n`;
-      console.log(`Image ${index + 1}: Moved to ${fullOutputFilePath}, Duration: ${duration}s`);
-    } catch (err) {
-      console.error(`Error moving file: ${inputFile} to ${fullOutputFilePath}`, err);
-      return res.status(500).send(`Error moving file: ${err.message}`);
-    }
-  });
-
-  concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`;
-  concatFileContent += `duration ${imageInputs[imageInputs.length - 1].duration}\n`;
+  const tempOutputPaths = [];
 
   try {
+    // Create individual videos for each image
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const duration = durations[i];
+      const outputFile = `video_${i}.mp4`;
+      const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
+      tempOutputPaths.push(fullOutputFilePath);
+
+      console.log(`Creating video for: ${file.path} with duration: ${duration}s`);
+
+      // FFmpeg command to create a video from the image with the specified duration
+      const ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${file.path}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+
+      await new Promise((resolve, reject) => {
+        exec(ffmpegCommand, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error creating video for ${file.path}:`, stderr);
+            return reject(`Error creating video for ${file.path}: ${stderr}`);
+          }
+          console.log(`Video created for ${file.path}`);
+          resolve();
+        });
+      });
+    }
+
+    // Create a concat file for all the videos
+    const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
+    let concatFileContent = tempOutputPaths.map((filePath) => `file '${filePath}'`).join("\n");
     fs.writeFileSync(concatFilePath, concatFileContent);
     console.log(`Concat file written at ${concatFilePath}`);
-  } catch (err) {
-    console.error("Error writing concat file:", err);
-    return res.status(500).send(`Error writing concat file: ${err.message}`);
-  }
 
-  const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
-  const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -loglevel verbose -y "${outputVideoPath}"`;
+    // Concatenate all the videos into one
+    const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+    const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c:v libx264 -pix_fmt yuv420p -y "${outputVideoPath}"`;
 
-  console.log("Executing FFmpeg command:", ffmpegCommand);
+    console.log("Executing FFmpeg command for concatenation:", ffmpegConcatCommand);
 
-  exec(ffmpegCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.error("FFmpeg error:", stderr);
-      return res.status(500).send(`FFmpeg error: ${stderr}`);
-    }
-
-    console.log("FFmpeg output:", stdout || stderr);
-    res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
-
-    try {
-      if (fs.existsSync(concatFilePath)) {
-        fs.unlinkSync(concatFilePath);
+    exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error("Error concatenating videos:", stderr);
+        return res.status(500).send(`Error concatenating videos: ${stderr}`);
       }
 
-      imageInputs.forEach(({ outputFile }) => {
-        const filePath = path.join(__dirname, "videos", outputFile);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+      console.log("Videos concatenated successfully.");
+      res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
+
+      // Clean up: remove temp video files and concat file
+      try {
+        tempOutputPaths.forEach((tempPath) => {
+          if (fs.existsSync(tempPath)) {
+            fs.unlinkSync(tempPath);
+          }
+        });
+
+        if (fs.existsSync(concatFilePath)) {
+          fs.unlinkSync(concatFilePath);
         }
-      });
-    } catch (cleanupErr) {
-      console.error("Error cleaning up files:", cleanupErr);
-    }
-  });
+      } catch (cleanupErr) {
+        console.error("Error cleaning up files:", cleanupErr);
+      }
+    });
+  } catch (err) {
+    console.error("Error processing videos:", err);
+    res.status(500).send(`Error processing videos: ${err.message}`);
+  }
 });
-
-// app.post("/create-video", upload.array("images"), (req, res) => {
-//   const files = req.files;
-//   const durations = JSON.parse(req.body.durations); // Array of durations for each image
-
-//   if (!fs.existsSync("videos")) {
-//     fs.mkdirSync("videos");
-//   }
-
-//   const imageInputs = files.map((file, index) => {
-//     const inputFile = file.path;
-//     const outputFile = `image_${index}.png`;
-//     const duration = durations[index];
-
-//     return { inputFile, outputFile, duration };
-//   });
-
-//   const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
-//   let concatFileContent = "";
-
-//   imageInputs.forEach(({ inputFile, duration }, index) => {
-//     const outputFile = `image_${index}.png`;
-//     const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
-
-//     try {
-//       fs.renameSync(inputFile, fullOutputFilePath);
-//       concatFileContent += `file '${fullOutputFilePath}'\n`;
-//       concatFileContent += `duration ${duration}\n`;
-//       console.log(`Image ${index + 1}: Moved to ${fullOutputFilePath}, Duration: ${duration}s`);
-//     } catch (err) {
-//       console.error(`Error moving file: ${inputFile} to ${fullOutputFilePath}`, err);
-//       return res.status(500).send(`Error moving file: ${err.message}`);
-//     }
-//   });
-
-//   concatFileContent += `file '${path.join(__dirname, "videos", imageInputs[imageInputs.length - 1].outputFile)}'\n`;
-//   concatFileContent += `duration ${imageInputs[imageInputs.length - 1].duration}\n`;
-
-//   try {
-//     fs.writeFileSync(concatFilePath, concatFileContent);
-//     console.log(`Concat file written at ${concatFilePath}`);
-//   } catch (err) {
-//     console.error("Error writing concat file:", err);
-//     return res.status(500).send(`Error writing concat file: ${err.message}`);
-//   }
-
-//   const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
-//   const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -loglevel verbose -y "${outputVideoPath}"`;
-
-//   console.log("Executing FFmpeg command:", ffmpegCommand);
-
-//   exec(ffmpegCommand, (error, stdout, stderr) => {
-//     if (error) {
-//       console.error("FFmpeg error:", stderr);
-//       return res.status(500).send(`FFmpeg error: ${stderr}`);
-//     }
-
-//     console.log("FFmpeg output:", stdout || stderr);
-//     res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
-
-//     try {
-//       if (fs.existsSync(concatFilePath)) {
-//         fs.unlinkSync(concatFilePath);
-//       }
-
-//       imageInputs.forEach(({ outputFile }) => {
-//         const filePath = path.join(__dirname, "videos", outputFile);
-//         if (fs.existsSync(filePath)) {
-//           fs.unlinkSync(filePath);
-//         }
-//       });
-//     } catch (cleanupErr) {
-//       console.error("Error cleaning up files:", cleanupErr);
-//     }
-//   });
-// });
 
 //compress
 
