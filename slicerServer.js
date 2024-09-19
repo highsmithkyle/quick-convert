@@ -48,9 +48,14 @@ const getDisparityMap = require("./getDisparityMap");
 
 app.post("/create-video", upload.array("images"), async (req, res) => {
   const files = req.files;
-  const durations = JSON.parse(req.body.durations); // Parse durations array
+  const durations = JSON.parse(req.body.durations);
+  const outputWidth = parseInt(req.body.outputWidth, 10);
+  const outputHeight = parseInt(req.body.outputHeight, 10);
+  const handlingOption = req.body.handlingOption;
 
   console.log("Received durations:", durations);
+  console.log(`Output dimensions: ${outputWidth}x${outputHeight}`);
+  console.log(`Handling option: ${handlingOption}`);
 
   if (!files || files.length === 0) {
     return res.status(400).send("No images provided or empty request.");
@@ -62,28 +67,53 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
   }
 
   const tempOutputPaths = [];
+  const croppedImagePaths = [];
 
   try {
-    // Create individual videos for each image
+    // Pre-crop images if the handling option is "cropToSmallest"
+    if (handlingOption === "cropToSmallest") {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const croppedOutputPath = path.join(__dirname, "videos", `cropped_${i}.jpg`);
+        croppedImagePaths.push(croppedOutputPath);
+
+        const cropCommand = `ffmpeg -i "${file.path}" -vf "crop=${outputWidth}:${outputHeight}" -y "${croppedOutputPath}"`;
+
+        await new Promise((resolve, reject) => {
+          exec(cropCommand, (error, stdout, stderr) => {
+            if (error) {
+              console.error(`Error cropping image ${file.path}:`, stderr);
+              return reject(`Error cropping image ${file.path}: ${stderr}`);
+            }
+            console.log(`Image cropped: ${croppedOutputPath}`);
+            resolve();
+          });
+        });
+      }
+    }
+
+    // Create individual videos for each (cropped or original) image
     for (let i = 0; i < files.length; i++) {
-      const file = files[i];
       const duration = durations[i];
       const outputFile = `video_${i}.mp4`;
       const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
       tempOutputPaths.push(fullOutputFilePath);
 
-      console.log(`Creating video for: ${file.path} with duration: ${duration}s`);
+      console.log(`Creating video for image with duration: ${duration}s`);
 
-      // FFmpeg command to create a video from the image with the specified duration
-      const ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${file.path}" -vf "scale=1280:720,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+      // Determine input image path based on handling option
+      const inputImagePath = handlingOption === "cropToSmallest" ? croppedImagePaths[i] : files[i].path;
+
+      // FFmpeg command for video creation
+      const ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=${outputWidth}:${outputHeight},fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
 
       await new Promise((resolve, reject) => {
         exec(ffmpegCommand, (error, stdout, stderr) => {
           if (error) {
-            console.error(`Error creating video for ${file.path}:`, stderr);
-            return reject(`Error creating video for ${file.path}: ${stderr}`);
+            console.error(`Error creating video for ${inputImagePath}:`, stderr);
+            return reject(`Error creating video for ${inputImagePath}: ${stderr}`);
           }
-          console.log(`Video created for ${file.path}`);
+          console.log(`Video created for ${inputImagePath}`);
           resolve();
         });
       });
@@ -110,17 +140,13 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       console.log("Videos concatenated successfully.");
       res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
 
-      // Clean up: remove temp video files and concat file
+      // Clean up: remove temp video files, cropped images, and concat file
       try {
-        tempOutputPaths.forEach((tempPath) => {
+        [...tempOutputPaths, ...croppedImagePaths, concatFilePath].forEach((tempPath) => {
           if (fs.existsSync(tempPath)) {
             fs.unlinkSync(tempPath);
           }
         });
-
-        if (fs.existsSync(concatFilePath)) {
-          fs.unlinkSync(concatFilePath);
-        }
       } catch (cleanupErr) {
         console.error("Error cleaning up files:", cleanupErr);
       }
@@ -161,6 +187,7 @@ app.post("/compress-gif", upload.single("image"), (req, res) => {
     });
   });
 });
+
 app.post("/compress-webp", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
   const compressionLevel = parseInt(req.body.compression_level, 10);
@@ -1535,7 +1562,7 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
 // cleans up folders (compressed, converted, grad,overlay, subtitles, uploads)
 
 const clearFolders = () => {
-  const folders = ["compressed", "converted", "gradient-background", "overlay", "subtitles", "uploads", "processed"];
+  const folders = ["compressed", "converted", "gradient-background", "overlay", "subtitles", "uploads", "processed", "videos"];
 
   folders.forEach((folder) => {
     fs.readdir(path.join(__dirname, folder), (err, files) => {
