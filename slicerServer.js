@@ -234,6 +234,36 @@ app.post("/compress-jpeg", upload.single("image"), (req, res) => {
 
 // Compress PNG
 
+app.post("/compress-png", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.png`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing PNG:", stderr);
+      return res.status(500).send("Failed to compress PNG.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed PNG:", err);
+        return res.status(500).send("Error sending compressed PNG.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
 //image compress
 
 app.post("/compress-image", upload.single("image"), (req, res) => {
@@ -272,10 +302,28 @@ app.post("/compress-image", upload.single("image"), (req, res) => {
 app.post("/resize-image", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
   const targetWidth = parseInt(req.body.target_width, 10);
-  const outputFileName = `resized_${Date.now()}.png`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+  const targetHeight = parseInt(req.body.target_height, 10);
+  const outputType = req.body.output_type;
 
-  const resizeCommand = `convert "${imagePath}" -resize ${targetWidth} "${outputFilePath}"`;
+  let outputFileName;
+  let resizeCommand;
+
+  switch (outputType) {
+    case "jpeg":
+      outputFileName = `resized_${Date.now()}.jpg`;
+      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -quality 85 "${path.join(__dirname, "processed", outputFileName)}"`;
+      break;
+    case "png":
+      outputFileName = `resized_${Date.now()}.png`;
+      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -strip "${path.join(__dirname, "processed", outputFileName)}"`;
+      break;
+    case "webp":
+      outputFileName = `resized_${Date.now()}.webp`;
+      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -quality 85 "${path.join(__dirname, "processed", outputFileName)}"`;
+      break;
+    default:
+      return res.status(400).send("Invalid output type");
+  }
 
   exec(resizeCommand, (error, stdout, stderr) => {
     fs.unlinkSync(imagePath);
@@ -284,6 +332,8 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
       console.error("Error resizing image:", stderr);
       return res.status(500).send("Failed to resize image.");
     }
+
+    const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
     res.sendFile(outputFilePath, (err) => {
       if (err) {
@@ -295,6 +345,33 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
     });
   });
 });
+
+// app.post("/resize-image", upload.single("image"), (req, res) => {
+//   const imagePath = req.file.path;
+//   const targetWidth = parseInt(req.body.target_width, 10);
+//   const outputFileName = `resized_${Date.now()}.png`;
+//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+//   const resizeCommand = `convert "${imagePath}" -resize ${targetWidth} "${outputFilePath}"`;
+
+//   exec(resizeCommand, (error, stdout, stderr) => {
+//     fs.unlinkSync(imagePath);
+
+//     if (error) {
+//       console.error("Error resizing image:", stderr);
+//       return res.status(500).send("Failed to resize image.");
+//     }
+
+//     res.sendFile(outputFilePath, (err) => {
+//       if (err) {
+//         console.error("Error sending resized image:", err);
+//         return res.status(500).send("Error sending resized image.");
+//       }
+
+//       fs.unlinkSync(outputFilePath);
+//     });
+//   });
+// });
 
 // image crop
 app.post("/upload-image", upload.single("media"), (req, res) => {
@@ -1114,7 +1191,6 @@ app.post("/convertToPng", upload.single("image"), (req, res) => {
   });
 });
 
-// Convert to JPEG
 app.post("/convertToJpeg", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
   const outputPath = path.join(convertedDir, `converted_${Date.now()}.jpeg`);
@@ -1283,6 +1359,8 @@ app.post("/convertToGif", upload.single("video"), (req, res) => {
     });
   });
 });
+
+// cleanup GIF files
 
 const cleanup = (videoPath, framesDir, outputPath) => {
   fs.unlink(videoPath, (err) => {

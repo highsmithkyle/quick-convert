@@ -242,7 +242,6 @@
         <video id="processedVideo" controls style="width: 400px; display: block"></video>
       </div>
     </div>
-
     <div id="cropModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -250,11 +249,13 @@
           <button id="modalCloseButton" class="image-slideshow-close-button"></button>
         </div>
 
-        <img id="modalImage" src="" alt="Full-size Image" />
-
-        <!-- Overlay for cropping -->
-        <div id="overlay">
-          <div id="bottom-right" class="resize-handle"></div>
+        <!-- Wrap the modal image in a container -->
+        <div id="modalImageContainer" style="position: relative">
+          <img id="modalImage" src="" alt="Full-size Image" style="display: block; max-width: 100%" />
+          <!-- Overlay for cropping -->
+          <div id="overlay">
+            <div id="bottom-right" class="resize-handle"></div>
+          </div>
         </div>
 
         <div class="form-group">

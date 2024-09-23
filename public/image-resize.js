@@ -6,10 +6,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const percentageResize = document.getElementById("percentageResize");
   const dimensionsResize = document.getElementById("dimensionsResize");
   const resizeModeSelect = document.getElementById("resizeMode");
-
   const resizePercentageSlider = document.getElementById("resize_percentage");
   const resizeWidthInput = document.getElementById("resize_width");
   const percentageDisplay = document.getElementById("percentage_display");
+  const outputTypeSelect = document.getElementById("outputType");
 
   const uploadedImageSize = document.getElementById("uploadedImageSize");
   const uploadedImageDimensions = document.getElementById("uploadedImageDimensions");
@@ -32,8 +32,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  resizeModeSelect.addEventListener("change", updateResizeMode);
+  updateResizeMode();
 
+  resizeModeSelect.addEventListener("change", updateResizeMode);
   window.updatePercentageDisplay = updatePercentageDisplay;
 
   imageInput.addEventListener("change", function () {
@@ -67,6 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
     e.preventDefault();
     const img = document.getElementById("uploadedImage");
     const mode = resizeModeSelect.value;
+    const outputType = outputTypeSelect.value;
 
     let targetWidth, targetHeight;
 
@@ -83,6 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("image", imageInput.files[0]);
     formData.append("target_width", targetWidth);
     formData.append("target_height", targetHeight);
+    formData.append("output_type", outputType);
 
     notification.style.display = "block";
 

@@ -152,30 +152,3 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   });
 });
-
-document.getElementById("videoPlayer").onloadedmetadata = function () {
-  document.getElementById("seekBar").max = videoPlayer.duration;
-};
-
-function playPause() {
-  var video = document.getElementById("videoPlayer");
-  if (video.paused) {
-    video.play();
-  } else {
-    video.pause();
-  }
-}
-
-function muteUnmute() {
-  var video = document.getElementById("videoPlayer");
-  video.muted = !video.muted;
-}
-
-document.getElementById("seekBar").addEventListener("input", function () {
-  var video = document.getElementById("videoPlayer");
-  video.currentTime = this.value;
-});
-
-document.getElementById("videoPlayer").addEventListener("timeupdate", function () {
-  document.getElementById("seekBar").value = this.currentTime;
-});

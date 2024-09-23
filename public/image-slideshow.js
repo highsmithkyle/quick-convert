@@ -8,17 +8,18 @@ document.addEventListener("DOMContentLoaded", function () {
   const outputWidthInput = document.getElementById("outputWidth");
   const outputHeightInput = document.getElementById("outputHeight");
   const modal = document.getElementById("cropModal");
+  const modalImageContainer = document.getElementById("modalImageContainer");
   const modalImage = document.getElementById("modalImage");
   const modalTitle = document.getElementById("modalTitle");
   const modalCloseButton = document.getElementById("modalCloseButton");
   const overlay = document.getElementById("overlay");
   const cropSizeSelector = document.getElementById("cropSizeSelector");
   const handle = overlay.querySelector(".resize-handle");
-  let videoInfoElement;
   let selectedFiles = [];
   let durations = [];
   let aspectRatio = null;
-  let scaleX, scaleY;
+  let isResizing = false;
+  let canDrag = false;
 
   function addImages(files) {
     Array.from(files).forEach((file) => {
@@ -112,14 +113,14 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function initializeOverlay() {
-    const { width, height } = modalImage.getBoundingClientRect();
-    overlay.style.width = `${width * 0.8}px`;
-    overlay.style.height = `${height * 0.8}px`;
-    overlay.style.top = `${(height - overlay.offsetHeight) / 2}px`;
-    overlay.style.left = `${(width - overlay.offsetWidth) / 2}px`;
+    const modalRect = modalImageContainer.getBoundingClientRect();
+    overlay.style.width = `${modalRect.width * 0.8}px`;
+    overlay.style.height = `${modalRect.height * 0.8}px`;
+    overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
+    overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
     overlay.style.display = "block";
-    makeDraggable(overlay);
-    makeResizable(overlay);
+    makeDraggable(overlay, modalImageContainer);
+    makeResizable(overlay, modalImageContainer);
     updateOverlay();
   }
 
@@ -132,38 +133,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   modalCloseButton.addEventListener("click", closeModal);
 
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) {
-      closeModal();
-    }
-  });
-
   cropSizeSelector.addEventListener("change", updateOverlay);
 
   function updateOverlay() {
     const ratio = cropSizeSelector.value;
-    const { width, height } = modalImage.getBoundingClientRect();
+    const { width, height } = modalImageContainer.getBoundingClientRect();
     let overlayWidth, overlayHeight;
 
     switch (ratio) {
       case "16:9":
         aspectRatio = 16 / 9;
-        overlayWidth = width * 0.8;
+        overlayWidth = width;
         overlayHeight = overlayWidth / aspectRatio;
         break;
       case "9:16":
         aspectRatio = 9 / 16;
-        overlayHeight = height * 0.8;
+        overlayHeight = height;
         overlayWidth = overlayHeight * aspectRatio;
         break;
       case "1:1":
         aspectRatio = 1;
-        overlayWidth = Math.min(width, height) * 0.8;
+        overlayWidth = Math.min(width, height);
         overlayHeight = overlayWidth;
         break;
       case "8:3":
         aspectRatio = 8 / 3;
-        overlayWidth = width * 0.8;
+        overlayWidth = width;
         overlayHeight = overlayWidth / aspectRatio;
         break;
       case "custom":
@@ -183,52 +178,102 @@ document.addEventListener("DOMContentLoaded", function () {
     overlay.style.left = `${(width - overlayWidth) / 2}px`;
   }
 
-  function makeDraggable(element) {
+  function makeDraggable(element, container) {
     let pos1 = 0,
       pos2 = 0,
       pos3 = 0,
       pos4 = 0;
-    element.onmousedown = function (e) {
+
+    element.addEventListener("mousedown", function (e) {
+      if (isResizing) return;
       e.preventDefault();
       pos3 = e.clientX;
       pos4 = e.clientY;
-      document.onmouseup = closeDragElement;
-      document.onmousemove = elementDrag;
-    };
+      canDrag = true;
 
-    function elementDrag(e) {
-      e.preventDefault();
-      pos1 = pos3 - e.clientX;
-      pos2 = pos4 - e.clientY;
-      pos3 = e.clientX;
-      pos4 = e.clientY;
-      element.style.top = `${element.offsetTop - pos2}px`;
-      element.style.left = `${element.offsetLeft - pos1}px`;
-    }
+      document.onmouseup = function () {
+        document.onmouseup = null;
+        document.onmousemove = null;
+        canDrag = false;
+      };
 
-    function closeDragElement() {
-      document.onmouseup = null;
-      document.onmousemove = null;
-    }
+      document.onmousemove = function (e) {
+        if (!canDrag) return;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        let newTop = element.offsetTop - pos2;
+        let newLeft = element.offsetLeft - pos1;
+
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+
+        // Prevent dragging outside the container for both custom and aspect ratios
+        if (newTop < 0) newTop = 0;
+        if (newLeft < 0) newLeft = 0;
+        if (newTop + elementRect.height > containerRect.height) {
+          newTop = containerRect.height - elementRect.height;
+        }
+        if (newLeft + elementRect.width > containerRect.width) {
+          newLeft = containerRect.width - elementRect.width;
+        }
+
+        element.style.top = `${newTop}px`;
+        element.style.left = `${newLeft}px`;
+      };
+    });
   }
 
-  function makeResizable(element) {
+  function makeResizable(element, container) {
+    handle.style.display = "block";
+
     handle.onmousedown = function (e) {
       e.preventDefault();
+      isResizing = true;
+      canDrag = false;
       document.onmousemove = resizeElement;
       document.onmouseup = stopResize;
     };
 
     function resizeElement(e) {
-      const width = e.clientX - element.getBoundingClientRect().left;
-      const height = e.clientY - element.getBoundingClientRect().top;
-      element.style.width = `${width}px`;
-      element.style.height = `${height}px`;
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+
+      let newWidth = e.clientX - elementRect.left;
+      let newHeight = e.clientY - elementRect.top;
+
+      if (aspectRatio) {
+        if (newWidth / newHeight > aspectRatio) {
+          newHeight = newWidth / aspectRatio;
+        } else {
+          newWidth = newHeight * aspectRatio;
+        }
+      }
+
+      if (newWidth + elementRect.left > containerRect.right) {
+        newWidth = containerRect.right - elementRect.left;
+        newHeight = newWidth / (aspectRatio || 1);
+      }
+      if (newHeight + elementRect.top > containerRect.bottom) {
+        newHeight = containerRect.bottom - elementRect.top;
+        newWidth = newHeight * (aspectRatio || 1);
+      }
+
+      if (newWidth < 50) newWidth = 50;
+      if (newHeight < 50) newHeight = 50;
+
+      element.style.width = `${newWidth}px`;
+      element.style.height = `${newHeight}px`;
     }
 
     function stopResize() {
+      isResizing = false;
       document.onmousemove = null;
       document.onmouseup = null;
+      canDrag = true;
     }
   }
 
@@ -356,13 +401,11 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function fetchVideoDimensions(videoUrl) {
-    if (!videoInfoElement) {
-      videoInfoElement = document.createElement("span");
-      videoInfoElement.style.fontWeight = "normal";
-      videoInfoElement.style.fontSize = "14px";
-      videoInfoElement.style.marginLeft = "8px";
-      videoContainerTitle.appendChild(videoInfoElement);
-    }
+    let videoInfoElement = document.createElement("span");
+    videoInfoElement.style.fontWeight = "normal";
+    videoInfoElement.style.fontSize = "14px";
+    videoInfoElement.style.marginLeft = "8px";
+    videoContainerTitle.appendChild(videoInfoElement);
 
     const videoElement = document.createElement("video");
     videoElement.src = videoUrl;
@@ -385,12 +428,18 @@ document.addEventListener("DOMContentLoaded", function () {
 //   const outputWidthInput = document.getElementById("outputWidth");
 //   const outputHeightInput = document.getElementById("outputHeight");
 //   const modal = document.getElementById("cropModal");
+//   const modalImageContainer = document.getElementById("modalImageContainer");
 //   const modalImage = document.getElementById("modalImage");
 //   const modalTitle = document.getElementById("modalTitle");
 //   const modalCloseButton = document.getElementById("modalCloseButton");
-//   let videoInfoElement;
+//   const overlay = document.getElementById("overlay");
+//   const cropSizeSelector = document.getElementById("cropSizeSelector");
+//   const handle = overlay.querySelector(".resize-handle");
 //   let selectedFiles = [];
 //   let durations = [];
+//   let aspectRatio = null;
+//   let isResizing = false;
+//   let canDrag = false;
 
 //   function addImages(files) {
 //     Array.from(files).forEach((file) => {
@@ -479,7 +528,20 @@ document.addEventListener("DOMContentLoaded", function () {
 //     modal.style.display = "flex";
 //     setTimeout(() => {
 //       modal.classList.add("show");
+//       initializeOverlay();
 //     }, 10);
+//   }
+
+//   function initializeOverlay() {
+//     const modalRect = modalImageContainer.getBoundingClientRect();
+//     overlay.style.width = `${modalRect.width * 0.8}px`;
+//     overlay.style.height = `${modalRect.height * 0.8}px`;
+//     overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
+//     overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
+//     overlay.style.display = "block";
+//     makeDraggable(overlay, modalImageContainer);
+//     makeResizable(overlay, modalImageContainer);
+//     updateOverlay();
 //   }
 
 //   function closeModal() {
@@ -491,11 +553,153 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //   modalCloseButton.addEventListener("click", closeModal);
 
-//   modal.addEventListener("click", (event) => {
-//     if (event.target === modal) {
-//       closeModal();
+//   cropSizeSelector.addEventListener("change", updateOverlay);
+
+//   function updateOverlay() {
+//     const ratio = cropSizeSelector.value;
+//     const { width, height } = modalImageContainer.getBoundingClientRect();
+//     let overlayWidth, overlayHeight;
+
+//     switch (ratio) {
+//       case "16:9":
+//         aspectRatio = 16 / 9;
+//         overlayWidth = width;
+//         overlayHeight = overlayWidth / aspectRatio;
+//         break;
+//       case "9:16":
+//         aspectRatio = 9 / 16;
+//         overlayHeight = height;
+//         overlayWidth = overlayHeight * aspectRatio;
+//         break;
+//       case "1:1":
+//         aspectRatio = 1;
+//         overlayWidth = Math.min(width, height);
+//         overlayHeight = overlayWidth;
+//         break;
+//       case "8:3":
+//         aspectRatio = 8 / 3;
+//         overlayWidth = width;
+//         overlayHeight = overlayWidth / aspectRatio;
+//         break;
+//       case "custom":
+//         overlayWidth = 200;
+//         overlayHeight = 150;
+//         aspectRatio = null;
+//         break;
+//       default:
+//         overlayWidth = width * 0.8;
+//         overlayHeight = height * 0.8;
+//         break;
 //     }
-//   });
+
+//     // Ensure overlay is centered and fits within the image container
+//     overlay.style.width = `${overlayWidth}px`;
+//     overlay.style.height = `${overlayHeight}px`;
+//     overlay.style.top = `${(height - overlayHeight) / 2}px`;
+//     overlay.style.left = `${(width - overlayWidth) / 2}px`;
+//   }
+
+//   function makeDraggable(element, container) {
+//     let pos1 = 0,
+//       pos2 = 0,
+//       pos3 = 0,
+//       pos4 = 0;
+
+//     element.addEventListener("mousedown", function (e) {
+//       if (isResizing) return;
+//       e.preventDefault();
+//       pos3 = e.clientX;
+//       pos4 = e.clientY;
+//       canDrag = true;
+
+//       document.onmouseup = function () {
+//         document.onmouseup = null;
+//         document.onmousemove = null;
+//         canDrag = false;
+//       };
+
+//       document.onmousemove = function (e) {
+//         if (!canDrag) return;
+//         e.preventDefault();
+//         pos1 = pos3 - e.clientX;
+//         pos2 = pos4 - e.clientY;
+//         pos3 = e.clientX;
+//         pos4 = e.clientY;
+
+//         let newTop = element.offsetTop - pos2;
+//         let newLeft = element.offsetLeft - pos1;
+
+//         const containerRect = container.getBoundingClientRect();
+//         const elementRect = element.getBoundingClientRect();
+
+//         // Ensure the element stays within the container
+//         if (newTop < 0) newTop = 0;
+//         if (newLeft < 0) newLeft = 0;
+//         if (newTop + elementRect.height > containerRect.height) {
+//           newTop = containerRect.height - elementRect.height;
+//         }
+//         if (newLeft + elementRect.width > containerRect.width) {
+//           newLeft = containerRect.width - elementRect.width;
+//         }
+
+//         element.style.top = `${newTop}px`;
+//         element.style.left = `${newLeft}px`;
+//       };
+//     });
+//   }
+
+//   function makeResizable(element, container) {
+//     handle.style.display = "block"; // Show the resize handle
+
+//     handle.onmousedown = function (e) {
+//       e.preventDefault();
+//       isResizing = true;
+//       canDrag = false;
+//       document.onmousemove = resizeElement;
+//       document.onmouseup = stopResize;
+//     };
+
+//     function resizeElement(e) {
+//       const containerRect = container.getBoundingClientRect();
+//       const elementRect = element.getBoundingClientRect();
+
+//       let newWidth = e.clientX - elementRect.left;
+//       let newHeight = e.clientY - elementRect.top;
+
+//       // Maintain aspect ratio if preset
+//       if (aspectRatio) {
+//         if (newWidth / newHeight > aspectRatio) {
+//           newHeight = newWidth / aspectRatio;
+//         } else {
+//           newWidth = newHeight * aspectRatio;
+//         }
+//       }
+
+//       // Ensure resizing does not exceed container bounds
+//       if (newWidth + elementRect.left > containerRect.right) {
+//         newWidth = containerRect.right - elementRect.left;
+//         newHeight = newWidth / (aspectRatio || 1);
+//       }
+//       if (newHeight + elementRect.top > containerRect.bottom) {
+//         newHeight = containerRect.bottom - elementRect.top;
+//         newWidth = newHeight * (aspectRatio || 1);
+//       }
+
+//       // Minimum size constraint
+//       if (newWidth < 50) newWidth = 50;
+//       if (newHeight < 50) newHeight = 50;
+
+//       element.style.width = `${newWidth}px`;
+//       element.style.height = `${newHeight}px`;
+//     }
+
+//     function stopResize() {
+//       isResizing = false;
+//       document.onmousemove = null;
+//       document.onmouseup = null;
+//       canDrag = true;
+//     }
+//   }
 
 //   function updateTitles() {
 //     const containers = document.querySelectorAll(".image-container:not(.add-image-container)");
@@ -512,7 +716,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //       ghostClass: "dragging",
 //       onEnd: function () {
 //         const newOrderContainers = Array.from(imageContainer.children).filter((el) => el !== addImageButton);
-
 //         const newSelectedFiles = [];
 //         const newDurations = [];
 
@@ -527,7 +730,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //         selectedFiles = newSelectedFiles;
 //         durations = newDurations;
-
 //         updateTitles();
 //       },
 //     });
@@ -572,7 +774,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //   createVideoButton.addEventListener("click", function () {
 //     const imageContainers = document.querySelectorAll(".image-container:not(.add-image-container)");
-
 //     const outputWidth = outputWidthInput.value;
 //     const outputHeight = outputHeightInput.value;
 //     const selectedHandlingOption = handlingOption.value;
@@ -615,9 +816,7 @@ document.addEventListener("DOMContentLoaded", function () {
 //         const videoElement = document.getElementById("processedVideo");
 //         videoElement.src = videoUrl;
 //         videoElement.style.display = "block";
-
 //         fetchVideoDimensions(videoUrl);
-
 //         processingNotification.style.display = "none";
 //       })
 //       .catch(() => {
@@ -626,14 +825,11 @@ document.addEventListener("DOMContentLoaded", function () {
 //   });
 
 //   function fetchVideoDimensions(videoUrl) {
-//     if (!videoInfoElement) {
-//       videoInfoElement = document.createElement("span");
-//       videoInfoElement.style.fontWeight = "normal";
-//       videoInfoElement.style.fontSize = "14px";
-//       videoInfoElement.style.marginLeft = "8px";
-
-//       videoContainerTitle.appendChild(videoInfoElement);
-//     }
+//     let videoInfoElement = document.createElement("span");
+//     videoInfoElement.style.fontWeight = "normal";
+//     videoInfoElement.style.fontSize = "14px";
+//     videoInfoElement.style.marginLeft = "8px";
+//     videoContainerTitle.appendChild(videoInfoElement);
 
 //     const videoElement = document.createElement("video");
 //     videoElement.src = videoUrl;
@@ -641,7 +837,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //     videoElement.onloadedmetadata = function () {
 //       const width = videoElement.videoWidth;
 //       const height = videoElement.videoHeight;
-
 //       videoInfoElement.textContent = ` (${width}x${height})`;
 //     };
 //   }
