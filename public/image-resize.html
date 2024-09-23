@@ -16,29 +16,44 @@
 
       <h2>Image Resize</h2>
       <form id="uploadFormResize" enctype="multipart/form-data" class="form-group">
-        <label for="image">Upload your image:</label>
-        <input type="file" id="image" name="image" accept="image/*" required />
-
-        <label for="resizeMode">Resize Mode:</label>
-        <select id="resizeMode" name="resizeMode" style="width: 90%">
-          <option value="percentage">By Percentage</option>
-          <option value="dimensions">By Dimensions</option>
-        </select>
-
-        <div id="percentageResize" class="resize-option">
-          <label for="resize_percentage">Resize Percentage:</label>
-          <input type="range" id="resize_percentage" name="resize_percentage" min="10" max="200" value="100" step="10" oninput="updatePercentageDisplay(this.value)" style="width: 80%" />
-          <br />
-          <span id="percentage_display">100%</span>
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required />
         </div>
 
-        <div id="dimensionsResize" class="resize-option" style="display: none">
-          <label for="width">Width (px):</label>
-          <input type="number" id="resize_width" name="resize_width" min="1" step="1" />
-        </div>
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="resizeMode">Resize Mode:</label>
+            <select id="resizeMode" name="resizeMode" style="width: 90%">
+              <option value="dimensions" selected>By Dimensions</option>
+              <option value="percentage">By Percentage</option>
+            </select>
+          </div>
 
-        <div class="button-group">
-          <button type="submit" class="form-button">Resize Image</button>
+          <div id="percentageResize" class="resize-option" style="display: none">
+            <label for="resize_percentage">Resize Percentage:</label>
+            <input type="range" id="resize_percentage" name="resize_percentage" min="10" max="200" value="100" step="10" oninput="updatePercentageDisplay(this.value)" style="width: 80%" />
+            <br />
+            <span id="percentage_display">100%</span>
+          </div>
+
+          <div id="dimensionsResize" class="resize-option">
+            <label for="width">Width (px):</label>
+            <input type="number" id="resize_width" name="resize_width" min="1" step="1" style="width: 90%" />
+          </div>
+
+          <div class="form-group">
+            <label for="outputType">Output File Type:</label>
+            <select id="outputType" name="outputType" style="width: 90%">
+              <option value="jpeg">JPEG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="form-button">Resize Image</button>
+          </div>
         </div>
       </form>
     </div>
