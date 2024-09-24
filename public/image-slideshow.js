@@ -14,12 +14,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const modalCloseButton = document.getElementById("modalCloseButton");
   const overlay = document.getElementById("overlay");
   const cropSizeSelector = document.getElementById("cropSizeSelector");
+  const cropButton = document.getElementById("cropButton");
   const handle = overlay.querySelector(".resize-handle");
   let selectedFiles = [];
   let durations = [];
   let aspectRatio = null;
   let isResizing = false;
   let canDrag = false;
+  let scaleX, scaleY;
 
   function addImages(files) {
     Array.from(files).forEach((file) => {
@@ -36,16 +38,21 @@ document.addEventListener("DOMContentLoaded", function () {
       img.src = URL.createObjectURL(file);
       img.classList.add("slideshow-image");
 
+      img.onload = function () {
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+        updateImageTitle(container, currentIndex + 1, width, height);
+      };
+
       const buttonTitleContainer = document.createElement("div");
       buttonTitleContainer.classList.add("button-title-container");
 
       const title = document.createElement("p");
       title.classList.add("image-title");
-      title.textContent = `Image ${currentIndex + 1}`;
 
       const cropButton = document.createElement("button");
       cropButton.classList.add("image-slideshow-crop-button");
-      cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1));
+      cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1, container, img));
 
       const closeButton = document.createElement("button");
       closeButton.classList.add("image-slideshow-close-button");
@@ -102,26 +109,75 @@ document.addEventListener("DOMContentLoaded", function () {
     initializeSortable();
   }
 
-  function openCropModal(file, index) {
-    modalImage.src = URL.createObjectURL(file);
+  function openCropModal(file, index, container, img) {
+    const updatedFile = selectedFiles[container.getAttribute("data-index")];
+
+    modalImage.src = URL.createObjectURL(updatedFile);
     modalTitle.textContent = `Image ${index}`;
     modal.style.display = "flex";
-    setTimeout(() => {
-      modal.classList.add("show");
-      initializeOverlay();
-    }, 10);
+
+    modalImage.onload = function () {
+      scaleX = modalImage.naturalWidth / modalImage.getBoundingClientRect().width;
+      scaleY = modalImage.naturalHeight / modalImage.getBoundingClientRect().height;
+
+      setTimeout(() => {
+        modal.classList.add("show");
+        initializeOverlay();
+      }, 10);
+    };
+
+    cropButton.onclick = function () {
+      cropImage(updatedFile, container, img);
+    };
   }
 
-  function initializeOverlay() {
-    const modalRect = modalImageContainer.getBoundingClientRect();
-    overlay.style.width = `${modalRect.width * 0.8}px`;
-    overlay.style.height = `${modalRect.height * 0.8}px`;
-    overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
-    overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
-    overlay.style.display = "block";
-    makeDraggable(overlay, modalImageContainer);
-    makeResizable(overlay, modalImageContainer);
-    updateOverlay();
+  function cropImage(file, container, img) {
+    const modalRect = modalImage.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+
+    const scaleX = modalImage.naturalWidth / modalRect.width;
+    const scaleY = modalImage.naturalHeight / modalRect.height;
+
+    const cropWidth = overlayRect.width * scaleX;
+    const cropHeight = overlayRect.height * scaleY;
+    const cropLeft = (overlayRect.left - modalRect.left) * scaleX;
+    const cropTop = (overlayRect.top - modalRect.top) * scaleY;
+
+    if (cropWidth <= 0 || cropHeight <= 0 || cropLeft < 0 || cropTop < 0) {
+      alert("Invalid crop dimensions");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("width", Math.round(cropWidth));
+    formData.append("height", Math.round(cropHeight));
+    formData.append("left", Math.round(cropLeft));
+    formData.append("top", Math.round(cropTop));
+
+    fetch("/crop-image", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.blob())
+      .then((blob) => {
+        const url = window.URL.createObjectURL(blob);
+        img.src = url;
+
+        const index = container.getAttribute("data-index");
+        selectedFiles[index] = new File([blob], file.name, { type: blob.type });
+
+        updateImageTitle(container, index + 1, img.naturalWidth, img.naturalHeight);
+        closeModal();
+      })
+      .catch((error) => {
+        console.error("Error cropping the image:", error);
+      });
+  }
+
+  function updateImageTitle(container, index, width, height) {
+    const title = container.querySelector(".image-title");
+    title.textContent = `Image ${index} (${width}x${height})`;
   }
 
   function closeModal() {
@@ -134,6 +190,18 @@ document.addEventListener("DOMContentLoaded", function () {
   modalCloseButton.addEventListener("click", closeModal);
 
   cropSizeSelector.addEventListener("change", updateOverlay);
+
+  function initializeOverlay() {
+    const modalRect = modalImageContainer.getBoundingClientRect();
+    overlay.style.width = `${modalRect.width * 0.8}px`;
+    overlay.style.height = `${modalRect.height * 0.8}px`;
+    overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
+    overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
+    overlay.style.display = "block";
+    makeDraggable(overlay, modalImageContainer);
+    makeResizable(overlay, modalImageContainer);
+    updateOverlay();
+  }
 
   function updateOverlay() {
     const ratio = cropSizeSelector.value;
@@ -211,7 +279,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
 
-        // Prevent dragging outside the container for both custom and aspect ratios
         if (newTop < 0) newTop = 0;
         if (newLeft < 0) newLeft = 0;
         if (newTop + elementRect.height > containerRect.height) {
@@ -280,8 +347,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function updateTitles() {
     const containers = document.querySelectorAll(".image-container:not(.add-image-container)");
     containers.forEach((container, index) => {
-      const title = container.querySelector(".image-title");
-      title.textContent = `Image ${index + 1}`;
+      const img = container.querySelector("img");
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      updateImageTitle(container, index + 1, width, height);
       container.setAttribute("data-index", index);
     });
   }
@@ -456,12 +525,17 @@ document.addEventListener("DOMContentLoaded", function () {
 //       img.src = URL.createObjectURL(file);
 //       img.classList.add("slideshow-image");
 
+//       img.onload = function () {
+//         const width = img.naturalWidth;
+//         const height = img.naturalHeight;
+//         updateImageTitle(container, currentIndex + 1, width, height);
+//       };
+
 //       const buttonTitleContainer = document.createElement("div");
 //       buttonTitleContainer.classList.add("button-title-container");
 
 //       const title = document.createElement("p");
 //       title.classList.add("image-title");
-//       title.textContent = `Image ${currentIndex + 1}`;
 
 //       const cropButton = document.createElement("button");
 //       cropButton.classList.add("image-slideshow-crop-button");
@@ -526,10 +600,16 @@ document.addEventListener("DOMContentLoaded", function () {
 //     modalImage.src = URL.createObjectURL(file);
 //     modalTitle.textContent = `Image ${index}`;
 //     modal.style.display = "flex";
+
 //     setTimeout(() => {
 //       modal.classList.add("show");
 //       initializeOverlay();
 //     }, 10);
+//   }
+
+//   function updateImageTitle(container, index, width, height) {
+//     const title = container.querySelector(".image-title");
+//     title.textContent = `Image ${index} (${width}x${height})`;
 //   }
 
 //   function initializeOverlay() {
@@ -592,7 +672,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //         break;
 //     }
 
-//     // Ensure overlay is centered and fits within the image container
 //     overlay.style.width = `${overlayWidth}px`;
 //     overlay.style.height = `${overlayHeight}px`;
 //     overlay.style.top = `${(height - overlayHeight) / 2}px`;
@@ -632,7 +711,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //         const containerRect = container.getBoundingClientRect();
 //         const elementRect = element.getBoundingClientRect();
 
-//         // Ensure the element stays within the container
 //         if (newTop < 0) newTop = 0;
 //         if (newLeft < 0) newLeft = 0;
 //         if (newTop + elementRect.height > containerRect.height) {
@@ -649,7 +727,7 @@ document.addEventListener("DOMContentLoaded", function () {
 //   }
 
 //   function makeResizable(element, container) {
-//     handle.style.display = "block"; // Show the resize handle
+//     handle.style.display = "block";
 
 //     handle.onmousedown = function (e) {
 //       e.preventDefault();
@@ -666,7 +744,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //       let newWidth = e.clientX - elementRect.left;
 //       let newHeight = e.clientY - elementRect.top;
 
-//       // Maintain aspect ratio if preset
 //       if (aspectRatio) {
 //         if (newWidth / newHeight > aspectRatio) {
 //           newHeight = newWidth / aspectRatio;
@@ -675,7 +752,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //         }
 //       }
 
-//       // Ensure resizing does not exceed container bounds
 //       if (newWidth + elementRect.left > containerRect.right) {
 //         newWidth = containerRect.right - elementRect.left;
 //         newHeight = newWidth / (aspectRatio || 1);
@@ -685,7 +761,6 @@ document.addEventListener("DOMContentLoaded", function () {
 //         newWidth = newHeight * (aspectRatio || 1);
 //       }
 
-//       // Minimum size constraint
 //       if (newWidth < 50) newWidth = 50;
 //       if (newHeight < 50) newHeight = 50;
 
@@ -704,8 +779,10 @@ document.addEventListener("DOMContentLoaded", function () {
 //   function updateTitles() {
 //     const containers = document.querySelectorAll(".image-container:not(.add-image-container)");
 //     containers.forEach((container, index) => {
-//       const title = container.querySelector(".image-title");
-//       title.textContent = `Image ${index + 1}`;
+//       const img = container.querySelector("img");
+//       const width = img.naturalWidth;
+//       const height = img.naturalHeight;
+//       updateImageTitle(container, index + 1, width, height);
 //       container.setAttribute("data-index", index);
 //     });
 //   }

@@ -18,6 +18,176 @@
       <form id="uploadFormUncrop" enctype="multipart/form-data" class="form-group">
         <div class="form-group">
           <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" class="sidebar-input" accept="image/*" required />
+        </div>
+
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="aspect_ratio">Select Aspect Ratio:</label>
+            <select id="aspect_ratio" name="aspect_ratio" class="sidebar-input">
+              <option value="custom">Custom</option>
+              <option value="4:3">4:3</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="1:1">(1:1)</option>
+              <option value="custom_width">Target Width</option>
+            </select>
+          </div>
+
+          <div id="customWidthContainer" class="form-group" style="display: none">
+            <label for="target_width">Target Width (px):</label>
+            <input type="number" id="target_width" name="target_width" class="sidebar-input" value="0" />
+          </div>
+
+          <div id="customInputs" class="form-group">
+            <label for="extend_left">Extend Left (px):</label>
+            <input type="number" id="extend_left" name="extend_left" class="sidebar-input" value="0" />
+            <label for="extend_right">Extend Right (px):</label>
+            <input type="number" id="extend_right" name="extend_right" class="sidebar-input" value="0" />
+            <label for="extend_up">Extend Up (px):</label>
+            <input type="number" id="extend_up" name="extend_up" class="sidebar-input" value="0" />
+            <label for="extend_down">Extend Down (px):</label>
+            <input type="number" id="extend_down" name="extend_down" class="sidebar-input" value="0" />
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="form-button">Uncrop Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3>Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
+            <span id="uploadedImageSize" class="image-size" style="margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" style="width: 450px" />
+        </div>
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3>Uncropped Image</h3>
+            <span id="processedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
+            <span id="processedImageSize" class="image-size" style="margin-left: 10px"></span>
+            <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          </div>
+          <img id="processedImage" src="" alt="Uncropped Image" style="width: 450px" />
+        </div>
+      </div>
+    </div>
+
+    <script src="image-uncrop.js"></script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Uncrop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+      <h2>Image Uncrop</h2>
+      <form id="uploadFormUncrop" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" class="sidebar-input" accept="image/*" required />
+        </div>
+
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="aspect_ratio">Select Aspect Ratio:</label>
+            <select id="aspect_ratio" name="aspect_ratio" class="sidebar-input">
+              <option value="custom">Custom</option>
+              <option value="4:3">4:3</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="1:1">(1:1)</option>
+              <option value="custom_width">Target Width</option>
+            </select>
+          </div>
+
+          <div id="customWidthContainer" class="form-group" style="display: none">
+            <label for="target_width">Target Width (px):</label>
+            <input type="number" id="target_width" name="target_width" class="sidebar-input" value="0" />
+          </div>
+
+          <div id="customInputs" class="form-group">
+            <label for="extend_left">Extend Left (px):</label>
+            <input type="number" id="extend_left" name="extend_left" class="sidebar-input" value="0" />
+            <label for="extend_right">Extend Right (px):</label>
+            <input type="number" id="extend_right" name="extend_right" class="sidebar-input" value="0" />
+            <label for="extend_up">Extend Up (px):</label>
+            <input type="number" id="extend_up" name="extend_up" class="sidebar-input" value="0" />
+            <label for="extend_down">Extend Down (px):</label>
+            <input type="number" id="extend_down" name="extend_down" class="sidebar-input" value="0" />
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="form-button">Uncrop Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3>Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
+            <span id="uploadedImageSize" class="image-size" style="margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" style="width: 450px" />
+        </div>
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3>Uncropped Image</h3>
+            <span id="processedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
+            <span id="processedImageSize" class="image-size" style="margin-left: 10px"></span>
+            <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          </div>
+          <img id="processedImage" src="" alt="Uncropped Image" style="width: 450px" />
+        </div>
+      </div>
+    </div>
+
+    <script src="image-uncrop.js"></script>
+  </body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Uncrop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+      <h2>Image Uncrop</h2>
+      <form id="uploadFormUncrop" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
           <input type="file" id="image" name="image" style="width: 90%" accept="image/*" required />
         </div>
 
@@ -81,4 +251,4 @@
 
     <script src="image-uncrop.js"></script>
   </body>
-</html>
+</html> -->

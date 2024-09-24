@@ -1,21 +1,34 @@
 document.addEventListener("DOMContentLoaded", function () {
   const imageInput = document.getElementById("image");
   const uploadFormUpscale = document.getElementById("uploadFormUpscale");
-  const notification = document.getElementById("processingNotification");
+  const upscaleMethod = document.getElementById("upscaleMethod");
+  const targetWidthInput = document.getElementById("targetWidthInput");
+  const percentageInput = document.getElementById("percentageInput");
   const upscalePercentageSlider = document.getElementById("upscale_percentage");
   const percentageDisplay = document.getElementById("percentage_display");
-  const downloadButtonContainer = document.getElementById("downloadButtonContainer");
+  const notification = document.getElementById("processingNotification");
 
-  const uploadedImageSize = document.getElementById("uploadedImageSize");
-  const uploadedImageDimensions = document.getElementById("uploadedImageDimensions");
-  const croppedImageSize = document.getElementById("croppedImageSize");
-  const croppedImageDimensions = document.getElementById("croppedImageDimensions");
-
+  // Function to update the displayed percentage value
   function updatePercentageDisplay(value) {
     percentageDisplay.textContent = value + "%";
   }
 
-  window.updatePercentageDisplay = updatePercentageDisplay;
+  // Toggle inputs based on the selected method
+  function toggleInputs() {
+    if (upscaleMethod.value === "targetWidth") {
+      targetWidthInput.style.display = "block";
+      percentageInput.style.display = "none";
+    } else {
+      targetWidthInput.style.display = "none";
+      percentageInput.style.display = "block";
+    }
+  }
+
+  // Initialize the default state (target width selected by default)
+  toggleInputs();
+
+  // Update input visibility when upscale method changes
+  upscaleMethod.addEventListener("change", toggleInputs);
 
   imageInput.addEventListener("change", function () {
     if (this.files && this.files[0]) {
@@ -31,12 +44,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const fileSizeInBytes = file.size;
           const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
-          uploadedImageSize.textContent = `(${fileSizeInMB} MB)`;
-          uploadedImageDimensions.textContent = `${originalWidth}x${originalHeight}px`;
-
-          upscalePercentageSlider.addEventListener("input", function () {
-            updatePercentageDisplay(this.value);
-          });
+          document.getElementById("uploadedImageSize").textContent = `(${fileSizeInMB} MB)`;
+          document.getElementById("uploadedImageDimensions").textContent = `${originalWidth}x${originalHeight}px`;
         };
       };
       reader.readAsDataURL(file);
@@ -45,11 +54,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
   uploadFormUpscale.addEventListener("submit", function (e) {
     e.preventDefault();
-    const scale = upscalePercentageSlider.value / 100;
     const img = document.getElementById("uploadedImage");
 
-    const scaledWidth = Math.round(img.naturalWidth * scale);
-    const scaledHeight = Math.round(img.naturalHeight * scale);
+    let scaledWidth, scaledHeight;
+
+    if (upscaleMethod.value === "targetWidth") {
+      const targetWidth = document.getElementById("target_width").value;
+      const scale = targetWidth / img.naturalWidth;
+      scaledWidth = Math.round(img.naturalWidth * scale);
+      scaledHeight = Math.round(img.naturalHeight * scale);
+    } else {
+      const scale = upscalePercentageSlider.value / 100;
+      scaledWidth = Math.round(img.naturalWidth * scale);
+      scaledHeight = Math.round(img.naturalHeight * scale);
+    }
 
     const formData = new FormData();
     formData.append("image", imageInput.files[0]);
@@ -77,31 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const fileSizeInBytes = blob.size;
         const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2);
-        croppedImageSize.textContent = `(${fileSizeInMB} MB)`;
-        croppedImageDimensions.textContent = `${scaledWidth}x${scaledHeight}px`;
-
-        downloadButtonContainer.innerHTML = "";
-
-        const downloadButton = document.createElement("button");
-        downloadButton.textContent = "Download Upscaled Image";
-        downloadButton.classList.add("download-button-sidebar");
-
-        const originalFilename = imageInput.files[0].name;
-        const filenameWithoutExtension = originalFilename.replace(/\.[^/.]+$/, "");
-        const fileExtension = originalFilename.split(".").pop();
-        const newFileName = `${filenameWithoutExtension}_upscaled.${fileExtension}`;
-
-        downloadButton.addEventListener("click", function () {
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = newFileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
-
-        downloadButtonContainer.appendChild(downloadButton);
-        downloadButtonContainer.style.display = "block";
+        document.getElementById("croppedImageSize").textContent = `(${fileSizeInMB} MB)`;
+        document.getElementById("croppedImageDimensions").textContent = `${scaledWidth}x${scaledHeight}px`;
       })
       .catch((err) => {
         console.error("Error:", err);

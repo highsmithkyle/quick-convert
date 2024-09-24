@@ -70,7 +70,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
   const croppedImagePaths = [];
 
   try {
-    // Pre-crop images if the handling option is "cropToSmallest"
     if (handlingOption === "cropToSmallest") {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -155,6 +154,52 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
     console.error("Error processing videos:", err);
     res.status(500).send(`Error processing videos: ${err.message}`);
   }
+});
+
+// crop image for slideshow
+app.post("/crop-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputPath = path.join(__dirname, "videos", `cropped_${Date.now()}.jpg`);
+  const { width, height, left, top } = req.body;
+
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  // Get the image's original dimensions
+  exec(`ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x ${imagePath}`, (err, stdout) => {
+    if (err) {
+      console.error("Error getting image dimensions:", err);
+      return res.status(500).send("Error processing image");
+    }
+
+    const [imageWidth, imageHeight] = stdout.split("x").map(Number);
+
+    // Validate the crop dimensions
+    if (safeWidth <= 0 || safeHeight <= 0 || safeLeft < 0 || safeTop < 0 || safeWidth + safeLeft > imageWidth || safeHeight + safeTop > imageHeight) {
+      return res.status(400).send("Invalid crop dimensions");
+    }
+
+    // Perform the crop
+    const cropCommand = `ffmpeg -i "${imagePath}" -vf "crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}" -y "${outputPath}"`;
+
+    exec(cropCommand, (error) => {
+      fs.unlinkSync(imagePath); // Cleanup the original file
+      if (error) {
+        console.error(`Error cropping image ${imagePath}:`, error);
+        return res.status(500).send("Error processing image");
+      }
+
+      res.sendFile(outputPath, (err) => {
+        if (err) {
+          console.error(`SendFile Error: ${err.message}`);
+          return res.status(500).send("Error sending cropped image");
+        }
+        fs.unlinkSync(outputPath); // Cleanup cropped file after sending
+      });
+    });
+  });
 });
 
 //compress
@@ -345,33 +390,6 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
     });
   });
 });
-
-// app.post("/resize-image", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const targetWidth = parseInt(req.body.target_width, 10);
-//   const outputFileName = `resized_${Date.now()}.png`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const resizeCommand = `convert "${imagePath}" -resize ${targetWidth} "${outputFilePath}"`;
-
-//   exec(resizeCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-
-//     if (error) {
-//       console.error("Error resizing image:", stderr);
-//       return res.status(500).send("Failed to resize image.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending resized image:", err);
-//         return res.status(500).send("Error sending resized image.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
 
 // image crop
 app.post("/upload-image", upload.single("media"), (req, res) => {
@@ -1573,7 +1591,6 @@ app.post("/reimagine-image", upload.single("image"), async (req, res) => {
   }
 });
 
-//upscale
 app.post("/upscale-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -1597,14 +1614,48 @@ app.post("/upscale-image", upload.single("image"), async (req, res) => {
     });
 
     fs.unlinkSync(imagePath);
+
     const imageType = response.headers["content-type"] === "image/webp" ? "webp" : "jpeg";
     res.setHeader("Content-Type", `image/${imageType}`);
     res.send(response.data);
   } catch (error) {
     console.error("Failed to upscale image:", error);
-    res.status(500).send("Failed to upscale image");
+    res.status(500).send("Failed to upscale image.");
   }
 });
+
+//upscale
+// app.post("/upscale-image", upload.single("image"), async (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).send("No image file uploaded.");
+//   }
+
+//   const imagePath = req.file.path;
+//   const { target_width, target_height } = req.body;
+
+//   const formData = new FormData();
+//   formData.append("image_file", fs.createReadStream(imagePath));
+//   formData.append("target_width", target_width);
+//   formData.append("target_height", target_height);
+
+//   try {
+//     const response = await axios.post("https://clipdrop-api.co/image-upscaling/v1/upscale", formData, {
+//       headers: {
+//         ...formData.getHeaders(),
+//         "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+//       },
+//       responseType: "arraybuffer",
+//     });
+
+//     fs.unlinkSync(imagePath);
+//     const imageType = response.headers["content-type"] === "image/webp" ? "webp" : "jpeg";
+//     res.setHeader("Content-Type", `image/${imageType}`);
+//     res.send(response.data);
+//   } catch (error) {
+//     console.error("Failed to upscale image:", error);
+//     res.status(500).send("Failed to upscale image");
+//   }
+// });
 
 // remove bg
 app.post("/remove-background", upload.single("image"), async (req, res) => {
