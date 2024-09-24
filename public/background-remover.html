@@ -1,5 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Background Remover</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
+
+      <h2>Image Background Remover</h2>
+      <form id="uploadForm" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" class="sidebar-input" accept="image/*" required />
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Remove Background</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Image</h3>
+          <img id="uploadedImage" src="" alt="Uploaded Image" class="processed-image" />
+        </div>
+        <div>
+          <h3>Background Removed</h3>
+          <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+          <img id="processedImage" src="" alt="Background Removed Image" class="processed-image" />
+        </div>
+      </div>
+    </div>
+
+    <script src="background-remover.js"></script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Background Remover</title>
@@ -46,4 +93,4 @@
 
     <script src="background-remover.js"></script>
 </body>
-</html>
+</html> -->

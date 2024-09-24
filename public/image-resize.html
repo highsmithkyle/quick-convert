@@ -12,19 +12,28 @@
         <span>Home</span>
       </a>
 
-      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+      <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
 
       <h2>Image Resize</h2>
       <form id="uploadFormResize" enctype="multipart/form-data" class="form-group">
         <div class="form-group">
           <label for="image">Upload your image:</label>
-          <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required />
+          <input type="file" id="image" name="image" accept="image/*" class="sidebar-input" required />
         </div>
 
         <div class="overlay-group">
           <div class="form-group">
+            <label for="outputType">Output File Type:</label>
+            <select id="outputType" name="outputType" class="sidebar-input">
+              <option value="jpeg">JPEG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label for="resizeMode">Resize Mode:</label>
-            <select id="resizeMode" name="resizeMode" style="width: 90%">
+            <select id="resizeMode" name="resizeMode" class="sidebar-input">
               <option value="dimensions" selected>By Dimensions</option>
               <option value="percentage">By Percentage</option>
             </select>
@@ -32,23 +41,14 @@
 
           <div id="percentageResize" class="resize-option" style="display: none">
             <label for="resize_percentage">Resize Percentage:</label>
-            <input type="range" id="resize_percentage" name="resize_percentage" min="10" max="200" value="100" step="10" oninput="updatePercentageDisplay(this.value)" style="width: 80%" />
+            <input type="range" id="resize_percentage" name="resize_percentage" min="10" max="200" value="100" step="10" class="sidebar-input" oninput="updatePercentageDisplay(this.value)" />
             <br />
-            <span id="percentage_display">100%</span>
+            <span id="percentage_display" style="padding-bottom: 10px">100%</span>
           </div>
 
           <div id="dimensionsResize" class="resize-option">
             <label for="width">Width (px):</label>
-            <input type="number" id="resize_width" name="resize_width" min="1" step="1" style="width: 90%" />
-          </div>
-
-          <div class="form-group">
-            <label for="outputType">Output File Type:</label>
-            <select id="outputType" name="outputType" style="width: 90%">
-              <option value="jpeg">JPEG</option>
-              <option value="png">PNG</option>
-              <option value="webp">WebP</option>
-            </select>
+            <input type="number" id="resize_width" name="resize_width" min="1" step="1" class="sidebar-input" />
           </div>
 
           <div class="button-group">
@@ -82,3 +82,88 @@
     <script src="image-resize.js"></script>
   </body>
 </html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Resize</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+
+      <h2>Image Resize</h2>
+      <form id="uploadFormResize" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" accept="image/*" style="width: 90%" required />
+        </div>
+
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="outputType">Output File Type:</label>
+            <select id="outputType" name="outputType" style="width: 90%">
+              <option value="jpeg">JPEG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="resizeMode">Resize Mode:</label>
+            <select id="resizeMode" name="resizeMode" style="width: 90%">
+              <option value="dimensions" selected>By Dimensions</option>
+              <option value="percentage">By Percentage</option>
+            </select>
+          </div>
+
+          <div id="percentageResize" class="resize-option" style="display: none">
+            <label for="resize_percentage">Resize Percentage:</label>
+            <input type="range" id="resize_percentage" name="resize_percentage" min="10" max="200" value="100" step="10" oninput="updatePercentageDisplay(this.value)" style="width: 80%" />
+            <br />
+            <span id="percentage_display">100%</span>
+          </div>
+
+          <div id="dimensionsResize" class="resize-option">
+            <label for="width">Width (px):</label>
+            <input type="number" id="resize_width" name="resize_width" min="1" step="1" style="width: 90%" />
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="form-button">Resize Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
+        </div>
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Resized Image</h3>
+            <span id="resizedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="resizedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="processedImage" src="" alt="Resized Image" />
+        </div>
+      </div>
+    </div>
+
+    <script src="image-resize.js"></script>
+  </body>
+</html> -->
