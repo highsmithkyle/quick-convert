@@ -183,7 +183,7 @@ button.download-button:hover {
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(4, 150px);
+  grid-template-columns: repeat(6, 150px);
   grid-template-rows: repeat(2, 150px);
   grid-gap: 30px;
   justify-content: center;
@@ -192,8 +192,8 @@ button.download-button:hover {
 
 .image-grid-middle {
   display: grid;
-  grid-template-columns: repeat(4, 150px);
-  grid-template-rows: repeat(2, 150px);
+  grid-template-columns: repeat(6, 150px);
+  grid-template-rows: repeat(1, 150px);
   grid-gap: 30px;
   justify-content: center;
   margin-bottom: 20px;
@@ -565,15 +565,15 @@ button.download-button-sidebar:hover {
 }
 
 .sidebar-input {
-  width: 100%; /* Make all inputs 100% width for consistency */
+  width: 100%;
   padding: 10px;
   margin-bottom: 10px;
   border-radius: 4px;
   border: 1px solid #ddd;
-  box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+  box-sizing: border-box;
 }
 
-/* Ensure all input types, select, range, and file inputs follow the same styling */
+/* INPUT STYLING */
 input[type="file"],
 input[type="number"],
 input[type="range"],
@@ -584,4 +584,23 @@ select {
   border-radius: 4px;
   border: 1px solid #ddd;
   box-sizing: border-box;
+}
+
+.inline-download-button-container {
+  display: inline;
+  margin-left: 10px;
+}
+
+a.inline-download-button {
+  padding: 5px 10px;
+  font-size: 14px;
+  background-color: #4caf50;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+a.inline-download-button:hover {
+  background-color: #45a049;
 }

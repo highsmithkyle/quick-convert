@@ -25,85 +25,134 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function addImages(files) {
     Array.from(files).forEach((file) => {
-      selectedFiles.push(file);
-      durations.push(3);
-
-      const currentIndex = imageContainer.querySelectorAll(".image-container:not(.add-image-container)").length;
-
-      const container = document.createElement("div");
-      container.classList.add("image-container");
-      container.setAttribute("data-index", currentIndex);
-
-      const img = document.createElement("img");
+      const img = new Image();
       img.src = URL.createObjectURL(file);
-      img.classList.add("slideshow-image");
 
       img.onload = function () {
-        const width = img.naturalWidth;
-        const height = img.naturalHeight;
-        updateImageTitle(container, currentIndex + 1, width, height);
+        let { naturalWidth: originalWidth, naturalHeight: originalHeight } = img;
+
+        if (originalWidth > 2000 || originalHeight > 2000) {
+          const { newWidth, newHeight } = getResizedDimensions(originalWidth, originalHeight);
+          resizeImage(file, newWidth, newHeight).then((resizedFile) => {
+            processImage(resizedFile, newWidth, newHeight);
+          });
+        } else {
+          processImage(file, originalWidth, originalHeight);
+        }
       };
-
-      const buttonTitleContainer = document.createElement("div");
-      buttonTitleContainer.classList.add("button-title-container");
-
-      const title = document.createElement("p");
-      title.classList.add("image-title");
-
-      const cropButton = document.createElement("button");
-      cropButton.classList.add("image-slideshow-crop-button");
-      cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1, container, img));
-
-      const closeButton = document.createElement("button");
-      closeButton.classList.add("image-slideshow-close-button");
-      closeButton.addEventListener("click", function () {
-        const index = parseInt(container.getAttribute("data-index"), 10);
-
-        if (index >= 0 && index < selectedFiles.length) {
-          selectedFiles.splice(index, 1);
-          durations.splice(index, 1);
-
-          container.remove();
-          updateTitles();
-        }
-      });
-
-      buttonTitleContainer.appendChild(cropButton);
-      buttonTitleContainer.appendChild(title);
-      buttonTitleContainer.appendChild(closeButton);
-
-      container.appendChild(buttonTitleContainer);
-      container.appendChild(img);
-
-      const durationContainer = document.createElement("span");
-      durationContainer.classList.add("duration-container");
-
-      const durationLabel = document.createElement("label");
-      durationLabel.textContent = "Duration: ";
-
-      const durationInput = document.createElement("input");
-      durationInput.type = "number";
-      durationInput.min = "1";
-      durationInput.value = "3";
-      durationInput.classList.add("duration-input");
-
-      const durationSuffix = document.createElement("span");
-      durationSuffix.textContent = "s";
-
-      durationInput.addEventListener("change", function () {
-        const index = parseInt(container.getAttribute("data-index"), 10);
-        if (index >= 0 && index < durations.length) {
-          durations[index] = parseInt(durationInput.value, 10);
-        }
-      });
-
-      durationContainer.appendChild(durationLabel);
-      durationContainer.appendChild(durationInput);
-      durationContainer.appendChild(durationSuffix);
-
-      container.appendChild(durationContainer);
-      imageContainer.insertBefore(container, addImageButton);
     });
+  }
+
+  function getResizedDimensions(width, height) {
+    let newWidth = width;
+    let newHeight = height;
+    if (width > height) {
+      newWidth = 2000;
+      newHeight = Math.round((2000 / width) * height);
+    } else {
+      newHeight = 2000;
+      newWidth = Math.round((2000 / height) * width);
+    }
+    return { newWidth, newHeight };
+  }
+
+  function resizeImage(file, targetWidth, targetHeight) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      img.onload = function () {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        canvas.toBlob((blob) => {
+          const resizedFile = new File([blob], file.name, { type: file.type });
+          resolve(resizedFile);
+        }, file.type);
+      };
+    });
+  }
+
+  function processImage(file, width, height) {
+    selectedFiles.push(file);
+    durations.push(3);
+
+    const currentIndex = imageContainer.querySelectorAll(".image-container:not(.add-image-container)").length;
+
+    const container = document.createElement("div");
+    container.classList.add("image-container");
+    container.setAttribute("data-index", currentIndex);
+
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    img.classList.add("slideshow-image");
+
+    img.onload = function () {
+      updateImageTitle(container, currentIndex + 1, width, height);
+    };
+
+    const buttonTitleContainer = document.createElement("div");
+    buttonTitleContainer.classList.add("button-title-container");
+
+    const title = document.createElement("p");
+    title.classList.add("image-title");
+
+    const cropButton = document.createElement("button");
+    cropButton.classList.add("image-slideshow-crop-button");
+    cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1, container, img));
+
+    const closeButton = document.createElement("button");
+    closeButton.classList.add("image-slideshow-close-button");
+    closeButton.addEventListener("click", function () {
+      const index = parseInt(container.getAttribute("data-index"), 10);
+
+      if (index >= 0 && index < selectedFiles.length) {
+        selectedFiles.splice(index, 1);
+        durations.splice(index, 1);
+
+        container.remove();
+        updateTitles();
+      }
+    });
+
+    buttonTitleContainer.appendChild(cropButton);
+    buttonTitleContainer.appendChild(title);
+    buttonTitleContainer.appendChild(closeButton);
+
+    container.appendChild(buttonTitleContainer);
+    container.appendChild(img);
+
+    const durationContainer = document.createElement("span");
+    durationContainer.classList.add("duration-container");
+
+    const durationLabel = document.createElement("label");
+    durationLabel.textContent = "Duration: ";
+
+    const durationInput = document.createElement("input");
+    durationInput.type = "number";
+    durationInput.min = "1";
+    durationInput.value = "3";
+    durationInput.classList.add("duration-input");
+
+    const durationSuffix = document.createElement("span");
+    durationSuffix.textContent = "s";
+
+    durationInput.addEventListener("change", function () {
+      const index = parseInt(container.getAttribute("data-index"), 10);
+      if (index >= 0 && index < durations.length) {
+        durations[index] = parseInt(durationInput.value, 10);
+      }
+    });
+
+    durationContainer.appendChild(durationLabel);
+    durationContainer.appendChild(durationInput);
+    durationContainer.appendChild(durationSuffix);
+
+    container.appendChild(durationContainer);
+    imageContainer.insertBefore(container, addImageButton);
 
     updateTitles();
     initializeSortable();
@@ -503,12 +552,14 @@ document.addEventListener("DOMContentLoaded", function () {
 //   const modalCloseButton = document.getElementById("modalCloseButton");
 //   const overlay = document.getElementById("overlay");
 //   const cropSizeSelector = document.getElementById("cropSizeSelector");
+//   const cropButton = document.getElementById("cropButton");
 //   const handle = overlay.querySelector(".resize-handle");
 //   let selectedFiles = [];
 //   let durations = [];
 //   let aspectRatio = null;
 //   let isResizing = false;
 //   let canDrag = false;
+//   let scaleX, scaleY;
 
 //   function addImages(files) {
 //     Array.from(files).forEach((file) => {
@@ -539,7 +590,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //       const cropButton = document.createElement("button");
 //       cropButton.classList.add("image-slideshow-crop-button");
-//       cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1));
+//       cropButton.addEventListener("click", () => openCropModal(file, currentIndex + 1, container, img));
 
 //       const closeButton = document.createElement("button");
 //       closeButton.classList.add("image-slideshow-close-button");
@@ -596,32 +647,75 @@ document.addEventListener("DOMContentLoaded", function () {
 //     initializeSortable();
 //   }
 
-//   function openCropModal(file, index) {
-//     modalImage.src = URL.createObjectURL(file);
+//   function openCropModal(file, index, container, img) {
+//     const updatedFile = selectedFiles[container.getAttribute("data-index")];
+
+//     modalImage.src = URL.createObjectURL(updatedFile);
 //     modalTitle.textContent = `Image ${index}`;
 //     modal.style.display = "flex";
 
-//     setTimeout(() => {
-//       modal.classList.add("show");
-//       initializeOverlay();
-//     }, 10);
+//     modalImage.onload = function () {
+//       scaleX = modalImage.naturalWidth / modalImage.getBoundingClientRect().width;
+//       scaleY = modalImage.naturalHeight / modalImage.getBoundingClientRect().height;
+
+//       setTimeout(() => {
+//         modal.classList.add("show");
+//         initializeOverlay();
+//       }, 10);
+//     };
+
+//     cropButton.onclick = function () {
+//       cropImage(updatedFile, container, img);
+//     };
+//   }
+
+//   function cropImage(file, container, img) {
+//     const modalRect = modalImage.getBoundingClientRect();
+//     const overlayRect = overlay.getBoundingClientRect();
+
+//     const scaleX = modalImage.naturalWidth / modalRect.width;
+//     const scaleY = modalImage.naturalHeight / modalRect.height;
+
+//     const cropWidth = overlayRect.width * scaleX;
+//     const cropHeight = overlayRect.height * scaleY;
+//     const cropLeft = (overlayRect.left - modalRect.left) * scaleX;
+//     const cropTop = (overlayRect.top - modalRect.top) * scaleY;
+
+//     if (cropWidth <= 0 || cropHeight <= 0 || cropLeft < 0 || cropTop < 0) {
+//       alert("Invalid crop dimensions");
+//       return;
+//     }
+
+//     const formData = new FormData();
+//     formData.append("image", file);
+//     formData.append("width", Math.round(cropWidth));
+//     formData.append("height", Math.round(cropHeight));
+//     formData.append("left", Math.round(cropLeft));
+//     formData.append("top", Math.round(cropTop));
+
+//     fetch("/crop-image", {
+//       method: "POST",
+//       body: formData,
+//     })
+//       .then((response) => response.blob())
+//       .then((blob) => {
+//         const url = window.URL.createObjectURL(blob);
+//         img.src = url;
+
+//         const index = container.getAttribute("data-index");
+//         selectedFiles[index] = new File([blob], file.name, { type: blob.type });
+
+//         updateImageTitle(container, index + 1, img.naturalWidth, img.naturalHeight);
+//         closeModal();
+//       })
+//       .catch((error) => {
+//         console.error("Error cropping the image:", error);
+//       });
 //   }
 
 //   function updateImageTitle(container, index, width, height) {
 //     const title = container.querySelector(".image-title");
 //     title.textContent = `Image ${index} (${width}x${height})`;
-//   }
-
-//   function initializeOverlay() {
-//     const modalRect = modalImageContainer.getBoundingClientRect();
-//     overlay.style.width = `${modalRect.width * 0.8}px`;
-//     overlay.style.height = `${modalRect.height * 0.8}px`;
-//     overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
-//     overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
-//     overlay.style.display = "block";
-//     makeDraggable(overlay, modalImageContainer);
-//     makeResizable(overlay, modalImageContainer);
-//     updateOverlay();
 //   }
 
 //   function closeModal() {
@@ -634,6 +728,18 @@ document.addEventListener("DOMContentLoaded", function () {
 //   modalCloseButton.addEventListener("click", closeModal);
 
 //   cropSizeSelector.addEventListener("change", updateOverlay);
+
+//   function initializeOverlay() {
+//     const modalRect = modalImageContainer.getBoundingClientRect();
+//     overlay.style.width = `${modalRect.width * 0.8}px`;
+//     overlay.style.height = `${modalRect.height * 0.8}px`;
+//     overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
+//     overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
+//     overlay.style.display = "block";
+//     makeDraggable(overlay, modalImageContainer);
+//     makeResizable(overlay, modalImageContainer);
+//     updateOverlay();
+//   }
 
 //   function updateOverlay() {
 //     const ratio = cropSizeSelector.value;

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Video Processing Tool</title>
+    <title>Image and Video Processing Tool</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -18,42 +18,10 @@
     </div>
 
     <div class="main-content">
-      <h2>Video Effects</h2>
-      <div class="image-grid">
-        <button onclick="location.href='video-crop.html'" class="icon-button">
-          <span class="icon-title">Crop Video</span>
-          <img src="images/video_crop_icon.png" alt="Crop_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-slice-multi.html'" class="icon-button">
-          <span class="icon-title">Slice/Trim Video</span>
-          <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-overlay.html'" class="icon-button">
-          <span class="icon-title">Colored Overlay</span>
-          <img src="images/video_colored_overlay_icon.png" alt="overlay_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-gradient.html'" class="icon-button">
-          <span class="icon-title">Gradient Overlay</span>
-          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-slow.html'" class="icon-button">
-          <span class="icon-title">Slow Video</span>
-          <img src="images/video_slow_icon.png" alt="slow_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-subtitles.html'" class="icon-button">
-          <span class="icon-title">Add Subtitles</span>
-          <img src="images/video_subtitles.png" alt="subtitles_icon" class="icon" />
-        </button>
-        <button onclick="location.href='video-convert-multi.html'" class="icon-button">
-          <span class="icon-title">Convert File Type</span>
-          <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon" />
-        </button>
-      </div>
-
       <h2>Image Effects</h2>
-      <div class="image-grid-middle">
+      <div class="image-grid">
         <button onclick="location.href='image-crop.html'" class="icon-button">
-          <span class="icon-title">Crop</span>
+          <span class="icon-title">Crop Image/GIF</span>
           <img src="images/video_crop_icon.png" alt="remove-background" class="icon" />
         </button>
         <button onclick="location.href='image-uncrop.html'" class="icon-button">
@@ -74,28 +42,63 @@
           <span class="icon-title">Compress Image/GIF</span>
           <img src="images/compress.png" alt="compression" class="icon" />
         </button>
+        <button onclick="location.href='image-convert-multi.html'" class="icon-button">
+          <span class="icon-title">Convert File Type</span>
+          <img src="images/video_convert_icon.png" alt="compression" class="icon" />
+        </button>
 
-        <button onclick="location.href='background-remover.html'" class="icon-button">
-          <span class="icon-title">Remove Background</span>
-          <img src="images/remove-bg-color.png" alt="remove-background" class="icon" />
+        <button onclick="location.href='text-to-image.html'" class="icon-button">
+          <span class="icon-title">Text to Image</span>
+          <img src="images/text-to-image.png" alt="gradient_icon" class="icon" />
+        </button>
+        <button onclick="location.href='image-remove-text.html'" class="icon-button">
+          <span class="icon-title">Remove Text</span>
+          <img src="images/image-text-remove.png" alt="convert_icon" class="icon" />
         </button>
         <button onclick="location.href='image-cleanup.html'" class="icon-button">
           <span class="icon-title">Cleanup</span>
           <img src="images/cleanup-icon-color.png" alt="cleanup-icon" class="icon" />
         </button>
-
-        <!-- <button onclick="location.href='text-to-image.html'" class="icon-button">
-          <span class="icon-title">Text to Image</span>
-          <img src="images/text-to-image.png" alt="gradient_icon" class="icon" />
-        </button> -->
-        <button onclick="location.href='image-remove-text.html'" class="icon-button">
-          <span class="icon-title">Remove Text</span>
-          <img src="images/image-remove-text.png" alt="convert_icon" class="icon" />
-        </button>
-        <!-- <button onclick="location.href='image-text-inpainting.html'" class="icon-button">
+        <button onclick="location.href='image-text-inpainting.html'" class="icon-button">
           <span class="icon-title">Inpaint</span>
-          <img src="images/image-text-inpaint.png" alt="convert_icon" class="icon" />
+          <img src="images/image-text-inpaint-color.png" alt="convert_icon" class="icon" />
+        </button>
+        <button onclick="location.href='image-slideshow.html'" class="icon-button">
+          <span class="icon-title">Image Slideshow</span>
+          <img src="images/image-slideshow.png" alt="convert_icon" class="icon" />
+        </button>
+      </div>
+
+      <h2>Video Effects</h2>
+      <div class="image-grid-middle">
+        <button onclick="location.href='video-crop.html'" class="icon-button">
+          <span class="icon-title">Crop Video</span>
+          <img src="images/video_crop_icon.png" alt="Crop_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-slice-multi.html'" class="icon-button">
+          <span class="icon-title">Trim/Join Videos</span>
+          <img src="images/video_slice_icon3.png" alt="slice_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-overlay.html'" class="icon-button">
+          <span class="icon-title">Colored Overlay</span>
+          <img src="images/video_colored_overlay_icon.png" alt="overlay_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-gradient.html'" class="icon-button">
+          <span class="icon-title">Gradient Overlay</span>
+          <img src="images/video_gradient_overlay_icon.png" alt="gradient_icon" class="icon" />
+        </button>
+        <!-- <button onclick="location.href='video-slow.html'" class="icon-button">
+          <span class="icon-title">Slow Video</span>
+          <img src="images/video_slow_icon.png" alt="slow_icon" class="icon" />
         </button> -->
+        <button onclick="location.href='video-subtitles.html'" class="icon-button">
+          <span class="icon-title">Add Subtitles</span>
+          <img src="images/video_subtitles.png" alt="subtitles_icon" class="icon" />
+        </button>
+        <button onclick="location.href='video-convert-multi.html'" class="icon-button">
+          <span class="icon-title">Convert File Type</span>
+          <img src="images/video_convert_icon2.png" alt="convert_icon" class="icon" />
+        </button>
       </div>
     </div>
 

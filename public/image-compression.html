@@ -11,7 +11,7 @@
         <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
         <span>Home</span>
       </a>
-
+      <h2>Image Compress</h2>
       <form id="uploadFormCompression" enctype="multipart/form-data" method="post">
         <div class="form-group">
           <label for="image">Upload Image (JPEG, PNG, WebP, or GIF):</label>
@@ -20,11 +20,7 @@
 
         <div class="overlay-group" id="qualitySection" style="display: none">
           <div class="form-group">
-            <label for="compressionLevel"
-              >Compression Level <br /><br />
-              0 = Best Quality,<br /><br />
-              100 = Highest Compression:</label
-            >
+            <label for="compressionLevel">Compression Level<br /><br />0 = Best Quality,<br /><br />100 = Highest Compression:</label>
             <input type="range" id="compressionLevel" name="compressionLevel" min="0" max="100" value="20" oninput="updateCompressionDisplay(this.value)" style="width: 80%" />
             <span id="compression_display">20% Compression</span>
           </div>
@@ -52,6 +48,9 @@
             <h3 style="margin-right: 10px">Compressed Image</h3>
             <span id="compressedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
             <span id="compressedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+            <div id="inlineDownloadButtonContainer" class="inline-download-button-container" style="display: none">
+              <a id="inlineDownloadButton" class="inline-download-button">Download</a>
+            </div>
           </div>
           <img id="processedImage" src="" alt="Compressed Image" />
         </div>
