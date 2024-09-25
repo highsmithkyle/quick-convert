@@ -202,234 +202,6 @@ app.post("/crop-image", upload.single("image"), (req, res) => {
   });
 });
 
-//compress
-
-app.post("/compress-gif", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const outputFileName = `compressed_${Date.now()}.gif`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
-
-  exec(compressCommand, (error) => {
-    fs.unlinkSync(imagePath);
-    if (error) {
-      console.error("Error compressing GIF:", error);
-      return res.status(500).send("Failed to compress GIF.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed GIF:", err);
-        return res.status(500).send("Error sending compressed GIF.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-app.post("/compress-webp", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const compressionLevel = parseInt(req.body.compression_level, 10);
-  const outputFileName = `compressed_${Date.now()}.webp`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-  exec(compressCommand, (error) => {
-    fs.unlinkSync(imagePath);
-    if (error) return res.status(500).send("Failed to compress WebP.");
-    res.sendFile(outputFilePath, () => {
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-app.post("/compress-jpeg", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const compressionLevel = parseInt(req.body.compression_level, 10);
-  const outputFileName = `compressed_${Date.now()}.jpg`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-  exec(compressCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error compressing JPEG:", stderr);
-      return res.status(500).send("Failed to compress JPEG.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed JPEG:", err);
-        return res.status(500).send("Error sending compressed JPEG.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-// Compress PNG
-
-app.post("/compress-png", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const outputFileName = `compressed_${Date.now()}.png`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
-
-  exec(compressCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error compressing PNG:", stderr);
-      return res.status(500).send("Failed to compress PNG.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed PNG:", err);
-        return res.status(500).send("Error sending compressed PNG.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-//image compress
-
-app.post("/compress-image", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const compressionLevel = parseInt(req.body.compression_level, 10);
-  const outputFileName = `compressed_${Date.now()}.jpg`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-  exec(compressCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error compressing image:", stderr);
-      return res.status(500).send("Failed to compress image.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed image:", err);
-        return res.status(500).send("Error sending compressed image.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-// image resize
-
-app.post("/resize-image", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const targetWidth = parseInt(req.body.target_width, 10);
-  const targetHeight = parseInt(req.body.target_height, 10);
-  const outputType = req.body.output_type;
-
-  let outputFileName;
-  let resizeCommand;
-
-  switch (outputType) {
-    case "jpeg":
-      outputFileName = `resized_${Date.now()}.jpg`;
-      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -quality 85 "${path.join(__dirname, "processed", outputFileName)}"`;
-      break;
-    case "png":
-      outputFileName = `resized_${Date.now()}.png`;
-      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -strip "${path.join(__dirname, "processed", outputFileName)}"`;
-      break;
-    case "webp":
-      outputFileName = `resized_${Date.now()}.webp`;
-      resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} -quality 85 "${path.join(__dirname, "processed", outputFileName)}"`;
-      break;
-    default:
-      return res.status(400).send("Invalid output type");
-  }
-
-  exec(resizeCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error resizing image:", stderr);
-      return res.status(500).send("Failed to resize image.");
-    }
-
-    const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending resized image:", err);
-        return res.status(500).send("Error sending resized image.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-// image crop
-app.post("/upload-image", upload.single("media"), (req, res) => {
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const imagePath = req.file.path;
-  const timestamp = Date.now();
-  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.png`);
-  const { width, height, left, top } = req.body;
-
-  const safeWidth = parseInt(width, 10);
-  const safeHeight = parseInt(height, 10);
-  const safeLeft = parseInt(left, 10);
-  const safeTop = parseInt(top, 10);
-
-  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
-    return res.status(400).send("Invalid crop dimensions");
-  }
-
-  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
-
-  exec(cropCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-    if (error) {
-      console.error(`Exec Error: ${error.message}`);
-      return res.status(500).send("Error processing image");
-    }
-
-    res.sendFile(outputPath, (err) => {
-      if (err) {
-        console.error(`SendFile Error: ${err.message}`);
-        return res.status(500).send("Error sending cropped image");
-      }
-      fs.unlinkSync(outputPath);
-    });
-  });
-});
-
 // ----- Video Effects ---- //
 
 // video-crop
@@ -977,234 +749,302 @@ app.post("/slowVideo", upload.single("video"), (req, res) => {
   });
 });
 
-// ----- Video Subtitles with speech-to-text API ------ //
+//compress
 
-// upload to Google Cloud Storage bucket
-async function uploadFileToGCS(filePath) {
-  const fileName = path.basename(filePath);
-  await bucket.upload(filePath, {
-    destination: fileName,
-  });
-  return `gs://${bucket.name}/${fileName}`;
-}
+app.post("/compress-gif", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
-// sends audio to speech-to-text api
-async function transcribeAudio(filePath) {
-  const gcsUri = await uploadFileToGCS(filePath);
-
-  const request = {
-    audio: {
-      uri: gcsUri,
-    },
-    config: {
-      encoding: "FLAC",
-      sampleRateHertz: 16000,
-      languageCode: "en-US",
-      enableAutomaticPunctuation: true,
-      enableWordTimeOffsets: true,
-    },
-  };
-
-  const [operation] = await speechClient.longRunningRecognize(request);
-  const [response] = await operation.promise();
-
-  const transcriptionResults = response.results.map((result) => {
-    const alternatives = result.alternatives[0];
-    const timestamps = alternatives.words.map((word) => ({
-      word: word.word,
-      startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
-      endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9,
-    }));
-    console.log("Raw Timestamps:", timestamps);
-    return {
-      transcript: alternatives.transcript,
-      timestamps: timestamps,
-    };
-  });
-
-  return transcriptionResults;
-}
-
-// creates SRT (SubRip Subtitle) file from the transcription results.
-function createSRT(transcriptionResults, srtPath) {
-  let srtContent = [];
-  let index = 1;
-  let sentence = "";
-  let startTime = 0;
-  let endTime = 0;
-  const maxWordsPerLine = 10;
-  const maxDurationPerLine = 5;
-  const bufferTime = 0.1;
-
-  transcriptionResults.forEach((result) => {
-    result.timestamps.forEach((word, idx) => {
-      if (sentence === "") {
-        startTime = word.startTime;
-      }
-      sentence += (sentence ? " " : "") + word.word;
-
-      const currentDuration = word.endTime - startTime;
-      const wordCount = sentence.split(" ").length;
-
-      // Create a new subtitle line if the word count or duration exceeds the limits
-      if (
-        wordCount >= maxWordsPerLine ||
-        currentDuration >= maxDurationPerLine ||
-        idx === result.timestamps.length - 1 ||
-        (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)
-      ) {
-        endTime = word.endTime;
-
-        // Ensure no overlap
-        if (srtContent.length > 0) {
-          const previousSubtitle = srtContent[srtContent.length - 1];
-          const previousEndTime = parseSRTTime(previousSubtitle.split(" --> ")[1].split("\n")[0]);
-          if (startTime < previousEndTime) {
-            startTime = previousEndTime + bufferTime;
-          }
-        }
-
-        const formattedStart = formatSRTTime(startTime);
-        const formattedEnd = formatSRTTime(endTime + bufferTime);
-        srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
-        index++;
-        sentence = "";
-
-        // Adjust the start time of the next subtitle to prevent overlap
-        if (result.timestamps[idx + 1]) {
-          startTime = Math.max(result.timestamps[idx + 1].startTime, endTime + bufferTime);
-        }
-      }
-    });
-  });
-
-  fs.writeFileSync(srtPath, srtContent.join("\n\n"), "utf8");
-  console.log(`SRT file created at: ${srtPath}`);
-  console.log(`SRT file content:\n${srtContent.join("\n\n")}`);
-}
-
-// converts time value to subtitle time format (HH:MM:SS,mmm)
-function formatSRTTime(rawTime) {
-  const time = parseFloat(rawTime);
-  let hours = Math.floor(time / 3600);
-  let minutes = Math.floor((time % 3600) / 60);
-  let seconds = Math.floor(time % 60);
-  let milliseconds = Math.round((time - Math.floor(time)) * 1000);
-
-  hours = hours.toString().padStart(2, "0");
-  minutes = minutes.toString().padStart(2, "0");
-  seconds = seconds.toString().padStart(2, "0");
-  milliseconds = milliseconds.toString().padStart(3, "0");
-
-  return `${hours}:${minutes}:${seconds},${milliseconds}`;
-}
-// converts SRT time back into seconds
-function parseSRTTime(srtTime) {
-  const [hours, minutes, seconds] = srtTime.split(":");
-  const [secs, millis] = seconds.split(",");
-  return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(secs) + parseFloat(millis) / 1000;
-}
-// Transcribes audio from a video file and returns the transcript with word timestamps
-app.post("/transcribe-video", upload.single("video"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("No video file uploaded.");
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
   }
 
-  const videoPath = req.file.path;
-  const audioPath = path.join(__dirname, "subtitles", `${req.file.filename}.flac`);
-  const srtPath = path.join(__dirname, "subtitles", `${req.file.filename}.srt`);
-  const outputPath = path.join(__dirname, "subtitles", `${req.file.filename}_subtitled.mp4`);
-  const fontSize = req.body.fontSize || 24;
-  const fontFamily = req.body.fontFamily || "Arial";
-  const fontColor = req.body.fontColor || "#FFFFFF";
-  const maxWordsPerLine = req.body.maxWordsPerLine || 10;
-  const maxDurationPerLine = req.body.maxDurationPerLine || 5;
-  const bufferTime = req.body.bufferTime || 0.1;
-  const borderStyle = req.body.borderStyle || 1;
-  const outlineColor = req.body.outlineColor || "#000000";
-  const subtitlePosition = req.body.subtitlePosition || "bottom";
+  const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
 
-  const convertHexToSubtitleColor = (hex) => {
-    const alpha = "00";
-    const red = hex.substring(1, 3);
-    const green = hex.substring(3, 5);
-    const blue = hex.substring(5, 7);
-    return `&H${alpha}${blue}${green}${red}&`;
-  };
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      console.error("Error compressing GIF:", error);
+      return res.status(500).send("Failed to compress GIF.");
+    }
 
-  const primaryColor = convertHexToSubtitleColor(fontColor);
-  const outlineSubtitleColor = convertHexToSubtitleColor(outlineColor);
-  const alignment = subtitlePosition === "top" ? 6 : 2;
-
-  try {
-    const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
-    exec(ffmpegExtractAudioCommand, async (error) => {
-      if (error) {
-        console.error("Error converting video to audio:", error);
-        return res.status(500).send("Failed to convert video.");
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed GIF:", err);
+        return res.status(500).send("Error sending compressed GIF.");
       }
 
-      try {
-        const transcriptionResults = await transcribeAudio(audioPath);
-        if (transcriptionResults.length === 0 || !transcriptionResults[0].transcript.trim()) {
-          throw new Error("No transcribable audio found.");
-        }
-
-        createSRT(transcriptionResults, srtPath, maxWordsPerLine, maxDurationPerLine, bufferTime);
-
-        if (!fs.existsSync(srtPath)) {
-          console.error("SRT file does not exist:", srtPath);
-          return res.status(500).send("SRT file creation failed.");
-        }
-
-        const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineSubtitleColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
-        console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`);
-        exec(ffmpegAddSubtitlesCommand, (subError) => {
-          cleanupFiles(videoPath, audioPath, srtPath);
-
-          if (subError) {
-            console.error("Error adding subtitles:", subError);
-            return res.status(500).send("Failed to add subtitles to video.");
-          }
-
-          res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
-        });
-      } catch (transcriptionError) {
-        console.error("Transcription error:", transcriptionError);
-        cleanupFiles(videoPath, audioPath, srtPath);
-        res.status(500).send("Failed to transcribe audio.");
-      }
+      fs.unlinkSync(outputFilePath);
     });
-  } catch (qualityError) {
-    console.error("Audio quality error:", qualityError);
-    cleanupFiles(videoPath, audioPath, srtPath);
-    res.status(400).send("This video cannot be transcribed, please try another video.");
-  }
+  });
 });
 
-function cleanupFiles(videoPath, audioPath, srtPath) {
-  fs.unlinkSync(videoPath);
-  fs.unlinkSync(audioPath);
-  fs.unlinkSync(srtPath);
+app.post("/compress-webp", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const compressionLevel = parseInt(req.body.compression_level, 10);
+  const outputFileName = `compressed_${Date.now()}.webp`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) return res.status(500).send("Failed to compress WebP.");
+    res.sendFile(outputFilePath, () => {
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+app.post("/compress-jpeg", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const compressionLevel = parseInt(req.body.compression_level, 10);
+  const outputFileName = `compressed_${Date.now()}.jpg`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing JPEG:", stderr);
+      return res.status(500).send("Failed to compress JPEG.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed JPEG:", err);
+        return res.status(500).send("Error sending compressed JPEG.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+app.post("/compress-png", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.png`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
+
+  const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error compressing PNG:", stderr);
+      return res.status(500).send("Failed to compress PNG.");
+    }
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed PNG:", err);
+        return res.status(500).send("Error sending compressed PNG.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+// image resize
+
+app.post("/resize-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const targetWidth = parseInt(req.body.target_width, 10);
+  const targetHeight = parseInt(req.body.target_height, 10);
+
+  const extension = path.extname(req.file.originalname).toLowerCase();
+  let outputFileName = `resized_${Date.now()}${extension}`;
+  let qualityOption = "-quality 85"; // You can adjust this for better quality.
+
+  let resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} ${qualityOption} "${path.join(__dirname, "processed", outputFileName)}"`;
+
+  exec(resizeCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error resizing image:", stderr);
+      return res.status(500).send("Failed to resize image.");
+    }
+
+    const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending resized image:", err);
+        return res.status(500).send("Error sending resized image.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+// image crop
+
+app.post("/upload-image", upload.single("media"), (req, res) => {
+  const imagePath = req.file.path;
+  const extension = req.body.extension;
+  const timestamp = Date.now();
+  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.${extension}`);
+
+  const { width, height, left, top } = req.body;
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+    return res.status(400).send("Invalid crop dimensions");
+  }
+
+  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
+
+  exec(cropCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Error processing image");
+    }
+
+    switch (extension) {
+      case "jpeg":
+      case "jpg":
+        compressJpeg(outputPath, res);
+        break;
+      case "png":
+        compressPng(outputPath, res);
+        break;
+      case "webp":
+        compressWebp(outputPath, res);
+        break;
+      case "gif":
+        compressGif(outputPath, res);
+        break;
+      default:
+        res.sendFile(outputPath, (err) => {
+          if (err) {
+            return res.status(500).send("Error sending cropped image");
+          }
+          fs.unlinkSync(outputPath);
+        });
+    }
+  });
+});
+
+// Callbacks for compression
+function compressJpeg(imagePath, res) {
+  const compressionLevel = 85; // Adjust compression level as needed
+  const outputFileName = `compressed_${Date.now()}.jpg`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Failed to compress JPEG.");
+    }
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        return res.status(500).send("Error sending compressed JPEG.");
+      }
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+}
+
+function compressPng(imagePath, res) {
+  const outputFileName = `compressed_${Date.now()}.png`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
+
+  exec(compressCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Failed to compress PNG.");
+    }
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        return res.status(500).send("Error sending compressed PNG.");
+      }
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+}
+
+function compressWebp(imagePath, res) {
+  const compressionLevel = 80;
+  const outputFileName = `compressed_${Date.now()}.webp`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Failed to compress WebP.");
+    }
+    res.sendFile(outputFilePath, () => {
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+}
+
+function compressGif(imagePath, res) {
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Failed to compress GIF.");
+    }
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        return res.status(500).send("Error sending compressed GIF.");
+      }
+      fs.unlinkSync(outputFilePath);
+    });
+  });
 }
 
 // ------- Convert to ------- //
 
 app.post("/convertToPng", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
-  const outputPath = path.join(convertedDir, `converted_${Date.now()}.png`);
+  const tempPngPath = path.join(convertedDir, `temp_${Date.now()}.png`);
+  const outputPath = path.join(convertedDir, `compressed_${Date.now()}.png`);
 
-  const convertCommand = `convert "${imagePath}" "${outputPath}"`;
-
-  exec(convertCommand, (error) => {
-    if (error) {
-      console.error("Error converting image to PNG:", error);
+  exec(`convert "${imagePath}" -strip -quality 80 "${tempPngPath}"`, (convertError) => {
+    if (convertError) {
+      console.error("Error converting image to PNG:", convertError);
       return res.status(500).send("Error converting image to PNG.");
     }
 
-    res.download(outputPath, () => {
-      fs.unlinkSync(imagePath);
-      fs.unlinkSync(outputPath);
+    const compressCommand = `pngquant --quality=65-80 "${tempPngPath}" --output "${outputPath}" --force`;
+
+    exec(compressCommand, (compressError) => {
+      if (compressError) {
+        console.error("Error compressing PNG:", compressError);
+        return res.status(500).send("Error compressing PNG.");
+      }
+
+      res.download(outputPath, () => {
+        fs.unlinkSync(imagePath);
+        fs.unlinkSync(tempPngPath);
+        fs.unlinkSync(outputPath);
+      });
     });
   });
 });
@@ -1213,7 +1053,8 @@ app.post("/convertToJpeg", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
   const outputPath = path.join(convertedDir, `converted_${Date.now()}.jpeg`);
 
-  const convertCommand = `convert "${imagePath}" "${outputPath}"`;
+  // Compress JPEG with a quality setting for smaller size
+  const convertCommand = `convert "${imagePath}" -quality 85 "${outputPath}"`;
 
   exec(convertCommand, (error) => {
     if (error) {
@@ -1252,20 +1093,21 @@ app.post("/convertToMp4", upload.single("video"), (req, res) => {
   });
 });
 
-app.post("/convertToWebm", upload.single("video"), (req, res) => {
-  const videoPath = req.file.path;
-  const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.webm`);
+app.post("/convertToWebP", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputPath = path.join(convertedDir, `converted_${Date.now()}.webp`);
 
-  const convertCommand = `ffmpeg -i "${videoPath}" -c:v libvpx -b:v 1M -c:a libvorbis "${outputPath}"`;
+  // Compress WEBP with a quality setting for smaller size
+  const convertCommand = `convert "${imagePath}" -quality 80 "${outputPath}"`;
 
-  exec(convertCommand, (convertError) => {
-    if (convertError) {
-      console.error("Error converting video to WEBM:", convertError);
-      return res.status(500).send("Error converting video to WEBM.");
+  exec(convertCommand, (error) => {
+    if (error) {
+      console.error("Error converting image to WEBP:", error);
+      return res.status(500).send("Error converting image to WEBP.");
     }
 
     res.download(outputPath, () => {
-      fs.unlinkSync(videoPath);
+      fs.unlinkSync(imagePath);
       fs.unlinkSync(outputPath);
     });
   });
@@ -1591,6 +1433,7 @@ app.post("/reimagine-image", upload.single("image"), async (req, res) => {
   }
 });
 
+// upscale
 app.post("/upscale-image", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No image file uploaded.");
@@ -1624,39 +1467,6 @@ app.post("/upscale-image", upload.single("image"), async (req, res) => {
   }
 });
 
-//upscale
-// app.post("/upscale-image", upload.single("image"), async (req, res) => {
-//   if (!req.file) {
-//     return res.status(400).send("No image file uploaded.");
-//   }
-
-//   const imagePath = req.file.path;
-//   const { target_width, target_height } = req.body;
-
-//   const formData = new FormData();
-//   formData.append("image_file", fs.createReadStream(imagePath));
-//   formData.append("target_width", target_width);
-//   formData.append("target_height", target_height);
-
-//   try {
-//     const response = await axios.post("https://clipdrop-api.co/image-upscaling/v1/upscale", formData, {
-//       headers: {
-//         ...formData.getHeaders(),
-//         "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-//       },
-//       responseType: "arraybuffer",
-//     });
-
-//     fs.unlinkSync(imagePath);
-//     const imageType = response.headers["content-type"] === "image/webp" ? "webp" : "jpeg";
-//     res.setHeader("Content-Type", `image/${imageType}`);
-//     res.send(response.data);
-//   } catch (error) {
-//     console.error("Failed to upscale image:", error);
-//     res.status(500).send("Failed to upscale image");
-//   }
-// });
-
 // remove bg
 app.post("/remove-background", upload.single("image"), async (req, res) => {
   if (!req.file) {
@@ -1685,6 +1495,217 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
     res.status(500).send("Failed to remove background");
   }
 });
+
+// ----- Video Subtitles with speech-to-text API ------ //
+
+// upload to Google Cloud Storage bucket
+async function uploadFileToGCS(filePath) {
+  const fileName = path.basename(filePath);
+  await bucket.upload(filePath, {
+    destination: fileName,
+  });
+  return `gs://${bucket.name}/${fileName}`;
+}
+
+// sends audio to speech-to-text api
+async function transcribeAudio(filePath) {
+  const gcsUri = await uploadFileToGCS(filePath);
+
+  const request = {
+    audio: {
+      uri: gcsUri,
+    },
+    config: {
+      encoding: "FLAC",
+      sampleRateHertz: 16000,
+      languageCode: "en-US",
+      enableAutomaticPunctuation: true,
+      enableWordTimeOffsets: true,
+    },
+  };
+
+  const [operation] = await speechClient.longRunningRecognize(request);
+  const [response] = await operation.promise();
+
+  const transcriptionResults = response.results.map((result) => {
+    const alternatives = result.alternatives[0];
+    const timestamps = alternatives.words.map((word) => ({
+      word: word.word,
+      startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+      endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9,
+    }));
+    console.log("Raw Timestamps:", timestamps);
+    return {
+      transcript: alternatives.transcript,
+      timestamps: timestamps,
+    };
+  });
+
+  return transcriptionResults;
+}
+
+// creates SRT (SubRip Subtitle) file from the transcription results.
+function createSRT(transcriptionResults, srtPath) {
+  let srtContent = [];
+  let index = 1;
+  let sentence = "";
+  let startTime = 0;
+  let endTime = 0;
+  const maxWordsPerLine = 10;
+  const maxDurationPerLine = 5;
+  const bufferTime = 0.1;
+
+  transcriptionResults.forEach((result) => {
+    result.timestamps.forEach((word, idx) => {
+      if (sentence === "") {
+        startTime = word.startTime;
+      }
+      sentence += (sentence ? " " : "") + word.word;
+
+      const currentDuration = word.endTime - startTime;
+      const wordCount = sentence.split(" ").length;
+
+      // Create a new subtitle line if the word count or duration exceeds the limits
+      if (
+        wordCount >= maxWordsPerLine ||
+        currentDuration >= maxDurationPerLine ||
+        idx === result.timestamps.length - 1 ||
+        (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)
+      ) {
+        endTime = word.endTime;
+
+        // Ensure no overlap
+        if (srtContent.length > 0) {
+          const previousSubtitle = srtContent[srtContent.length - 1];
+          const previousEndTime = parseSRTTime(previousSubtitle.split(" --> ")[1].split("\n")[0]);
+          if (startTime < previousEndTime) {
+            startTime = previousEndTime + bufferTime;
+          }
+        }
+
+        const formattedStart = formatSRTTime(startTime);
+        const formattedEnd = formatSRTTime(endTime + bufferTime);
+        srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
+        index++;
+        sentence = "";
+
+        // Adjust the start time of the next subtitle to prevent overlap
+        if (result.timestamps[idx + 1]) {
+          startTime = Math.max(result.timestamps[idx + 1].startTime, endTime + bufferTime);
+        }
+      }
+    });
+  });
+
+  fs.writeFileSync(srtPath, srtContent.join("\n\n"), "utf8");
+  console.log(`SRT file created at: ${srtPath}`);
+  console.log(`SRT file content:\n${srtContent.join("\n\n")}`);
+}
+
+// converts time value to subtitle time format (HH:MM:SS,mmm)
+function formatSRTTime(rawTime) {
+  const time = parseFloat(rawTime);
+  let hours = Math.floor(time / 3600);
+  let minutes = Math.floor((time % 3600) / 60);
+  let seconds = Math.floor(time % 60);
+  let milliseconds = Math.round((time - Math.floor(time)) * 1000);
+
+  hours = hours.toString().padStart(2, "0");
+  minutes = minutes.toString().padStart(2, "0");
+  seconds = seconds.toString().padStart(2, "0");
+  milliseconds = milliseconds.toString().padStart(3, "0");
+
+  return `${hours}:${minutes}:${seconds},${milliseconds}`;
+}
+// converts SRT time back into seconds
+function parseSRTTime(srtTime) {
+  const [hours, minutes, seconds] = srtTime.split(":");
+  const [secs, millis] = seconds.split(",");
+  return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(secs) + parseFloat(millis) / 1000;
+}
+// Transcribes audio from a video file and returns the transcript with word timestamps
+app.post("/transcribe-video", upload.single("video"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No video file uploaded.");
+  }
+
+  const videoPath = req.file.path;
+  const audioPath = path.join(__dirname, "subtitles", `${req.file.filename}.flac`);
+  const srtPath = path.join(__dirname, "subtitles", `${req.file.filename}.srt`);
+  const outputPath = path.join(__dirname, "subtitles", `${req.file.filename}_subtitled.mp4`);
+  const fontSize = req.body.fontSize || 24;
+  const fontFamily = req.body.fontFamily || "Arial";
+  const fontColor = req.body.fontColor || "#FFFFFF";
+  const maxWordsPerLine = req.body.maxWordsPerLine || 10;
+  const maxDurationPerLine = req.body.maxDurationPerLine || 5;
+  const bufferTime = req.body.bufferTime || 0.1;
+  const borderStyle = req.body.borderStyle || 1;
+  const outlineColor = req.body.outlineColor || "#000000";
+  const subtitlePosition = req.body.subtitlePosition || "bottom";
+
+  const convertHexToSubtitleColor = (hex) => {
+    const alpha = "00";
+    const red = hex.substring(1, 3);
+    const green = hex.substring(3, 5);
+    const blue = hex.substring(5, 7);
+    return `&H${alpha}${blue}${green}${red}&`;
+  };
+
+  const primaryColor = convertHexToSubtitleColor(fontColor);
+  const outlineSubtitleColor = convertHexToSubtitleColor(outlineColor);
+  const alignment = subtitlePosition === "top" ? 6 : 2;
+
+  try {
+    const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+    exec(ffmpegExtractAudioCommand, async (error) => {
+      if (error) {
+        console.error("Error converting video to audio:", error);
+        return res.status(500).send("Failed to convert video.");
+      }
+
+      try {
+        const transcriptionResults = await transcribeAudio(audioPath);
+        if (transcriptionResults.length === 0 || !transcriptionResults[0].transcript.trim()) {
+          throw new Error("No transcribable audio found.");
+        }
+
+        createSRT(transcriptionResults, srtPath, maxWordsPerLine, maxDurationPerLine, bufferTime);
+
+        if (!fs.existsSync(srtPath)) {
+          console.error("SRT file does not exist:", srtPath);
+          return res.status(500).send("SRT file creation failed.");
+        }
+
+        const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineSubtitleColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
+        console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`);
+        exec(ffmpegAddSubtitlesCommand, (subError) => {
+          cleanupFiles(videoPath, audioPath, srtPath);
+
+          if (subError) {
+            console.error("Error adding subtitles:", subError);
+            return res.status(500).send("Failed to add subtitles to video.");
+          }
+
+          res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+        });
+      } catch (transcriptionError) {
+        console.error("Transcription error:", transcriptionError);
+        cleanupFiles(videoPath, audioPath, srtPath);
+        res.status(500).send("Failed to transcribe audio.");
+      }
+    });
+  } catch (qualityError) {
+    console.error("Audio quality error:", qualityError);
+    cleanupFiles(videoPath, audioPath, srtPath);
+    res.status(400).send("This video cannot be transcribed, please try another video.");
+  }
+});
+
+function cleanupFiles(videoPath, audioPath, srtPath) {
+  fs.unlinkSync(videoPath);
+  fs.unlinkSync(audioPath);
+  fs.unlinkSync(srtPath);
+}
 
 //----- Extra Features -------//
 

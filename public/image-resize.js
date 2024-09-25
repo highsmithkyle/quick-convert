@@ -3,48 +3,30 @@ document.addEventListener("DOMContentLoaded", function () {
   const uploadFormResize = document.getElementById("uploadFormResize");
   const notification = document.getElementById("processingNotification");
 
-  const percentageResize = document.getElementById("percentageResize");
-  const dimensionsResize = document.getElementById("dimensionsResize");
-  const resizeModeSelect = document.getElementById("resizeMode");
-  const resizePercentageSlider = document.getElementById("resize_percentage");
   const resizeWidthInput = document.getElementById("resize_width");
-  const percentageDisplay = document.getElementById("percentage_display");
-  const outputTypeSelect = document.getElementById("outputType");
 
   const uploadedImageSize = document.getElementById("uploadedImageSize");
   const uploadedImageDimensions = document.getElementById("uploadedImageDimensions");
   const resizedImageDimensions = document.getElementById("resizedImageDimensions");
   const resizedImageSize = document.getElementById("resizedImageSize");
   const processedImage = document.getElementById("processedImage");
+  const inlineDownloadButton = document.getElementById("inlineDownloadButton");
+  const inlineDownloadButtonContainer = document.getElementById("inlineDownloadButtonContainer");
 
-  function updatePercentageDisplay(value) {
-    percentageDisplay.textContent = value + "%";
-  }
-
-  function updateResizeMode() {
-    const mode = resizeModeSelect.value;
-    if (mode === "percentage") {
-      percentageResize.style.display = "block";
-      dimensionsResize.style.display = "none";
-    } else {
-      percentageResize.style.display = "none";
-      dimensionsResize.style.display = "block";
-    }
-  }
-
-  updateResizeMode();
-
-  resizeModeSelect.addEventListener("change", updateResizeMode);
-  window.updatePercentageDisplay = updatePercentageDisplay;
+  let originalFileName = "";
 
   imageInput.addEventListener("change", function () {
     if (this.files && this.files[0]) {
       const file = this.files[0];
       const reader = new FileReader();
 
+      originalFileName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+      const fileExtension = file.name.substring(file.name.lastIndexOf("."));
+
       processedImage.src = "";
       resizedImageDimensions.textContent = "";
       resizedImageSize.textContent = "";
+      inlineDownloadButtonContainer.style.display = "none";
 
       reader.onload = function (e) {
         const img = document.getElementById("uploadedImage");
@@ -67,25 +49,14 @@ document.addEventListener("DOMContentLoaded", function () {
   uploadFormResize.addEventListener("submit", function (e) {
     e.preventDefault();
     const img = document.getElementById("uploadedImage");
-    const mode = resizeModeSelect.value;
-    const outputType = outputTypeSelect.value;
 
-    let targetWidth, targetHeight;
-
-    if (mode === "percentage") {
-      const scale = resizePercentageSlider.value / 100;
-      targetWidth = Math.round(img.naturalWidth * scale);
-      targetHeight = Math.round(img.naturalHeight * scale);
-    } else if (mode === "dimensions") {
-      targetWidth = resizeWidthInput.value || img.naturalWidth;
-      targetHeight = Math.round((targetWidth / img.naturalWidth) * img.naturalHeight);
-    }
+    const targetWidth = resizeWidthInput.value || img.naturalWidth;
+    const targetHeight = Math.round((targetWidth / img.naturalWidth) * img.naturalHeight);
 
     const formData = new FormData();
     formData.append("image", imageInput.files[0]);
     formData.append("target_width", targetWidth);
     formData.append("target_height", targetHeight);
-    formData.append("output_type", outputType);
 
     notification.style.display = "block";
 
@@ -107,6 +78,12 @@ document.addEventListener("DOMContentLoaded", function () {
         resizedImageDimensions.textContent = `${targetWidth}x${targetHeight}px`;
         resizedImageSize.textContent = `(${resizedFileSizeInMB} MB)`;
         notification.style.display = "none";
+
+        const resizedFileName = `${originalFileName}_resized_${targetWidth}${imageInput.files[0].name.substring(imageInput.files[0].name.lastIndexOf("."))}`;
+
+        inlineDownloadButtonContainer.style.display = "inline";
+        inlineDownloadButton.href = url;
+        inlineDownloadButton.download = resizedFileName;
       })
       .catch((err) => {
         alert("Failed to resize the image. " + err.message);

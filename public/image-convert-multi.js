@@ -4,14 +4,37 @@ document.addEventListener("DOMContentLoaded", function () {
   const convertedImage = document.getElementById("convertedImage");
   const notification = document.getElementById("processingNotification");
   const convertButton = document.getElementById("convertButton");
-  const downloadButtonContainer = document.getElementById("downloadButtonContainer");
+  const inlineDownloadButtonContainer = document.getElementById("inlineDownloadButtonContainer");
+  const inlineDownloadButton = document.getElementById("inlineDownloadButton");
   const formatSelect = document.getElementById("formatSelect");
 
-  imageInput.addEventListener("change", function (event) {
-    const file = event.target.files[0];
+  const uploadedImageDimensions = document.getElementById("uploadedImageDimensions");
+  const uploadedImageSize = document.getElementById("uploadedImageSize");
+  const convertedImageDimensions = document.getElementById("convertedImageDimensions");
+  const convertedImageSize = document.getElementById("convertedImageSize");
+
+  let originalFileName = "";
+
+  imageInput.addEventListener("change", function () {
+    const file = this.files[0];
     if (file) {
-      uploadedImage.src = URL.createObjectURL(file);
-      uploadedImage.style.display = "block";
+      const reader = new FileReader();
+      originalFileName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+
+      reader.onload = function (e) {
+        uploadedImage.src = e.target.result;
+        uploadedImage.style.display = "block";
+
+        uploadedImage.onload = function () {
+          const originalWidth = uploadedImage.naturalWidth;
+          const originalHeight = uploadedImage.naturalHeight;
+          const fileSizeInMB = (file.size / (1024 * 1024)).toFixed(2); // convert bytes to MB
+
+          uploadedImageDimensions.textContent = `${originalWidth}x${originalHeight}px`;
+          uploadedImageSize.textContent = `(${fileSizeInMB} MB)`;
+        };
+      };
+      reader.readAsDataURL(file);
     }
   });
 
@@ -38,9 +61,6 @@ document.addEventListener("DOMContentLoaded", function () {
           case "jpeg":
             endpoint = "/convertToJpeg";
             break;
-          case "gif":
-            endpoint = "/convertToGif";
-            break;
           case "webp":
             endpoint = "/convertToWebP";
             break;
@@ -50,32 +70,26 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .then((response) => response.blob())
       .then((blob) => {
-        notification.style.display = "none";
-        convertedImage.src = URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(blob);
+        convertedImage.src = url;
         convertedImage.style.display = "block";
 
-        downloadButtonContainer.innerHTML = "";
-        const downloadButton = document.createElement("button");
-        downloadButton.textContent = `Download ${formatSelect.options[formatSelect.selectedIndex].text.toUpperCase()}`;
-        downloadButton.className = "download-button";
+        const fileSizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
+        const img = new Image();
+        img.src = url;
+        img.onload = function () {
+          convertedImageDimensions.textContent = `${img.width}x${img.height}px`;
+          convertedImageSize.textContent = `(${fileSizeInMB} MB)`;
+        };
 
-        const fileSizeInBytes = blob.size;
-        const fileSizeInMB = (fileSizeInBytes / (1024 * 1024)).toFixed(2); // convert to megabytes
-        const fileSizeSpan = document.createElement("span");
-        fileSizeSpan.className = "file-size";
-        fileSizeSpan.textContent = `(${fileSizeInMB} MB)`;
+        notification.style.display = "none";
 
-        downloadButtonContainer.appendChild(downloadButton);
-        downloadButtonContainer.appendChild(fileSizeSpan);
+        inlineDownloadButtonContainer.style.display = "inline";
+        inlineDownloadButton.href = url;
+        const convertedFileName = `${originalFileName}_converted.${selectedFormat}`;
+        inlineDownloadButton.download = convertedFileName;
 
-        downloadButton.addEventListener("click", function () {
-          const a = document.createElement("a");
-          a.href = convertedImage.src;
-          a.download = `converted_image.${selectedFormat}`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
+        inlineDownloadButton.textContent = `Download`;
       })
       .catch((error) => {
         notification.style.display = "none";

@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const overlay = document.getElementById("overlay");
   const imageContainer = document.getElementById("videoContainer");
   const sizeSelector = document.getElementById("sizeSelector");
-  const formatSelect = document.getElementById("formatSelect");
   const handle = overlay.querySelector(".resize-handle");
   const notification = document.getElementById("processingNotification");
   const uploadedImageSize = document.getElementById("uploadedImageSize");
@@ -18,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let canDrag = false;
   let originalFileName = "";
   let aspectRatio = null;
+  let originalExtension = "";
 
   overlay.style.display = "none";
 
@@ -96,6 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
   imageInput.addEventListener("change", function (event) {
     const file = event.target.files[0];
     originalFileName = file.name.replace(/\.[^/.]+$/, "");
+    originalExtension = file.name.split(".").pop();
     const originalImageUrl = URL.createObjectURL(file);
     imageDisplay.src = originalImageUrl;
     imageDisplay.style.display = "block";
@@ -285,18 +286,13 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("height", Math.round(cropHeight));
     formData.append("left", Math.round(cropLeft));
     formData.append("top", Math.round(cropTop));
-    formData.append("format", formatSelect.value);
+    formData.append("extension", originalExtension);
 
     fetch("/upload-image", {
       method: "POST",
       body: formData,
     })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok " + response.statusText);
-        }
-        return response.blob();
-      })
+      .then((response) => response.blob())
       .then((blob) => {
         const url = window.URL.createObjectURL(blob);
         document.getElementById("croppedImageDisplay").src = url;
@@ -317,14 +313,13 @@ document.addEventListener("DOMContentLoaded", function () {
         downloadButton.addEventListener("click", function () {
           const a = document.createElement("a");
           a.href = url;
-          a.download = `${originalFileName}_crop.${formatSelect.value}`;
+          a.download = `${originalFileName}_crop.${originalExtension}`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
         });
       })
       .catch((error) => {
-        console.error("Error uploading the image:", error);
         notification.style.display = "none";
       });
   });
@@ -343,12 +338,7 @@ document.addEventListener("DOMContentLoaded", function () {
       method: "POST",
       body: formData,
     })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to upscale image");
-        }
-        return response.blob();
-      })
+      .then((response) => response.blob())
       .then((upscaledBlob) => {
         const url = window.URL.createObjectURL(upscaledBlob);
         document.getElementById("croppedImageDisplay").src = url;
@@ -360,11 +350,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const downloadButton = document.createElement("a");
         downloadButton.href = url;
-        downloadButton.download = `${originalFileName}_upscaled.${formatSelect.value}`;
+        downloadButton.download = `${originalFileName}_upscaled.${originalExtension}`;
         downloadButton.click();
       })
       .catch((error) => {
-        console.error("Error upscaling the image:", error);
         alert("Failed to upscale the image.");
       });
   }

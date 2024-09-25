@@ -11,6 +11,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const compressedImageDimensions = document.getElementById("compressedImageDimensions");
   const compressedImageSize = document.getElementById("compressedImageSize");
   const processedImage = document.getElementById("processedImage");
+  const inlineDownloadButton = document.getElementById("inlineDownloadButton");
+  const inlineDownloadButtonContainer = document.getElementById("inlineDownloadButtonContainer");
+
+  let originalFileName = "";
 
   function updateCompressionDisplay(value) {
     compressionDisplay.textContent = `${value}% Compression`;
@@ -25,9 +29,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const file = this.files[0];
       const reader = new FileReader();
 
+      originalFileName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+
       processedImage.src = "";
       compressedImageSize.textContent = "";
       compressedImageDimensions.textContent = "";
+      inlineDownloadButtonContainer.style.display = "none";
 
       reader.onload = function (e) {
         const img = document.getElementById("uploadedImage");
@@ -100,8 +107,15 @@ document.addEventListener("DOMContentLoaded", function () {
         img.onload = function () {
           compressedImageDimensions.textContent = `${img.width}x${img.height}px`;
           compressedImageSize.textContent = `(${compressedFileSizeInMB} MB)`;
+
+          notification.style.display = "none";
+
+          const compressedFileName = `${originalFileName}_compressed.${file.type.split("/")[1]}`;
+
+          inlineDownloadButtonContainer.style.display = "inline";
+          inlineDownloadButton.href = url;
+          inlineDownloadButton.download = compressedFileName;
         };
-        notification.style.display = "none";
       })
       .catch((err) => {
         alert("Failed to compress the image. " + err.message);

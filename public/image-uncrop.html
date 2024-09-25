@@ -12,7 +12,7 @@
         <span>Home</span>
       </a>
 
-      <div id="processingNotification" style="display: none">Processing your image, please wait...</div>
+      <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
 
       <h2>Image Uncrop</h2>
       <form id="uploadFormUncrop" enctype="multipart/form-data" class="form-group">
@@ -61,20 +61,22 @@
       <div id="videoContainer">
         <div>
           <div style="display: flex; align-items: center">
-            <h3>Uploaded Image</h3>
-            <span id="uploadedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
-            <span id="uploadedImageSize" class="image-size" style="margin-left: 10px"></span>
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
           </div>
-          <img id="uploadedImage" src="" alt="Uploaded Image" style="width: 450px" />
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
         </div>
         <div>
           <div style="display: flex; align-items: center">
-            <h3>Uncropped Image</h3>
-            <span id="processedImageDimensions" class="image-dimensions" style="margin-left: 10px"></span>
-            <span id="processedImageSize" class="image-size" style="margin-left: 10px"></span>
-            <span id="downloadButtonContainer" style="margin-left: 10px; display: none"></span>
+            <h3 style="margin-right: 10px">Uncropped Image</h3>
+            <span id="processedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="processedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+            <div id="uncropDownloadButtonContainer" class="inline-download-button-container" style="display: none">
+              <a id="uncropDownloadButton" class="inline-download-button">Download</a>
+            </div>
           </div>
-          <img id="processedImage" src="" alt="Uncropped Image" style="width: 450px" />
+          <img id="processedImage" src="" alt="Uncropped Image" />
         </div>
       </div>
     </div>
