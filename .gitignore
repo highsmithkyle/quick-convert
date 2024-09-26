@@ -18,6 +18,8 @@ subtitles/*
 
 downloads/*
 
+videos/*
+
 node_modules
 
 auth.js
