@@ -752,6 +752,8 @@ app.post("/slowVideo", upload.single("video"), (req, res) => {
 //compress
 
 app.post("/compress-gif", upload.single("image"), (req, res) => {
+  req.setTimeout(600000); // 10 minutes timeout for this route only
+
   const imagePath = req.file.path;
   const outputFileName = `compressed_${Date.now()}.gif`;
   const outputFilePath = path.join(__dirname, "processed", outputFileName);
