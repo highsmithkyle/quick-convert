@@ -44,7 +44,94 @@ const compressedDir = path.join(__dirname, "compressed");
 const getAccessToken = require("./auth");
 const getDisparityMap = require("./getDisparityMap");
 
-// NEW FEATURE SLIDESHOW
+// ------- Image Effects ------- //
+
+// image resize
+
+app.post("/resize-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const targetWidth = parseInt(req.body.target_width, 10);
+  const targetHeight = parseInt(req.body.target_height, 10);
+
+  const extension = path.extname(req.file.originalname).toLowerCase();
+  let outputFileName = `resized_${Date.now()}${extension}`;
+  let qualityOption = "-quality 85"; // You can adjust this for better quality.
+
+  let resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} ${qualityOption} "${path.join(__dirname, "processed", outputFileName)}"`;
+
+  exec(resizeCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error resizing image:", stderr);
+      return res.status(500).send("Failed to resize image.");
+    }
+
+    const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending resized image:", err);
+        return res.status(500).send("Error sending resized image.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+// image crop
+
+app.post("/upload-image", upload.single("media"), (req, res) => {
+  const imagePath = req.file.path;
+  const extension = req.body.extension;
+  const timestamp = Date.now();
+  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.${extension}`);
+
+  const { width, height, left, top } = req.body;
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+    return res.status(400).send("Invalid crop dimensions");
+  }
+
+  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
+
+  exec(cropCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Error processing image");
+    }
+
+    switch (extension) {
+      case "jpeg":
+      case "jpg":
+        compressJpeg(outputPath, res);
+        break;
+      case "png":
+        compressPng(outputPath, res);
+        break;
+      case "webp":
+        compressWebp(outputPath, res);
+        break;
+      case "gif":
+        compressGif(outputPath, res);
+        break;
+      default:
+        res.sendFile(outputPath, (err) => {
+          if (err) {
+            return res.status(500).send("Error sending cropped image");
+          }
+          fs.unlinkSync(outputPath);
+        });
+    }
+  });
+});
+
+// Image-slideshow
 
 app.post("/create-video", upload.array("images"), async (req, res) => {
   const files = req.files;
@@ -749,38 +836,7 @@ app.post("/slowVideo", upload.single("video"), (req, res) => {
   });
 });
 
-//compress
-
-app.post("/compress-gif", upload.single("image"), (req, res) => {
-  req.setTimeout(600000); // 10 minutes timeout for this route only
-
-  const imagePath = req.file.path;
-  const outputFileName = `compressed_${Date.now()}.gif`;
-  const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-  if (!fs.existsSync("processed")) {
-    fs.mkdirSync("processed");
-  }
-
-  const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
-
-  exec(compressCommand, (error) => {
-    fs.unlinkSync(imagePath);
-    if (error) {
-      console.error("Error compressing GIF:", error);
-      return res.status(500).send("Failed to compress GIF.");
-    }
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending compressed GIF:", err);
-        return res.status(500).send("Error sending compressed GIF.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
+// ------- Compression ------- //
 
 app.post("/compress-webp", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
@@ -856,33 +912,32 @@ app.post("/compress-png", upload.single("image"), (req, res) => {
   });
 });
 
-// image resize
-
-app.post("/resize-image", upload.single("image"), (req, res) => {
+app.post("/compress-gif", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
-  const targetWidth = parseInt(req.body.target_width, 10);
-  const targetHeight = parseInt(req.body.target_height, 10);
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
-  const extension = path.extname(req.file.originalname).toLowerCase();
-  let outputFileName = `resized_${Date.now()}${extension}`;
-  let qualityOption = "-quality 85"; // You can adjust this for better quality.
+  const lossy = req.body.lossy;
+  const colors = req.body.colors;
+  const optimize = req.body.optimize;
 
-  let resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} ${qualityOption} "${path.join(__dirname, "processed", outputFileName)}"`;
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
+  }
 
-  exec(resizeCommand, (error, stdout, stderr) => {
+  const compressCommand = `gifsicle --optimize=${optimize} --lossy=${lossy} --colors=${colors} "${imagePath}" > "${outputFilePath}"`;
+
+  exec(compressCommand, (error) => {
     fs.unlinkSync(imagePath);
-
     if (error) {
-      console.error("Error resizing image:", stderr);
-      return res.status(500).send("Failed to resize image.");
+      console.error("Error compressing GIF:", error);
+      return res.status(500).send("Failed to compress GIF.");
     }
-
-    const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
     res.sendFile(outputFilePath, (err) => {
       if (err) {
-        console.error("Error sending resized image:", err);
-        return res.status(500).send("Error sending resized image.");
+        console.error("Error sending compressed GIF:", err);
+        return res.status(500).send("Error sending compressed GIF.");
       }
 
       fs.unlinkSync(outputFilePath);
@@ -890,60 +945,68 @@ app.post("/resize-image", upload.single("image"), (req, res) => {
   });
 });
 
-// image crop
-
-app.post("/upload-image", upload.single("media"), (req, res) => {
+app.post("/compress-gif-gifsicle", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
-  const extension = req.body.extension;
-  const timestamp = Date.now();
-  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.${extension}`);
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
 
-  const { width, height, left, top } = req.body;
-  const safeWidth = parseInt(width, 10);
-  const safeHeight = parseInt(height, 10);
-  const safeLeft = parseInt(left, 10);
-  const safeTop = parseInt(top, 10);
+  const lossy = req.body.lossy;
+  const colors = req.body.colors;
+  const optimize = req.body.optimize;
 
-  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
-    return res.status(400).send("Invalid crop dimensions");
+  if (!fs.existsSync("processed")) {
+    fs.mkdirSync("processed");
   }
 
-  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
+  const compressCommand = `gifsicle --optimize=${optimize} --lossy=${lossy} --colors=${colors} "${imagePath}" > "${outputFilePath}"`;
 
-  exec(cropCommand, (error, stdout, stderr) => {
+  exec(compressCommand, (error) => {
     fs.unlinkSync(imagePath);
     if (error) {
-      return res.status(500).send("Error processing image");
+      console.error("Error compressing GIF:", error);
+      return res.status(500).send("Failed to compress GIF.");
     }
 
-    switch (extension) {
-      case "jpeg":
-      case "jpg":
-        compressJpeg(outputPath, res);
-        break;
-      case "png":
-        compressPng(outputPath, res);
-        break;
-      case "webp":
-        compressWebp(outputPath, res);
-        break;
-      case "gif":
-        compressGif(outputPath, res);
-        break;
-      default:
-        res.sendFile(outputPath, (err) => {
-          if (err) {
-            return res.status(500).send("Error sending cropped image");
-          }
-          fs.unlinkSync(outputPath);
-        });
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending compressed GIF:", err);
+        return res.status(500).send("Error sending compressed GIF.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+app.post("/compress-gif-gifski", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputFileName = `compressed_${Date.now()}.gif`;
+  const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+  const fps = req.body.gifskiFps;
+  const quality = req.body.gifskiQuality;
+
+  const gifskiCommand = `gifski --fps ${fps} --quality ${quality} --output ${outputFilePath} ${imagePath}`;
+
+  exec(gifskiCommand, (error) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      console.error("Error compressing GIF with Gifski:", error);
+      return res.status(500).send("Failed to compress GIF with Gifski.");
     }
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending Gifski-compressed GIF:", err);
+        return res.status(500).send("Error sending compressed GIF.");
+      }
+      fs.unlinkSync(outputFilePath);
+    });
   });
 });
 
 // Callbacks for compression
 function compressJpeg(imagePath, res) {
-  const compressionLevel = 85; // Adjust compression level as needed
+  const compressionLevel = 85;
   const outputFileName = `compressed_${Date.now()}.jpg`;
   const outputFilePath = path.join(__dirname, "processed", outputFileName);
 

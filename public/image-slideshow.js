@@ -381,25 +381,22 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   handlingOption.addEventListener("change", function () {
-    if (handlingOption.value === "cropToSmallest") {
-      let minWidth = Infinity;
-      let minHeight = Infinity;
+    const instructionText = document.getElementById("headerInstruction");
 
-      selectedFiles.forEach((file) => {
-        const imageElement = new Image();
-        imageElement.src = URL.createObjectURL(file);
-        imageElement.onload = function () {
-          if (imageElement.width < minWidth) {
-            minWidth = imageElement.width;
-          }
-          if (imageElement.height < minHeight) {
-            minHeight = imageElement.height;
-          }
+    if (handlingOption.value === "headerBackground") {
+      // Hide the width and height inputs
+      outputWidthInput.style.display = "none";
+      outputHeightInput.style.display = "none";
 
-          outputWidthInput.value = minWidth;
-          outputHeightInput.value = minHeight;
-        };
-      });
+      // Show the instruction text
+      instructionText.style.display = "block";
+    } else {
+      // Show the width and height inputs for other options
+      outputWidthInput.style.display = "block";
+      outputHeightInput.style.display = "block";
+
+      // Hide the instruction text
+      instructionText.style.display = "none";
     }
   });
 
@@ -418,6 +415,37 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   createVideoButton.addEventListener("click", function () {
+    if (handlingOption.value === "headerBackground") {
+      let allImagesMatch = true;
+      let imagesProcessed = 0;
+
+      selectedFiles.forEach((file, index) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = function () {
+          const aspectRatio = img.naturalWidth / img.naturalHeight;
+          // Check if the image aspect ratio is close enough to 8:3
+          if (Math.abs(aspectRatio - 8 / 3) > 0.01) {
+            allImagesMatch = false;
+          }
+          imagesProcessed++;
+          // Only show the popup after all images have been checked
+          if (imagesProcessed === selectedFiles.length) {
+            if (!allImagesMatch) {
+              alert("Please use the crop tool to crop all images to the 8:3 header background size.");
+              return;
+            }
+            // Continue with the video creation if all images match
+            submitVideoCreationForm();
+          }
+        };
+      });
+    } else {
+      submitVideoCreationForm();
+    }
+  });
+
+  function submitVideoCreationForm() {
     const imageContainers = document.querySelectorAll(".image-container:not(.add-image-container)");
     const outputWidth = outputWidthInput.value;
     const outputHeight = outputHeightInput.value;
@@ -467,7 +495,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .catch(() => {
         processingNotification.style.display = "none";
       });
-  });
+  }
 
   function fetchVideoDimensions(videoUrl) {
     let videoInfoElement = document.createElement("span");

@@ -604,3 +604,14 @@ a.inline-download-button {
 a.inline-download-button:hover {
   background-color: #45a049;
 }
+
+.quality-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px; /* Adds some padding below the label and value */
+}
+
+.quality-label {
+  margin-right: 10px; /* Optional, to add space between label and the value */
+}

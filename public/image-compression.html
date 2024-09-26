@@ -20,9 +20,54 @@
 
         <div class="overlay-group" id="qualitySection" style="display: none">
           <div class="form-group">
-            <label for="compressionLevel">Compression Level<br /><br />0 = Best Quality,<br /><br />100 = Highest Compression:</label>
+            <label for="compressionLevel">Compression Level (0-100):</label>
             <input type="range" id="compressionLevel" name="compressionLevel" min="0" max="100" value="20" oninput="updateCompressionDisplay(this.value)" style="width: 80%" />
-            <span id="compression_display">20% Compression</span>
+            <span id="compression_display">20</span>
+          </div>
+        </div>
+
+        <div class="form-group" id="gifOptionsSection" style="display: none">
+          <label for="compressionLibrary">GIF Compression Method:</label>
+          <select id="compressionLibrary" name="compressionLibrary">
+            <option value="gifsicle">Gifsicle</option>
+            <option value="gifski">Gifski</option>
+          </select>
+        </div>
+
+        <div class="overlay-group" id="gifsicleOptions" style="display: none">
+          <div class="form-group">
+            <label for="gifsicleWidth">Width:</label>
+            <input type="number" id="gifsicleWidth" name="gifsicleWidth" value="300" />
+          </div>
+          <div class="form-group">
+            <label for="lossyLevel">Lossy Compression Level (0-200):</label>
+            <input type="number" id="lossyLevel" name="lossyLevel" min="0" max="200" value="80" />
+          </div>
+          <div class="form-group">
+            <label for="colors">Max Colors (2-256):</label>
+            <input type="number" id="colors" name="colors" min="2" max="256" value="128" />
+          </div>
+          <div class="form-group">
+            <label for="optimizeLevel">Optimize Level (1-3):</label>
+            <input type="number" id="optimizeLevel" name="optimizeLevel" min="1" max="3" value="3" />
+          </div>
+        </div>
+
+        <!-- Gifski-specific options -->
+        <div class="overlay-group" id="gifskiOptions" style="display: none">
+          <div class="form-group">
+            <label for="gifskiWidth">Width:</label>
+            <input type="number" id="gifskiWidth" name="gifskiWidth" value="300" />
+          </div>
+
+          <div class="form-group">
+            <label for="gifskiQuality">Quality (0-100):</label>
+            <input type="number" id="gifskiQuality" name="gifskiQuality" min="0" max="100" value="80" />
+          </div>
+
+          <div class="form-group">
+            <label for="gifskiFps">FPS:</label>
+            <input type="number" id="gifskiFps" name="gifskiFps" min="1" max="60" value="25" />
           </div>
         </div>
 
