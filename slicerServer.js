@@ -178,20 +178,23 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       }
     }
 
-    // Create individual videos for each (cropped or original) image
     for (let i = 0; i < files.length; i++) {
       const duration = durations[i];
       const outputFile = `video_${i}.mp4`;
       const fullOutputFilePath = path.join(__dirname, "videos", outputFile);
       tempOutputPaths.push(fullOutputFilePath);
 
-      console.log(`Creating video for image with duration: ${duration}s`);
-
-      // Determine input image path based on handling option
       const inputImagePath = handlingOption === "cropToSmallest" ? croppedImagePaths[i] : files[i].path;
 
-      // FFmpeg command for video creation
-      const ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=${outputWidth}:${outputHeight},fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+      let ffmpegCommand;
+if (handlingOption === "headerBackground") {
+  // Enforce 1000x400 for Header Background Video
+  ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=1000:400:force_original_aspect_ratio=1,pad=1000:400:(ow-iw)/2:(oh-ih)/2,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+} else {
+  // Use the user-defined outputWidth and outputHeight for other options
+  ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=${outputWidth}:${outputHeight},fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+}
+
 
       await new Promise((resolve, reject) => {
         exec(ffmpegCommand, (error, stdout, stderr) => {
@@ -205,13 +208,11 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       });
     }
 
-    // Create a concat file for all the videos
     const concatFilePath = path.join(__dirname, "videos", `concat_${Date.now()}.txt`);
     let concatFileContent = tempOutputPaths.map((filePath) => `file '${filePath}'`).join("\n");
     fs.writeFileSync(concatFilePath, concatFileContent);
     console.log(`Concat file written at ${concatFilePath}`);
 
-    // Concatenate all the videos into one
     const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
     const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c:v libx264 -pix_fmt yuv420p -y "${outputVideoPath}"`;
 
@@ -226,7 +227,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       console.log("Videos concatenated successfully.");
       res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
 
-      // Clean up: remove temp video files, cropped images, and concat file
       try {
         [...tempOutputPaths, ...croppedImagePaths, concatFilePath].forEach((tempPath) => {
           if (fs.existsSync(tempPath)) {
