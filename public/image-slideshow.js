@@ -111,25 +111,88 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function openCropModal(file, index, container, img) {
     const updatedFile = selectedFiles[container.getAttribute("data-index")];
-
+  
     modalImage.src = URL.createObjectURL(updatedFile);
     modalTitle.textContent = `Image ${index}`;
     modal.style.display = "flex";
-
+  
     modalImage.onload = function () {
       scaleX = modalImage.naturalWidth / modalImage.getBoundingClientRect().width;
       scaleY = modalImage.naturalHeight / modalImage.getBoundingClientRect().height;
-
+  
       setTimeout(() => {
         modal.classList.add("show");
         initializeOverlay();
+  
+        const cropSizeContainer = cropSizeSelector.parentElement;
+  
+        const customOption = cropSizeSelector.querySelector('option[value="custom"]');
+        if (customOption) {
+          customOption.remove();
+        }
+  
+        if (handlingOption.value === "headerBackground") {
+          cropSizeSelector.value = "1000x400";
+          cropSizeContainer.style.display = "none";
+          updateOverlay();
+        } else {
+          cropSizeContainer.style.display = "block";
+        }
       }, 10);
     };
-
+  
     cropButton.onclick = function () {
       cropImage(updatedFile, container, img);
     };
   }
+  
+  
+  
+  cropSizeSelector.addEventListener("change", updateOverlay);
+  
+  function updateOverlay() {
+    const ratio = cropSizeSelector.value;
+    const { width, height } = modalImageContainer.getBoundingClientRect();
+    let overlayWidth, overlayHeight;
+  
+    switch (ratio) {
+      case "16:9":
+        aspectRatio = 16 / 9;
+        overlayWidth = width;
+        overlayHeight = overlayWidth / aspectRatio;
+        break;
+      case "9:16":
+        aspectRatio = 9 / 16;
+        overlayHeight = height;
+        overlayWidth = overlayHeight * aspectRatio;
+        break;
+      case "1:1":
+        aspectRatio = 1;
+        overlayWidth = Math.min(width, height);
+        overlayHeight = overlayWidth;
+        break;
+      case "1000x400":
+        aspectRatio = 1000 / 400;
+        overlayWidth = width;
+        overlayHeight = overlayWidth / aspectRatio;
+        break;
+      case "custom":
+        overlayWidth = 200;
+        overlayHeight = 150;
+        aspectRatio = null;
+        break;
+      default:
+        overlayWidth = width * 0.8;
+        overlayHeight = height * 0.8;
+        break;
+    }
+  
+    overlay.style.width = `${overlayWidth}px`;
+    overlay.style.height = `${overlayHeight}px`;
+    overlay.style.top = `${(height - overlayHeight) / 2}px`;
+    overlay.style.left = `${(width - overlayWidth) / 2}px`;
+  }
+  
 
   function cropImage(file, container, img) {
     const modalRect = modalImage.getBoundingClientRect();
@@ -224,11 +287,11 @@ document.addEventListener("DOMContentLoaded", function () {
         overlayWidth = Math.min(width, height);
         overlayHeight = overlayWidth;
         break;
-      case "8:3":
-        aspectRatio = 8 / 3;
-        overlayWidth = width;
-        overlayHeight = overlayWidth / aspectRatio;
-        break;
+        case "1000x400":
+          aspectRatio = 1000 / 400;
+          overlayWidth = width;
+          overlayHeight = overlayWidth / aspectRatio;
+          break;
       case "custom":
         overlayWidth = 200;
         overlayHeight = 150;
@@ -381,24 +444,35 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   handlingOption.addEventListener("change", function () {
+    const outputWidthInput = document.getElementById("outputWidth").parentElement;
+    const outputHeightInput = document.getElementById("outputHeight").parentElement;
     const instructionText = document.getElementById("headerInstruction");
-
+  
     if (handlingOption.value === "headerBackground") {
-      // Hide the width and height inputs
-      outputWidthInput.style.display = "none";
-      outputHeightInput.style.display = "none";
-
-      // Show the instruction text
-      instructionText.style.display = "block";
+      if (outputWidthInput && outputHeightInput) {
+        outputWidthInput.style.display = "none";
+        outputHeightInput.style.display = "none";
+      }
+ 
+      if (instructionText) {
+        instructionText.textContent = "Please crop your images to the header background size by using the crop button located next to your image.";
+        instructionText.style.display = "block";
+        instructionText.style.color = "black"; 
+      }
     } else {
-      // Show the width and height inputs for other options
-      outputWidthInput.style.display = "block";
-      outputHeightInput.style.display = "block";
+      if (outputWidthInput && outputHeightInput) {
+        outputWidthInput.style.display = "block";
+        outputHeightInput.style.display = "block";
+      }
 
-      // Hide the instruction text
-      instructionText.style.display = "none";
+      if (instructionText) {
+        instructionText.style.display = "none";
+      }
     }
   });
+  
+  
+  
 
   addImageButton.addEventListener("click", function () {
     const imagesInput = document.createElement("input");
@@ -424,18 +498,19 @@ document.addEventListener("DOMContentLoaded", function () {
         img.src = URL.createObjectURL(file);
         img.onload = function () {
           const aspectRatio = img.naturalWidth / img.naturalHeight;
-          // Check if the image aspect ratio is close enough to 8:3
-          if (Math.abs(aspectRatio - 8 / 3) > 0.01) {
+      
+          if (Math.abs(aspectRatio - 1000 / 400) > 0.01) {
+
             allImagesMatch = false;
           }
           imagesProcessed++;
-          // Only show the popup after all images have been checked
+         
           if (imagesProcessed === selectedFiles.length) {
             if (!allImagesMatch) {
-              alert("Please use the crop tool to crop all images to the 8:3 header background size.");
+              alert("Please use the crop tool to crop all images to the Header Background size.");
               return;
             }
-            // Continue with the video creation if all images match
+          
             submitVideoCreationForm();
           }
         };
