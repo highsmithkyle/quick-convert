@@ -187,14 +187,13 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       const inputImagePath = handlingOption === "cropToSmallest" ? croppedImagePaths[i] : files[i].path;
 
       let ffmpegCommand;
-if (handlingOption === "headerBackground") {
-  // Enforce 1000x400 for Header Background Video
-  ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=1000:400:force_original_aspect_ratio=1,pad=1000:400:(ow-iw)/2:(oh-ih)/2,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
-} else {
-  // Use the user-defined outputWidth and outputHeight for other options
-  ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=${outputWidth}:${outputHeight},fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
-}
-
+      if (handlingOption === "headerBackground") {
+        ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=1000:400:force_original_aspect_ratio=1,pad=1000:400:(ow-iw)/2:(oh-ih)/2,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+      } else if (handlingOption === "square") {
+        ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=500:500:force_original_aspect_ratio=1,pad=500:500:(ow-iw)/2:(oh-ih)/2,fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+      } else {
+        ffmpegCommand = `ffmpeg -loop 1 -t ${duration} -i "${inputImagePath}" -vf "scale=${outputWidth}:${outputHeight},fps=25" -pix_fmt yuv420p -c:v libx264 -y "${fullOutputFilePath}"`;
+      }
 
       await new Promise((resolve, reject) => {
         exec(ffmpegCommand, (error, stdout, stderr) => {
