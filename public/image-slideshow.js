@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const index = container.getAttribute("data-index");
         selectedFiles[index] = new File([blob], file.name, { type: blob.type });
 
-        updateImageTitle(container, index + 1, img.naturalWidth, img.naturalHeight);
+        updateImageTitle(container, parseInt(index) + 1, img.naturalWidth, img.naturalHeight);
         closeModal();
       })
       .catch((error) => {
@@ -518,6 +518,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const outputHeight = outputHeightInput.value;
     const selectedHandlingOption = handlingOption.value;
 
+    // Get the selected transition option
+    const transitionOption = document.getElementById("transitionOption").value;
+
     durations = Array.from(imageContainers).map((container) => {
       const durationInput = container.querySelector(".duration-input");
       return parseInt(durationInput.value, 10);
@@ -540,6 +543,9 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("outputWidth", outputWidth);
     formData.append("outputHeight", outputHeight);
     formData.append("handlingOption", selectedHandlingOption);
+
+    // Append the transition option to the form data
+    formData.append("transitionOption", transitionOption);
 
     fetch("/create-video", {
       method: "POST",
@@ -606,6 +612,8 @@ document.addEventListener("DOMContentLoaded", function () {
 //   const cropSizeSelector = document.getElementById("cropSizeSelector");
 //   const cropButton = document.getElementById("cropButton");
 //   const handle = overlay.querySelector(".resize-handle");
+//   const instructionText = document.getElementById("headerInstruction");
+
 //   let selectedFiles = [];
 //   let durations = [];
 //   let aspectRatio = null;
@@ -613,8 +621,37 @@ document.addEventListener("DOMContentLoaded", function () {
 //   let canDrag = false;
 //   let scaleX, scaleY;
 
+//   // Default to 'Header Video'
 //   handlingOption.value = "headerBackground";
 
+//   // Hide inputs if 'Header Video' or '1:1 Square' is selected
+//   function updateHandlingOptionUI() {
+//     const outputWidthParent = outputWidthInput.parentElement;
+//     const outputHeightParent = outputHeightInput.parentElement;
+
+//     if (handlingOption.value === "headerBackground") {
+//       outputWidthParent.style.display = "none";
+//       outputHeightParent.style.display = "none";
+//       instructionText.textContent = "Please crop your images to the header background size by using the crop button located next to your image.";
+//       instructionText.style.display = "block";
+//     } else if (handlingOption.value === "square") {
+//       outputWidthParent.style.display = "none";
+//       outputHeightParent.style.display = "none";
+//       instructionText.textContent = "Please crop your images to the 1:1 square size by using the crop button located next to your image.";
+//       instructionText.style.display = "block";
+//     } else {
+//       outputWidthParent.style.display = "block";
+//       outputHeightParent.style.display = "block";
+//       instructionText.style.display = "none";
+//     }
+//   }
+
+//   // Call this function on initialization
+//   updateHandlingOptionUI();
+
+//   handlingOption.addEventListener("change", updateHandlingOptionUI);
+
+//   // Add images to the container
 //   function addImages(files) {
 //     Array.from(files).forEach((file) => {
 //       selectedFiles.push(file);
@@ -714,7 +751,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //       setTimeout(() => {
 //         modal.classList.add("show");
-//         initializeOverlay();
 
 //         const cropSizeContainer = cropSizeSelector.parentElement;
 
@@ -726,25 +762,27 @@ document.addEventListener("DOMContentLoaded", function () {
 //         if (handlingOption.value === "headerBackground") {
 //           cropSizeSelector.value = "1000x400";
 //           cropSizeContainer.style.display = "none";
-//           updateOverlay();
 //         } else if (handlingOption.value === "square") {
 //           cropSizeSelector.value = "1:1";
 //           cropSizeContainer.style.display = "none";
-//           updateOverlay();
 //         } else {
 //           cropSizeContainer.style.display = "block";
 //         }
+
+//         // Reset overlay styles before initializing
+//         overlay.style.width = "";
+//         overlay.style.height = "";
+//         overlay.style.top = "";
+//         overlay.style.left = "";
+
+//         initializeOverlay(); // Initialize overlay with maximum size
+//         updateOverlay(); // Update the position to ensure it's centered and correct
 //       }, 10);
 //     };
 
 //     cropButton.onclick = function () {
 //       cropImage(updatedFile, container, img);
 //     };
-//   }
-
-//   function cropImage(file, container, img) {
-//     const modalRect = modalImage.getBoundingClientRect();
-//     const overlayRect = overlay.getBoundingClientRect();
 
 //     const scaleX = modalImage.naturalWidth / modalRect.width;
 //     const scaleY = modalImage.naturalHeight / modalRect.height;
@@ -803,15 +841,21 @@ document.addEventListener("DOMContentLoaded", function () {
 //   cropSizeSelector.addEventListener("change", updateOverlay);
 
 //   function initializeOverlay() {
+//     overlay.style.width = "";
+//     overlay.style.height = "";
+//     overlay.style.top = "";
+//     overlay.style.left = "";
+
 //     const modalRect = modalImageContainer.getBoundingClientRect();
-//     overlay.style.width = `${modalRect.width * 0.8}px`;
-//     overlay.style.height = `${modalRect.height * 0.8}px`;
-//     overlay.style.top = `${(modalRect.height - overlay.offsetHeight) / 2}px`;
-//     overlay.style.left = `${(modalRect.width - overlay.offsetWidth) / 2}px`;
+
+//     overlay.style.width = `${modalRect.width}px`;
+//     overlay.style.height = `${modalRect.height}px`;
+//     overlay.style.top = `0px`;
+//     overlay.style.left = `0px`;
 //     overlay.style.display = "block";
+
 //     makeDraggable(overlay, modalImageContainer);
 //     makeResizable(overlay, modalImageContainer);
-//     updateOverlay();
 //   }
 
 //   function updateOverlay() {
@@ -1076,6 +1120,9 @@ document.addEventListener("DOMContentLoaded", function () {
 //     const outputHeight = outputHeightInput.value;
 //     const selectedHandlingOption = handlingOption.value;
 
+//     // Get the selected transition option
+//     const transitionOption = document.getElementById("transitionOption").value;
+
 //     durations = Array.from(imageContainers).map((container) => {
 //       const durationInput = container.querySelector(".duration-input");
 //       return parseInt(durationInput.value, 10);
@@ -1098,6 +1145,9 @@ document.addEventListener("DOMContentLoaded", function () {
 //     formData.append("outputWidth", outputWidth);
 //     formData.append("outputHeight", outputHeight);
 //     formData.append("handlingOption", selectedHandlingOption);
+
+//     // Append the transition option to the form data
+//     formData.append("transitionOption", transitionOption);
 
 //     fetch("/create-video", {
 //       method: "POST",
