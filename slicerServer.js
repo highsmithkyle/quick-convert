@@ -139,7 +139,7 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
   let outputWidth = parseInt(req.body.outputWidth, 10);
   let outputHeight = parseInt(req.body.outputHeight, 10);
   const handlingOption = req.body.handlingOption;
-  const transitionOption = req.body.transitionOption || "none"; // Extract transition option
+  const transitionOption = req.body.transitionOption || "none";
 
   console.log("Received durations:", durations);
   console.log(`Handling option: ${handlingOption}`);
@@ -154,7 +154,7 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
     return res.status(400).send("Mismatch between images and durations.");
   }
 
-  const fps = 25; // Frames per second
+  const fps = 25;
   const fadeDuration = transitionOption === "fade" ? 0.5 : 0;
   const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
 
@@ -162,7 +162,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
   const tempVideoDurations = [];
 
   try {
-    // Adjust output dimensions based on handlingOption
     if (handlingOption === "headerBackground") {
       outputWidth = 1000;
       outputHeight = 400;
@@ -173,23 +172,20 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
 
     console.log(`Output dimensions: ${outputWidth}x${outputHeight}`);
 
-    // Append the first image at the end for looping transition
     const allFiles = [...files];
     const allDurations = [...durations];
 
     if (transitionOption === "fade") {
-      allFiles.push(files[0]); // Append the first image at the end
-      allDurations.push(fadeDuration); // Duration equal to fadeDuration
+      allFiles.push(files[0]);
+      allDurations.push(fadeDuration);
     }
 
-    // Step 1: Generate individual video files from images
     for (let i = 0; i < allFiles.length; i++) {
       const file = allFiles[i];
       let duration;
 
       if (i === allFiles.length - 1) {
-        // Last image (the first image repeated)
-        duration = fadeDuration * 2; // Ensure it's long enough for the transition
+        duration = transitionOption === "fade" ? fadeDuration * 2 : allDurations[i];
       } else {
         duration = allDurations[i] + (transitionOption === "fade" ? fadeDuration : 0);
       }
@@ -199,7 +195,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       const tempVideoPath = path.join(__dirname, "uploads", `temp_video_${i}.mp4`);
       tempVideoPaths.push(tempVideoPath);
 
-      // FFmpeg command to create a video from the image
       const ffmpegCommand = `ffmpeg -y -loop 1 -i "${inputImagePath}" -c:v libx264 -t ${duration} -r ${fps} -vsync 1 -pix_fmt yuv420p -vf "fps=${fps},format=yuv420p,scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2" "${tempVideoPath}"`;
 
       await new Promise((resolve, reject) => {
@@ -214,7 +209,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       });
     }
 
-    // Step 2: Generate the FFmpeg command to concatenate videos with transitions
     let filterComplex = "";
     let inputs = "";
     let lastOutput = "";
@@ -223,7 +217,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       inputs += `-i "${tempVideoPaths[i]}" `;
     }
 
-    // Calculate cumulative durations for offsets
     const cumulativeDurations = [];
     let cumulative = 0;
     for (let i = 0; i < tempVideoDurations.length; i++) {
@@ -231,7 +224,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       cumulative += tempVideoDurations[i] - (i < tempVideoDurations.length - 1 && transitionOption === "fade" ? fadeDuration : 0);
     }
 
-    // Prepare filter_complex
     for (let i = 0; i < tempVideoPaths.length; i++) {
       filterComplex += `[${i}:v]fps=${fps},format=yuv420p,setsar=1[v${i}];`;
     }
@@ -247,7 +239,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
         lastOutput = `[vxf${i + 1}]`;
       }
     } else {
-      // Use concat filter if no transitions
       let concatInputs = "";
       for (let i = 0; i < tempVideoPaths.length; i++) {
         concatInputs += `[v${i}]`;
@@ -256,10 +247,8 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
       lastOutput = "[outv]";
     }
 
-    // Build the final FFmpeg command
     const finalFFmpegCommand = `ffmpeg -y ${inputs} -filter_complex "${filterComplex}" -map "${lastOutput}" -c:v libx264 -pix_fmt yuv420p "${outputVideoPath}"`;
 
-    // Execute the final FFmpeg command
     await new Promise((resolve, reject) => {
       console.log("Executing FFmpeg command for concatenation:", finalFFmpegCommand);
       exec(finalFFmpegCommand, (error, stdout, stderr) => {
@@ -274,7 +263,6 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
     console.log("Slideshow created successfully.");
     res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
 
-    // Clean up temporary files
     try {
       files.forEach((file) => {
         if (fs.existsSync(file.path)) {
@@ -291,11 +279,10 @@ app.post("/create-video", upload.array("images"), async (req, res) => {
     }
   } catch (err) {
     console.error("Error processing videos:", err);
-    res.status(500).send(`Error processing videos: ${err.message}`);
+    res.status(500).send(`Error processing videos: ${err}`);
   }
 });
 
-// crop image for slideshow
 app.post("/crop-image", upload.single("image"), (req, res) => {
   const imagePath = req.file.path;
   const outputPath = path.join(__dirname, "videos", `cropped_${Date.now()}.jpg`);
@@ -306,7 +293,6 @@ app.post("/crop-image", upload.single("image"), (req, res) => {
   const safeLeft = parseInt(left, 10);
   const safeTop = parseInt(top, 10);
 
-  // Get the image's original dimensions
   exec(`ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x ${imagePath}`, (err, stdout) => {
     if (err) {
       console.error("Error getting image dimensions:", err);
@@ -315,16 +301,14 @@ app.post("/crop-image", upload.single("image"), (req, res) => {
 
     const [imageWidth, imageHeight] = stdout.split("x").map(Number);
 
-    // Validate the crop dimensions
     if (safeWidth <= 0 || safeHeight <= 0 || safeLeft < 0 || safeTop < 0 || safeWidth + safeLeft > imageWidth || safeHeight + safeTop > imageHeight) {
       return res.status(400).send("Invalid crop dimensions");
     }
 
-    // Perform the crop
     const cropCommand = `ffmpeg -i "${imagePath}" -vf "crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}" -y "${outputPath}"`;
 
     exec(cropCommand, (error) => {
-      fs.unlinkSync(imagePath); // Cleanup the original file
+      fs.unlinkSync(imagePath);
       if (error) {
         console.error(`Error cropping image ${imagePath}:`, error);
         return res.status(500).send("Error processing image");
@@ -335,11 +319,219 @@ app.post("/crop-image", upload.single("image"), (req, res) => {
           console.error(`SendFile Error: ${err.message}`);
           return res.status(500).send("Error sending cropped image");
         }
-        fs.unlinkSync(outputPath); // Cleanup cropped file after sending
+        fs.unlinkSync(outputPath);
       });
     });
   });
 });
+
+// app.post("/create-video", upload.array("images"), async (req, res) => {
+//   const files = req.files;
+//   const durations = JSON.parse(req.body.durations);
+//   let outputWidth = parseInt(req.body.outputWidth, 10);
+//   let outputHeight = parseInt(req.body.outputHeight, 10);
+//   const handlingOption = req.body.handlingOption;
+//   const transitionOption = req.body.transitionOption || "none"; // Extract transition option
+
+//   console.log("Received durations:", durations);
+//   console.log(`Handling option: ${handlingOption}`);
+//   console.log(`Transition option: ${transitionOption}`);
+
+//   if (!files || files.length === 0) {
+//     return res.status(400).send("No images provided or empty request.");
+//   }
+
+//   if (files.length !== durations.length) {
+//     console.error("Mismatch between images and durations.");
+//     return res.status(400).send("Mismatch between images and durations.");
+//   }
+
+//   const fps = 25; // Frames per second
+//   const fadeDuration = transitionOption === "fade" ? 0.5 : 0;
+//   const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+
+//   const tempVideoPaths = [];
+//   const tempVideoDurations = [];
+
+//   try {
+//     // Adjust output dimensions based on handlingOption
+//     if (handlingOption === "headerBackground") {
+//       outputWidth = 1000;
+//       outputHeight = 400;
+//     } else if (handlingOption === "square") {
+//       outputWidth = 500;
+//       outputHeight = 500;
+//     }
+
+//     console.log(`Output dimensions: ${outputWidth}x${outputHeight}`);
+
+//     // Append the first image at the end for looping transition
+//     const allFiles = [...files];
+//     const allDurations = [...durations];
+
+//     if (transitionOption === "fade") {
+//       allFiles.push(files[0]); // Append the first image at the end
+//       allDurations.push(fadeDuration); // Duration equal to fadeDuration
+//     }
+
+//     // Step 1: Generate individual video files from images
+//     for (let i = 0; i < allFiles.length; i++) {
+//       const file = allFiles[i];
+//       let duration;
+
+//       if (i === allFiles.length - 1) {
+//         // Last image (the first image repeated)
+//         duration = fadeDuration * 2; // Ensure it's long enough for the transition
+//       } else {
+//         duration = allDurations[i] + (transitionOption === "fade" ? fadeDuration : 0);
+//       }
+//       tempVideoDurations.push(duration);
+
+//       const inputImagePath = file.path;
+//       const tempVideoPath = path.join(__dirname, "uploads", `temp_video_${i}.mp4`);
+//       tempVideoPaths.push(tempVideoPath);
+
+//       // FFmpeg command to create a video from the image
+//       const ffmpegCommand = `ffmpeg -y -loop 1 -i "${inputImagePath}" -c:v libx264 -t ${duration} -r ${fps} -vsync 1 -pix_fmt yuv420p -vf "fps=${fps},format=yuv420p,scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2" "${tempVideoPath}"`;
+
+//       await new Promise((resolve, reject) => {
+//         console.log(`Creating video from image ${i + 1}:`, ffmpegCommand);
+//         exec(ffmpegCommand, (error, stdout, stderr) => {
+//           if (error) {
+//             console.error(`Error creating video from image ${i + 1}:`, stderr);
+//             return reject(`Failed to create video from image ${i + 1}.`);
+//           }
+//           resolve();
+//         });
+//       });
+//     }
+
+//     // Step 2: Generate the FFmpeg command to concatenate videos with transitions
+//     let filterComplex = "";
+//     let inputs = "";
+//     let lastOutput = "";
+
+//     for (let i = 0; i < tempVideoPaths.length; i++) {
+//       inputs += `-i "${tempVideoPaths[i]}" `;
+//     }
+
+//     // Calculate cumulative durations for offsets
+//     const cumulativeDurations = [];
+//     let cumulative = 0;
+//     for (let i = 0; i < tempVideoDurations.length; i++) {
+//       cumulativeDurations.push(cumulative);
+//       cumulative += tempVideoDurations[i] - (i < tempVideoDurations.length - 1 && transitionOption === "fade" ? fadeDuration : 0);
+//     }
+
+//     // Prepare filter_complex
+//     for (let i = 0; i < tempVideoPaths.length; i++) {
+//       filterComplex += `[${i}:v]fps=${fps},format=yuv420p,setsar=1[v${i}];`;
+//     }
+
+//     if (transitionOption === "fade") {
+//       for (let i = 0; i < tempVideoPaths.length - 1; i++) {
+//         const offset = cumulativeDurations[i + 1];
+//         if (i === 0) {
+//           filterComplex += `[v${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
+//         } else {
+//           filterComplex += `[vxf${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
+//         }
+//         lastOutput = `[vxf${i + 1}]`;
+//       }
+//     } else {
+//       // Use concat filter if no transitions
+//       let concatInputs = "";
+//       for (let i = 0; i < tempVideoPaths.length; i++) {
+//         concatInputs += `[v${i}]`;
+//       }
+//       filterComplex += `${concatInputs}concat=n=${tempVideoPaths.length}:v=1:a=0[outv];`;
+//       lastOutput = "[outv]";
+//     }
+
+//     // Build the final FFmpeg command
+//     const finalFFmpegCommand = `ffmpeg -y ${inputs} -filter_complex "${filterComplex}" -map "${lastOutput}" -c:v libx264 -pix_fmt yuv420p "${outputVideoPath}"`;
+
+//     // Execute the final FFmpeg command
+//     await new Promise((resolve, reject) => {
+//       console.log("Executing FFmpeg command for concatenation:", finalFFmpegCommand);
+//       exec(finalFFmpegCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error("Error executing FFmpeg command:", stderr);
+//           return reject("Failed to create slideshow.");
+//         }
+//         resolve();
+//       });
+//     });
+
+//     console.log("Slideshow created successfully.");
+//     res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
+
+//     // Clean up temporary files
+//     try {
+//       files.forEach((file) => {
+//         if (fs.existsSync(file.path)) {
+//           fs.unlinkSync(file.path);
+//         }
+//       });
+//       tempVideoPaths.forEach((videoPath) => {
+//         if (fs.existsSync(videoPath)) {
+//           fs.unlinkSync(videoPath);
+//         }
+//       });
+//     } catch (cleanupErr) {
+//       console.error("Error cleaning up files:", cleanupErr);
+//     }
+//   } catch (err) {
+//     console.error("Error processing videos:", err);
+//     res.status(500).send(`Error processing videos: ${err.message}`);
+//   }
+// });
+
+// // crop image for slideshow
+// app.post("/crop-image", upload.single("image"), (req, res) => {
+//   const imagePath = req.file.path;
+//   const outputPath = path.join(__dirname, "videos", `cropped_${Date.now()}.jpg`);
+//   const { width, height, left, top } = req.body;
+
+//   const safeWidth = parseInt(width, 10);
+//   const safeHeight = parseInt(height, 10);
+//   const safeLeft = parseInt(left, 10);
+//   const safeTop = parseInt(top, 10);
+
+//   // Get the image's original dimensions
+//   exec(`ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x ${imagePath}`, (err, stdout) => {
+//     if (err) {
+//       console.error("Error getting image dimensions:", err);
+//       return res.status(500).send("Error processing image");
+//     }
+
+//     const [imageWidth, imageHeight] = stdout.split("x").map(Number);
+
+//     // Validate the crop dimensions
+//     if (safeWidth <= 0 || safeHeight <= 0 || safeLeft < 0 || safeTop < 0 || safeWidth + safeLeft > imageWidth || safeHeight + safeTop > imageHeight) {
+//       return res.status(400).send("Invalid crop dimensions");
+//     }
+
+//     // Perform the crop
+//     const cropCommand = `ffmpeg -i "${imagePath}" -vf "crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}" -y "${outputPath}"`;
+
+//     exec(cropCommand, (error) => {
+//       fs.unlinkSync(imagePath); // Cleanup the original file
+//       if (error) {
+//         console.error(`Error cropping image ${imagePath}:`, error);
+//         return res.status(500).send("Error processing image");
+//       }
+
+//       res.sendFile(outputPath, (err) => {
+//         if (err) {
+//           console.error(`SendFile Error: ${err.message}`);
+//           return res.status(500).send("Error sending cropped image");
+//         }
+//         fs.unlinkSync(outputPath); // Cleanup cropped file after sending
+//       });
+//     });
+//   });
+// });
 
 // ----- Video Effects ---- //
 
