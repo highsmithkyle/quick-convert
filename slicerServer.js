@@ -11,7 +11,7 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 const ytdl = require("ytdl-core");
 const { google } = require("googleapis");
-// const { Storage } = require("@google-cloud/storage");
+const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 
 // remove-text
@@ -19,10 +19,10 @@ const speech = require("@google-cloud/speech");
 // Google Cloud
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 const speechClient = new speech.SpeechClient();
-// const storage = new Storage({
-//   keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
-// });
-// const bucket = storage.bucket("image-2d-to-3d");
+const storage = new Storage({
+  keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
+});
+const bucket = storage.bucket("image-2d-to-3d");
 
 // Express
 const app = express();
@@ -1598,62 +1598,77 @@ app.post("/remove-background", upload.single("image"), async (req, res) => {
 
 // ----- Video Subtitles with speech-to-text API ------ //
 
-// upload to Google Cloud Storage bucket
 async function uploadFileToGCS(filePath) {
-  const fileName = path.basename(filePath);
-  await bucket.upload(filePath, {
-    destination: fileName,
-  });
-  return `gs://${bucket.name}/${fileName}`;
+  try {
+    const fileName = path.basename(filePath);
+    await bucket.upload(filePath, {
+      destination: fileName,
+      gzip: true, // Compress the file
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    console.log(`File ${fileName} uploaded to ${bucket.name}.`);
+    return `gs://${bucket.name}/${fileName}`;
+  } catch (error) {
+    console.error("Error uploading file to GCS:", error);
+    throw new Error("Failed to upload file to Google Cloud Storage.");
+  }
 }
 
-// sends audio to speech-to-text api
+// Sends audio to Speech-to-Text API
 async function transcribeAudio(filePath) {
-  const gcsUri = await uploadFileToGCS(filePath);
+  try {
+    const gcsUri = await uploadFileToGCS(filePath);
+    console.log(`Audio uploaded to GCS at ${gcsUri}`);
 
-  const request = {
-    audio: {
-      uri: gcsUri,
-    },
-    config: {
-      encoding: "FLAC",
-      sampleRateHertz: 16000,
-      languageCode: "en-US",
-      enableAutomaticPunctuation: true,
-      enableWordTimeOffsets: true,
-    },
-  };
-
-  const [operation] = await speechClient.longRunningRecognize(request);
-  const [response] = await operation.promise();
-
-  const transcriptionResults = response.results.map((result) => {
-    const alternatives = result.alternatives[0];
-    const timestamps = alternatives.words.map((word) => ({
-      word: word.word,
-      startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
-      endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9,
-    }));
-    console.log("Raw Timestamps:", timestamps);
-    return {
-      transcript: alternatives.transcript,
-      timestamps: timestamps,
+    const request = {
+      audio: {
+        uri: gcsUri,
+      },
+      config: {
+        encoding: "FLAC",
+        sampleRateHertz: 16000,
+        languageCode: "en-US",
+        enableAutomaticPunctuation: true,
+        enableWordTimeOffsets: true,
+      },
     };
-  });
 
-  return transcriptionResults;
+    const [operation] = await speechClient.longRunningRecognize(request);
+    console.log("Speech-to-Text operation started.");
+
+    const [response] = await operation.promise();
+    console.log("Speech-to-Text operation completed.");
+
+    const transcriptionResults = response.results.map((result) => {
+      const alternatives = result.alternatives[0];
+      const timestamps = alternatives.words.map((word) => ({
+        word: word.word,
+        startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+        endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9,
+      }));
+      console.log("Raw Timestamps:", timestamps);
+      return {
+        transcript: alternatives.transcript,
+        timestamps: timestamps,
+      };
+    });
+
+    return transcriptionResults;
+  } catch (error) {
+    console.error("Error in transcribing audio:", error);
+    throw new Error("Failed to transcribe audio.");
+  }
 }
 
-// creates SRT (SubRip Subtitle) file from the transcription results.
-function createSRT(transcriptionResults, srtPath) {
+// Creates SRT (SubRip Subtitle) file from the transcription results.
+function createSRT(transcriptionResults, srtPath, maxWordsPerLine = 10, maxDurationPerLine = 5, bufferTime = 0.1) {
   let srtContent = [];
   let index = 1;
   let sentence = "";
   let startTime = 0;
   let endTime = 0;
-  const maxWordsPerLine = 10;
-  const maxDurationPerLine = 5;
-  const bufferTime = 0.1;
 
   transcriptionResults.forEach((result) => {
     result.timestamps.forEach((word, idx) => {
@@ -1702,7 +1717,7 @@ function createSRT(transcriptionResults, srtPath) {
   console.log(`SRT file content:\n${srtContent.join("\n\n")}`);
 }
 
-// converts time value to subtitle time format (HH:MM:SS,mmm)
+// Converts time value to subtitle time format (HH:MM:SS,mmm)
 function formatSRTTime(rawTime) {
   const time = parseFloat(rawTime);
   let hours = Math.floor(time / 3600);
@@ -1717,12 +1732,14 @@ function formatSRTTime(rawTime) {
 
   return `${hours}:${minutes}:${seconds},${milliseconds}`;
 }
-// converts SRT time back into seconds
+
+// Converts SRT time back into seconds
 function parseSRTTime(srtTime) {
   const [hours, minutes, seconds] = srtTime.split(":");
   const [secs, millis] = seconds.split(",");
   return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(secs) + parseFloat(millis) / 1000;
 }
+
 // Transcribes audio from a video file and returns the transcript with word timestamps
 app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   if (!req.file) {
@@ -1736,15 +1753,15 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   const fontSize = req.body.fontSize || 24;
   const fontFamily = req.body.fontFamily || "Arial";
   const fontColor = req.body.fontColor || "#FFFFFF";
-  const maxWordsPerLine = req.body.maxWordsPerLine || 10;
-  const maxDurationPerLine = req.body.maxDurationPerLine || 5;
-  const bufferTime = req.body.bufferTime || 0.1;
-  const borderStyle = req.body.borderStyle || 1;
+  const maxWordsPerLine = parseInt(req.body.maxWordsPerLine, 10) || 10;
+  const maxDurationPerLine = parseFloat(req.body.maxDurationPerLine) || 5;
+  const bufferTime = parseFloat(req.body.bufferTime) || 0.1;
+  const borderStyle = parseInt(req.body.borderStyle, 10) || 1;
   const outlineColor = req.body.outlineColor || "#000000";
   const subtitlePosition = req.body.subtitlePosition || "bottom";
 
   const convertHexToSubtitleColor = (hex) => {
-    const alpha = "00";
+    const alpha = "00"; // Fully opaque
     const red = hex.substring(1, 3);
     const green = hex.substring(3, 5);
     const blue = hex.substring(5, 7);
@@ -1756,6 +1773,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   const alignment = subtitlePosition === "top" ? 6 : 2;
 
   try {
+    // Extract audio from video and convert to FLAC
     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
     exec(ffmpegExtractAudioCommand, async (error) => {
       if (error) {
@@ -1764,11 +1782,13 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
       }
 
       try {
+        // Transcribe audio using Speech-to-Text
         const transcriptionResults = await transcribeAudio(audioPath);
         if (transcriptionResults.length === 0 || !transcriptionResults[0].transcript.trim()) {
           throw new Error("No transcribable audio found.");
         }
 
+        // Create SRT file
         createSRT(transcriptionResults, srtPath, maxWordsPerLine, maxDurationPerLine, bufferTime);
 
         if (!fs.existsSync(srtPath)) {
@@ -1776,6 +1796,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
           return res.status(500).send("SRT file creation failed.");
         }
 
+        // Add subtitles to video using FFmpeg
         const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineSubtitleColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
         console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`);
         exec(ffmpegAddSubtitlesCommand, (subError) => {
@@ -1786,7 +1807,7 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
             return res.status(500).send("Failed to add subtitles to video.");
           }
 
-          res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+          res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${path.basename(outputPath)}` });
         });
       } catch (transcriptionError) {
         console.error("Transcription error:", transcriptionError);
@@ -1801,11 +1822,225 @@ app.post("/transcribe-video", upload.single("video"), async (req, res) => {
   }
 });
 
+// Cleanup files function
 function cleanupFiles(videoPath, audioPath, srtPath) {
-  fs.unlinkSync(videoPath);
-  fs.unlinkSync(audioPath);
-  fs.unlinkSync(srtPath);
+  try {
+    if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+    if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+    if (fs.existsSync(srtPath)) fs.unlinkSync(srtPath);
+  } catch (err) {
+    console.error("Error during cleanup:", err);
+  }
 }
+
+// upload to Google Cloud Storage bucket
+// async function uploadFileToGCS(filePath) {
+//   const fileName = path.basename(filePath);
+//   await bucket.upload(filePath, {
+//     destination: fileName,
+//   });
+//   return `gs://${bucket.name}/${fileName}`;
+// }
+
+// // sends audio to speech-to-text api
+// async function transcribeAudio(filePath) {
+//   const gcsUri = await uploadFileToGCS(filePath);
+
+//   const request = {
+//     audio: {
+//       uri: gcsUri,
+//     },
+//     config: {
+//       encoding: "FLAC",
+//       sampleRateHertz: 16000,
+//       languageCode: "en-US",
+//       enableAutomaticPunctuation: true,
+//       enableWordTimeOffsets: true,
+//     },
+//   };
+
+//   const [operation] = await speechClient.longRunningRecognize(request);
+//   const [response] = await operation.promise();
+
+//   const transcriptionResults = response.results.map((result) => {
+//     const alternatives = result.alternatives[0];
+//     const timestamps = alternatives.words.map((word) => ({
+//       word: word.word,
+//       startTime: parseFloat(word.startTime.seconds) + word.startTime.nanos * 1e-9,
+//       endTime: parseFloat(word.endTime.seconds) + word.endTime.nanos * 1e-9,
+//     }));
+//     console.log("Raw Timestamps:", timestamps);
+//     return {
+//       transcript: alternatives.transcript,
+//       timestamps: timestamps,
+//     };
+//   });
+
+//   return transcriptionResults;
+// }
+
+// // creates SRT (SubRip Subtitle) file from the transcription results.
+// function createSRT(transcriptionResults, srtPath) {
+//   let srtContent = [];
+//   let index = 1;
+//   let sentence = "";
+//   let startTime = 0;
+//   let endTime = 0;
+//   const maxWordsPerLine = 10;
+//   const maxDurationPerLine = 5;
+//   const bufferTime = 0.1;
+
+//   transcriptionResults.forEach((result) => {
+//     result.timestamps.forEach((word, idx) => {
+//       if (sentence === "") {
+//         startTime = word.startTime;
+//       }
+//       sentence += (sentence ? " " : "") + word.word;
+
+//       const currentDuration = word.endTime - startTime;
+//       const wordCount = sentence.split(" ").length;
+
+//       // Create a new subtitle line if the word count or duration exceeds the limits
+//       if (
+//         wordCount >= maxWordsPerLine ||
+//         currentDuration >= maxDurationPerLine ||
+//         idx === result.timestamps.length - 1 ||
+//         (result.timestamps[idx + 1] && result.timestamps[idx + 1].startTime - word.endTime > 1)
+//       ) {
+//         endTime = word.endTime;
+
+//         // Ensure no overlap
+//         if (srtContent.length > 0) {
+//           const previousSubtitle = srtContent[srtContent.length - 1];
+//           const previousEndTime = parseSRTTime(previousSubtitle.split(" --> ")[1].split("\n")[0]);
+//           if (startTime < previousEndTime) {
+//             startTime = previousEndTime + bufferTime;
+//           }
+//         }
+
+//         const formattedStart = formatSRTTime(startTime);
+//         const formattedEnd = formatSRTTime(endTime + bufferTime);
+//         srtContent.push(`${index}\n${formattedStart} --> ${formattedEnd}\n${sentence}\n`);
+//         index++;
+//         sentence = "";
+
+//         // Adjust the start time of the next subtitle to prevent overlap
+//         if (result.timestamps[idx + 1]) {
+//           startTime = Math.max(result.timestamps[idx + 1].startTime, endTime + bufferTime);
+//         }
+//       }
+//     });
+//   });
+
+//   fs.writeFileSync(srtPath, srtContent.join("\n\n"), "utf8");
+//   console.log(`SRT file created at: ${srtPath}`);
+//   console.log(`SRT file content:\n${srtContent.join("\n\n")}`);
+// }
+
+// // converts time value to subtitle time format (HH:MM:SS,mmm)
+// function formatSRTTime(rawTime) {
+//   const time = parseFloat(rawTime);
+//   let hours = Math.floor(time / 3600);
+//   let minutes = Math.floor((time % 3600) / 60);
+//   let seconds = Math.floor(time % 60);
+//   let milliseconds = Math.round((time - Math.floor(time)) * 1000);
+
+//   hours = hours.toString().padStart(2, "0");
+//   minutes = minutes.toString().padStart(2, "0");
+//   seconds = seconds.toString().padStart(2, "0");
+//   milliseconds = milliseconds.toString().padStart(3, "0");
+
+//   return `${hours}:${minutes}:${seconds},${milliseconds}`;
+// }
+// // converts SRT time back into seconds
+// function parseSRTTime(srtTime) {
+//   const [hours, minutes, seconds] = srtTime.split(":");
+//   const [secs, millis] = seconds.split(",");
+//   return parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(secs) + parseFloat(millis) / 1000;
+// }
+// // Transcribes audio from a video file and returns the transcript with word timestamps
+// app.post("/transcribe-video", upload.single("video"), async (req, res) => {
+//   if (!req.file) {
+//     return res.status(400).send("No video file uploaded.");
+//   }
+
+//   const videoPath = req.file.path;
+//   const audioPath = path.join(__dirname, "subtitles", `${req.file.filename}.flac`);
+//   const srtPath = path.join(__dirname, "subtitles", `${req.file.filename}.srt`);
+//   const outputPath = path.join(__dirname, "subtitles", `${req.file.filename}_subtitled.mp4`);
+//   const fontSize = req.body.fontSize || 24;
+//   const fontFamily = req.body.fontFamily || "Arial";
+//   const fontColor = req.body.fontColor || "#FFFFFF";
+//   const maxWordsPerLine = req.body.maxWordsPerLine || 10;
+//   const maxDurationPerLine = req.body.maxDurationPerLine || 5;
+//   const bufferTime = req.body.bufferTime || 0.1;
+//   const borderStyle = req.body.borderStyle || 1;
+//   const outlineColor = req.body.outlineColor || "#000000";
+//   const subtitlePosition = req.body.subtitlePosition || "bottom";
+
+//   const convertHexToSubtitleColor = (hex) => {
+//     const alpha = "00";
+//     const red = hex.substring(1, 3);
+//     const green = hex.substring(3, 5);
+//     const blue = hex.substring(5, 7);
+//     return `&H${alpha}${blue}${green}${red}&`;
+//   };
+
+//   const primaryColor = convertHexToSubtitleColor(fontColor);
+//   const outlineSubtitleColor = convertHexToSubtitleColor(outlineColor);
+//   const alignment = subtitlePosition === "top" ? 6 : 2;
+
+//   try {
+//     const ffmpegExtractAudioCommand = `ffmpeg -i "${videoPath}" -ac 1 -ar 16000 -vn -y -f flac "${audioPath}"`;
+//     exec(ffmpegExtractAudioCommand, async (error) => {
+//       if (error) {
+//         console.error("Error converting video to audio:", error);
+//         return res.status(500).send("Failed to convert video.");
+//       }
+
+//       try {
+//         const transcriptionResults = await transcribeAudio(audioPath);
+//         if (transcriptionResults.length === 0 || !transcriptionResults[0].transcript.trim()) {
+//           throw new Error("No transcribable audio found.");
+//         }
+
+//         createSRT(transcriptionResults, srtPath, maxWordsPerLine, maxDurationPerLine, bufferTime);
+
+//         if (!fs.existsSync(srtPath)) {
+//           console.error("SRT file does not exist:", srtPath);
+//           return res.status(500).send("SRT file creation failed.");
+//         }
+
+//         const ffmpegAddSubtitlesCommand = `ffmpeg -i "${videoPath}" -vf "subtitles=${srtPath}:force_style='Fontsize=${fontSize},Fontname=${fontFamily},PrimaryColour=${primaryColor},BorderStyle=${borderStyle},OutlineColour=${outlineSubtitleColor},Outline=1,Shadow=0,Alignment=${alignment}'" -c:v libx264 -c:a copy "${outputPath}"`;
+//         console.log(`Running FFmpeg command: ${ffmpegAddSubtitlesCommand}`);
+//         exec(ffmpegAddSubtitlesCommand, (subError) => {
+//           cleanupFiles(videoPath, audioPath, srtPath);
+
+//           if (subError) {
+//             console.error("Error adding subtitles:", subError);
+//             return res.status(500).send("Failed to add subtitles to video.");
+//           }
+
+//           res.json({ message: "Video processed with subtitles", videoUrl: `/subtitles/${req.file.filename}_subtitled.mp4` });
+//         });
+//       } catch (transcriptionError) {
+//         console.error("Transcription error:", transcriptionError);
+//         cleanupFiles(videoPath, audioPath, srtPath);
+//         res.status(500).send("Failed to transcribe audio.");
+//       }
+//     });
+//   } catch (qualityError) {
+//     console.error("Audio quality error:", qualityError);
+//     cleanupFiles(videoPath, audioPath, srtPath);
+//     res.status(400).send("This video cannot be transcribed, please try another video.");
+//   }
+// });
+
+// function cleanupFiles(videoPath, audioPath, srtPath) {
+//   fs.unlinkSync(videoPath);
+//   fs.unlinkSync(audioPath);
+//   fs.unlinkSync(srtPath);
+// }
 
 //----- Extra Features -------//
 
