@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateHandlingOptionUI() {
     if (handlingOption.value === "headerBackground") {
-      instructionText.textContent = "Please crop your images to the header background size by using the crop button located next to your image.";
+      instructionText.textContent = "Please crop your images to the header video size by using the crop button located next to your image.";
       instructionText.style.display = "block";
     } else if (handlingOption.value === "square") {
       instructionText.textContent = "Please crop your images to the 1:1 square size by using the crop button located next to your image.";
