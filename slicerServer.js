@@ -1240,34 +1240,62 @@ app.post("/convertToWebP", upload.single("video"), (req, res) => {
 app.post("/convertToAvif", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
   const outputPath = path.join(convertedDir, `converted_${Date.now()}.avif`);
+  const trimStart = parseInt(req.body.trimStart) || 0;
+  const trimEnd = parseInt(req.body.trimEnd) || 0;
 
-  console.log(`Starting conversion for ${videoPath}`);
-  const convertCommand = `ffmpeg -y -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
+  let inputOptions = "";
+  if (trimEnd > trimStart) {
+    inputOptions = `-ss ${trimStart} -to ${trimEnd}`;
+  }
+
+  const convertCommand = `ffmpeg -y ${inputOptions} -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
 
   exec(convertCommand, (convertError) => {
+    fs.unlinkSync(videoPath);
     if (convertError) {
       console.error("Conversion Error:", convertError);
       return res.status(500).send("Error converting video to AVIF.");
     }
 
-    fs.access(outputPath, fs.constants.F_OK, (err) => {
-      if (err) {
-        console.error("Converted file does not exist:", err);
-        return res.status(404).send("Converted file not found.");
+    res.download(outputPath, "video.avif", (downloadErr) => {
+      if (downloadErr) {
+        console.error("SendFile Error:", downloadErr.message);
+        return res.status(500).send("Error sending the converted file.");
       }
 
-      res.download(outputPath, "video.avif", (downloadErr) => {
-        if (downloadErr) {
-          console.error("SendFile Error:", downloadErr.message);
-          return res.status(500).send("Error sending the converted file.");
-        }
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
 
-        fs.unlink(outputPath, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error(`Error deleting output file: ${outputPath}`, unlinkErr);
-          }
-        });
-      });
+app.post("/trimVideo", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const trimStart = parseInt(req.body.trimStart) || 0;
+  const trimEnd = parseInt(req.body.trimEnd) || 0;
+  const outputPath = path.join(__dirname, "trimmed", `trimmed_${Date.now()}_${req.file.originalname}`);
+
+  if (!fs.existsSync("trimmed")) {
+    fs.mkdirSync("trimmed");
+  }
+
+  const duration = trimEnd - trimStart;
+  const trimCommand = `ffmpeg -y -i "${videoPath}" -ss ${trimStart} -t ${duration} -c copy "${outputPath}"`;
+
+  exec(trimCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(videoPath);
+
+    if (error) {
+      console.error("Error trimming video:", stderr);
+      return res.status(500).send("Failed to trim video.");
+    }
+
+    res.sendFile(outputPath, (err) => {
+      if (err) {
+        console.error("Error sending trimmed video:", err);
+        return res.status(500).send("Error sending trimmed video.");
+      }
+
+      fs.unlinkSync(outputPath);
     });
   });
 });

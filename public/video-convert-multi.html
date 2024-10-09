@@ -46,6 +46,76 @@
 
     <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
 
+    <!-- Trim Modal -->
+    <div id="trimModal" class="modal">
+      <div class="modal-content">
+        <h2>Trim Video</h2>
+        <p>Your video is large. Please trim it to a shorter duration to proceed.</p>
+        <div class="modal-body">
+          <label for="trimStart">Start Time (seconds):</label>
+          <input type="number" id="trimStart" min="0" step="1" value="0" />
+          <label for="trimEnd">End Time (seconds):</label>
+          <input type="number" id="trimEnd" min="0" step="1" />
+        </div>
+        <div class="button-group">
+          <button id="trimConfirmButton">Confirm</button>
+          <button id="trimCancelButton">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <script src="video-convert-multi.js" defer></script>
   </body>
 </html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Convert Video to Multiple Formats</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <form id="multiForm" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="videoInput">Upload Video:</label>
+          <input type="file" id="videoInput" name="video" accept="video/*" required />
+        </div>
+        <div class="form-group">
+          <label for="formatSelect">Select Format:</label>
+          <select id="formatSelect" required>
+            <option value="mp4">MP4</option>
+            <option value="gif">GIF</option>
+            <option value="avif">AVIF</option>
+            <option value="webm">WEBM</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="button" id="convertButton">Convert</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <h3>Uploaded Video</h3>
+          <video id="uploadedVideo" controls></video>
+        </div>
+        <div>
+          <h3>Converted Video<span id="downloadButtonContainer" style="margin-left: 10px; font-size: 14px; font-weight: normal"></span></h3>
+          <div id="convertedMedia" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
+
+    <script src="video-convert-multi.js" defer></script>
+  </body>
+</html> -->
