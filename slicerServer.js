@@ -13,6 +13,7 @@ const ytdl = require("ytdl-core");
 const { google } = require("googleapis");
 const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
+const Vibrant = require("node-vibrant");
 
 // remove-text
 
@@ -128,6 +129,89 @@ app.post("/upload-image", upload.single("media"), (req, res) => {
           fs.unlinkSync(outputPath);
         });
     }
+  });
+});
+
+app.post("/detectColors", upload.single("image"), async (req, res) => {
+  try {
+    const imagePath = req.file.path;
+    const palette = await Vibrant.from(imagePath).getPalette();
+    const dominantColors = [];
+
+    for (const swatch in palette) {
+      if (palette[swatch]) {
+        dominantColors.push(palette[swatch].getHex());
+      }
+    }
+
+    const limitedColors = dominantColors.slice(0, 3);
+
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    res.json({ colors: limitedColors });
+  } catch (error) {
+    console.error("Error detecting colors:", error);
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).send("Failed to detect colors.");
+  }
+});
+
+app.post("/recolorImage", upload.single("image"), (req, res) => {
+  const targetColors = JSON.parse(req.body.targetColors);
+  const sourceColors = JSON.parse(req.body.sourceColors);
+  const fuzzPercentage = parseFloat(req.body.fuzz) || 10;
+  const inputPath = req.file.path;
+  const outputPath = `uploads/recolored-${uuidv4()}.png`;
+
+  if (!sourceColors || !targetColors || sourceColors.length !== targetColors.length) {
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+    return res.status(400).send("Source and target colors must be provided and match in length.");
+  }
+
+  let command = `magick convert "${inputPath}"`;
+
+  sourceColors.forEach((srcColor, index) => {
+    const tgtColor = targetColors[index];
+    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
+    const tgtColorFormatted = `#${tgtColor}`;
+
+    if (srcColorFormatted.toUpperCase() === "#FFFFFF") {
+      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
+    }
+  });
+
+  sourceColors.forEach((srcColor, index) => {
+    const tgtColor = targetColors[index];
+    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
+    const tgtColorFormatted = `#${tgtColor}`;
+
+    if (srcColorFormatted.toUpperCase() !== "#FFFFFF") {
+      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
+    }
+  });
+
+  command += ` "${outputPath}"`;
+
+  exec(command, (err, stdout, stderr) => {
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+
+    if (err) {
+      console.error("Error processing image:", stderr);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      return res.status(500).send("Error processing image.");
+    }
+
+    res.sendFile(path.resolve(outputPath), (err) => {
+      if (err) {
+        console.error("Error sending recolored image:", err);
+        return res.status(500).send("Error sending recolored image.");
+      }
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    });
   });
 });
 
@@ -1248,11 +1332,15 @@ app.post("/convertToAvif", upload.single("video"), (req, res) => {
     inputOptions = `-ss ${trimStart} -to ${trimEnd}`;
   }
 
-  const convertCommand = `ffmpeg -y ${inputOptions} -i "${videoPath}" -c:v libaom-av1 -crf 40 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
+  const convertCommand = `ffmpeg -y ${inputOptions} -i "${videoPath}" -c:v libaom-av1 -crf 63 -b:v 0 -cpu-used 8 -row-mt 1 -an "${outputPath}"`;
 
-  exec(convertCommand, (convertError) => {
+  exec(convertCommand, { timeout: 600000 }, (convertError) => {
     fs.unlinkSync(videoPath);
     if (convertError) {
+      if (convertError.killed) {
+        console.error("Conversion timed out.");
+        return res.status(500).send("Conversion timed out.");
+      }
       console.error("Conversion Error:", convertError);
       return res.status(500).send("Error converting video to AVIF.");
     }
@@ -1262,7 +1350,6 @@ app.post("/convertToAvif", upload.single("video"), (req, res) => {
         console.error("SendFile Error:", downloadErr.message);
         return res.status(500).send("Error sending the converted file.");
       }
-
       fs.unlinkSync(outputPath);
     });
   });

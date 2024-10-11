@@ -1,110 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Image Recolor</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="sidebar">        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>        
-        <form id="recolorForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="imageInput">Upload Image:</label>
-                <input type="file" id="imageInput" name="image" accept="image/*" required>
-            </div>
-            <div class="form-group color-picker-group">
-                <label for="targetColor">New Color:</label>
-                <input type="color" id="targetColor" name="targetColor" class="color-picker" value="#0000FF">
-                <span id="colorValue">#0000FF</span>
-            </div>
-            <div class="button-group">
-                <button type="button" id="recolorButton">Recolor Image</button>
-            </div>
-        </form>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Logo Recoloring</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
+
+      <h2>Recolor Logo</h2>
+      <form id="recolorForm" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="imageInput">Upload Logo:</label>
+          <input type="file" id="imageInput" name="image" accept="image/*" class="sidebar-input" required />
+        </div>
+        <div class="overlay-group form-group fuzz-slider-container fuzz-slider-hidden">
+          <label for="fuzz">Color Similarity: <span id="fuzzValue">10%</span></label>
+          <input type="range" id="fuzz" name="fuzz" min="0" max="90" value="10" class="sidebar-input" />
+        </div>
+        <div id="colorOptions" class="overlay-group"></div>
+      </form>
     </div>
 
     <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Original Image</h3>
-                <img id="uploadedImage" style="display: none;">
-            </div>
-            <div>
-                <h3>Recolored Image<span id="gifDownloadButtonContainer" style="margin-left: 10px;font-size: 14px; font-weight: normal;"></span></h3>
-                <img id="recoloredImage" style="display: none;">
-            </div>
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Logo</h3>
+            <span id="originalImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="originalImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Logo" />
         </div>
-    </div>
-
-    <div id="processingNotification" style="display:none;">
-        Processing your image, please wait...
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Recolored Logo</h3>
+            <span id="recoloredImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="recoloredImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+            <div id="inlineDownloadButtonContainer" class="inline-download-button-container" style="display: none">
+              <a id="inlineDownloadButton" class="inline-download-button">Download</a>
+            </div>
+          </div>
+          <img id="recoloredImage" src="" alt="Recolored Logo" />
+        </div>
+      </div>
     </div>
 
     <script src="image-recolor.js"></script>
-</body>
+  </body>
 </html>
-
-
-
-<!-- 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Image Recolor</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.min.js"></script>
-</head>
-<body>
-    <div class="sidebar">        
-        <a href="index.html" class="home-button">
-            <img src="./images/home-icon-black.png" alt="Home" class="home-icon">
-            <span>Home</span>
-        </a>        
-        <form id="recolorForm" enctype="multipart/form-data" method="post">
-            <div class="form-group">
-                <label for="imageInput">Upload Image:</label>
-                <input type="file" id="imageInput" name="image" accept="image/*" required>
-            </div>
-            <div class="form-group">
-                <label for="dominantColor">Dominant Colors:</label>
-                <div id="dominantColor" style="display: flex;"></div>
-            </div>
-            <div class="form-group color-picker-group">
-                <label for="targetColor">New Color:</label>
-                <input type="color" id="targetColor" name="targetColor" class="color-picker" value="#0000FF">
-                <span id="colorValue">#0000FF</span>
-            </div>
-            <div class="button-group">
-                <button type="button" id="recolorButton">Recolor Image</button>
-                <button type="button" id="clearButton">Clear Recolored Image</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="main-content">
-        <div id="videoContainer">
-            <div>
-                <h3>Original Image</h3>
-                <img id="uploadedImage" controls></video>
-            </div>
-            <div>
-                <h3>Recolored Image<span id="gifDownloadButtonContainer" style="margin-left: 10px;font-size: 14px; font-weight: normal;"></span></h3>
-                <img id="recoloredImage" style="display: none;">
-            </div>
-        </div>
-    </div>
-
-
-    <div id="processingNotification" style="display:none;">
-        Processing your image, please wait...
-    </div>
-
-    <script src="image-recolor.js"></script>
-</body>
-</html>
- -->
