@@ -172,7 +172,7 @@ app.post("/recolorImage", upload.single("image"), (req, res) => {
     return res.status(400).send("Source and target colors must be provided and match in length.");
   }
 
-  let command = `magick convert "${inputPath}"`;
+  let command = `convert "${inputPath}"`;
 
   sourceColors.forEach((srcColor, index) => {
     const tgtColor = targetColors[index];
