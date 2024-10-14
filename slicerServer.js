@@ -15,6 +15,7 @@ const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 const Vibrant = require("node-vibrant");
 
+const sharp = require("sharp");
 // remove-text
 
 // Google Cloud
@@ -135,22 +136,41 @@ app.post("/upload-image", upload.single("media"), (req, res) => {
 app.post("/detectColors", upload.single("image"), async (req, res) => {
   try {
     const imagePath = req.file.path;
-    const palette = await Vibrant.from(imagePath).getPalette();
-    const dominantColors = [];
 
-    for (const swatch in palette) {
-      if (palette[swatch]) {
-        dominantColors.push(palette[swatch].getHex());
+    // Load image and check for white color with sharp
+    const image = await sharp(imagePath).raw().toBuffer({ resolveWithObject: true });
+    const whiteThreshold = { r: 230, g: 230, b: 230 };
+    let containsWhite = false;
+
+    for (let i = 0; i < image.data.length; i += 3) {
+      const red = image.data[i];
+      const green = image.data[i + 1];
+      const blue = image.data[i + 2];
+
+      if (red >= whiteThreshold.r && green >= whiteThreshold.g && blue >= whiteThreshold.b) {
+        containsWhite = true;
+        break;
       }
     }
 
-    const limitedColors = dominantColors.slice(0, 3);
+    const palette = await Vibrant.from(imagePath).getPalette();
+    const vibrantColors = [];
 
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+    for (const swatch in palette) {
+      if (palette[swatch]) {
+        vibrantColors.push(palette[swatch].getHex());
+      }
     }
 
-    res.json({ colors: limitedColors });
+    const detectedColors = [];
+    if (containsWhite) {
+      detectedColors.push("#FFFFFF");
+    }
+    detectedColors.push(...vibrantColors.slice(0, 3));
+
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+
+    res.json({ colors: detectedColors });
   } catch (error) {
     console.error("Error detecting colors:", error);
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
@@ -159,6 +179,33 @@ app.post("/detectColors", upload.single("image"), async (req, res) => {
     res.status(500).send("Failed to detect colors.");
   }
 });
+// app.post("/detectColors", upload.single("image"), async (req, res) => {
+//   try {
+//     const imagePath = req.file.path;
+//     const palette = await Vibrant.from(imagePath).getPalette();
+//     const dominantColors = [];
+
+//     for (const swatch in palette) {
+//       if (palette[swatch]) {
+//         dominantColors.push(palette[swatch].getHex());
+//       }
+//     }
+
+//     const limitedColors = dominantColors.slice(0, 3);
+
+//     if (fs.existsSync(imagePath)) {
+//       fs.unlinkSync(imagePath);
+//     }
+
+//     res.json({ colors: limitedColors });
+//   } catch (error) {
+//     console.error("Error detecting colors:", error);
+//     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+//       fs.unlinkSync(req.file.path);
+//     }
+//     res.status(500).send("Failed to detect colors.");
+//   }
+// });
 
 app.post("/recolorImage", upload.single("image"), (req, res) => {
   const targetColors = JSON.parse(req.body.targetColors);
