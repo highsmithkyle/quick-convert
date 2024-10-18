@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const gifControls = document.getElementById("gifControls");
   const gifFps = document.getElementById("gifFps");
   const gifQuality = document.getElementById("gifQuality");
+  const transitionOption = document.getElementById("transitionOption");
 
   let minWidth = Infinity;
   let minHeight = Infinity;
@@ -120,7 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   slowFactor.addEventListener("input", function () {
-    slowFactorValue.textContent = slowFactor.value;
+    slowFactorValue.textContent = `${slowFactor.value}x`;
   });
 
   form.addEventListener("submit", function (event) {
@@ -147,15 +148,22 @@ document.addEventListener("DOMContentLoaded", function () {
       formData.delete("gifQuality");
     }
 
+    // Include transition option
+    const selectedTransition = transitionOption.value;
+    formData.append("transitionOption", selectedTransition);
+
     fetch("/slice-multi", { method: "POST", body: formData })
       .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
         const contentType = response.headers.get("content-type");
         return response.blob().then((blob) => ({ blob, contentType }));
       })
       .then(({ blob, contentType }) => {
         notification.style.display = "none";
 
-        if (contentType === "image/gif") {
+        if (contentType.startsWith("image/gif")) {
           processedVideo.style.display = "none";
           processedGif.src = URL.createObjectURL(blob);
           processedGif.style.display = "block";
@@ -165,9 +173,10 @@ document.addEventListener("DOMContentLoaded", function () {
           processedVideo.style.display = "block";
         }
       })
-      .catch(() => {
+      .catch((error) => {
         notification.style.display = "none";
-        console.error("Failed to process videos.");
+        console.error("Failed to process videos:", error);
+        alert("Failed to process videos. Please try again.");
       });
   });
 });
