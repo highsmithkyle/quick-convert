@@ -472,8 +472,6 @@ button.download-button-sidebar:hover {
   background-color: #218838;
 }
 
-/* Image Slideshow Styles */
-
 .slideshow-image {
   width: 160px;
   height: auto;
@@ -573,7 +571,6 @@ button.download-button-sidebar:hover {
   box-sizing: border-box;
 }
 
-/* INPUT STYLING */
 input[type="file"],
 input[type="number"],
 input[type="range"],
@@ -609,11 +606,11 @@ a.inline-download-button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px; /* Adds some padding below the label and value */
+  padding-bottom: 10px;
 }
 
 .quality-label {
-  margin-right: 10px; /* Optional, to add space between label and the value */
+  margin-right: 10px;
 }
 
 #instructionModal {
@@ -1136,8 +1133,6 @@ button.download-button-sidebar:hover {
   background-color: #218838;
 }
 
-/* Image Slideshow Styles */
-
 .slideshow-image {
   width: 160px;
   height: auto;
@@ -1237,7 +1232,6 @@ button.download-button-sidebar:hover {
   box-sizing: border-box;
 }
 
-/* INPUT STYLING */
 input[type="file"],
 input[type="number"],
 input[type="range"],
@@ -1273,11 +1267,11 @@ a.inline-download-button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px; /* Adds some padding below the label and value */
+  padding-bottom: 10px;
 }
 
 .quality-label {
-  margin-right: 10px; /* Optional, to add space between label and the value */
+  margin-right: 10px;
 }
 
 #instructionModal {
@@ -1412,7 +1406,6 @@ a.inline-download-button:hover {
   display: block;
 }
 
-/* Instructions Styling */
 .instructions {
   background-color: #f9f9f9;
   border-left: 4px solid #4caf50;
@@ -1435,7 +1428,6 @@ a.inline-download-button:hover {
   line-height: 1.5;
 }
 
-/* Detected Color Row */
 .recolor-detected-row {
   display: grid;
   grid-template-columns: 30px 80px 20px 120px;
@@ -1465,7 +1457,6 @@ a.inline-download-button:hover {
   font-size: 14px;
 }
 
-/* New Color Row */
 .recolor-new-row {
   display: grid;
   grid-template-columns: 30px 80px 20px 120px;
@@ -1507,7 +1498,6 @@ a.inline-download-button:hover {
   font-size: 14px;
 }
 
-/* Image Header Styling */
 .image-header {
   display: flex;
   align-items: center;
@@ -1525,7 +1515,6 @@ a.inline-download-button:hover {
   color: #555;
 }
 
-/* Inline Download Button Styling */
 .inline-download-button-container {
   margin-left: 20px;
 }
@@ -1543,7 +1532,6 @@ a.inline-download-button:hover {
   background-color: #45a049;
 }
 
-/* Responsive Adjustments */
 @media (max-width: 600px) {
   .recolor-detected-row,
   .recolor-new-row {
@@ -1565,4 +1553,120 @@ a.inline-download-button:hover {
     margin-left: 0;
     margin-top: 10px;
   }
+}
+
+.video-container {
+  position: relative;
+  width: 350px;
+  margin-bottom: 20px;
+}
+
+.video-slider-container {
+  padding-top: 30px;
+}
+
+.video-slider {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  padding: 0 10px;
+  z-index: 2;
+}
+
+.video-slider .noUi-target {
+  background: #ddd;
+}
+
+.video-slider .noUi-connect {
+  background: #2396f3;
+}
+
+.video-slider .noUi-handle {
+  width: 20px;
+  height: 10px;
+  background: #fff;
+  border: 2px solid #4caf50;
+  cursor: pointer;
+}
+
+.noUi-horizontal .noUi-handle {
+  width: 20px;
+  height: 20px;
+  right: -10px;
+  top: -5px;
+}
+
+.video-display {
+  background-color: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  max-width: 450px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.video-display video {
+  width: 100%;
+  height: 170px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.video-slider {
+  width: 100%;
+  margin-top: auto;
+}
+
+.video-display h3 {
+  text-align: left;
+  align-self: flex-start;
+  font-size: 1.1em;
+  color: #333;
+  margin-top: 0;
+}
+
+@media (max-width: 1200px) {
+  .video-display {
+    width: 250px;
+  }
+
+  .video-display video {
+    height: 150px;
+  }
+}
+
+.noUi-handle:after,
+.noUi-handle:before {
+  content: none !important;
+}
+
+.noUi-handle {
+  width: 20px !important;
+}
+
+.time-inputs {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.time-inputs label {
+  display: flex;
+  align-items: center;
+  font-weight: normal;
+}
+
+.time-inputs input[type="number"] {
+  width: 80px;
+  margin-left: 5px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }

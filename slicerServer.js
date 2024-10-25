@@ -467,7 +467,12 @@ app.post("/upload", upload.single("video"), (req, res) => {
 });
 
 // video-slice-multi-video + crop + gradient + colored overlay + slow
-app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), async (req, res) => {
+
+app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
+  console.log("Received /slice-multi POST request");
+  console.log("Body:", req.body);
+  console.log("Files:", req.files);
+
   const numVideos = parseInt(req.body.numVideos, 10);
   const outputWidth = parseInt(req.body.outputWidth, 10);
   const outputHeight = parseInt(req.body.outputHeight, 10);
@@ -482,13 +487,8 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
   const enableGifConversion = req.body.enableGifConversion === "on";
   const gifFps = parseInt(req.body.gifFps || "15", 10);
   const gifQuality = parseInt(req.body.gifQuality || "80", 10);
-  let transitionOption = req.body.transitionOption || "none";
 
-  if (Array.isArray(transitionOption)) {
-    transitionOption = transitionOption[0];
-  }
-
-  console.log("Received /slice-multi request with the following parameters:");
+  console.log("Parsed Parameters:");
   console.log({
     numVideos,
     outputWidth,
@@ -504,9 +504,9 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     enableGifConversion,
     gifFps,
     gifQuality,
-    transitionOption,
   });
 
+  // Initialize arrays to hold video paths and slice data
   const videoPaths = [];
   const tempOutputPaths = [];
   const slices = [];
@@ -514,167 +514,128 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
   for (let i = 1; i <= numVideos; i++) {
     const videoKey = `video${i}`;
     if (req.files[videoKey] && req.files[videoKey][0]) {
-      videoPaths.push(req.files[videoKey][0].path);
-      tempOutputPaths.push(path.join(__dirname, `processed/temp_output${i}_${Date.now()}.mp4`));
-      slices.push([
-        {
-          start: parseFloat(req.body[`slice1Start${i}`]),
-          end: parseFloat(req.body[`slice1End${i}`]),
-        },
-        {
-          start: parseFloat(req.body[`slice2Start${i}`]),
-          end: parseFloat(req.body[`slice2End${i}`]),
-        },
-        {
-          start: parseFloat(req.body[`slice3Start${i}`]),
-          end: parseFloat(req.body[`slice3End${i}`]),
-        },
-      ]);
+      const videoPath = req.files[videoKey][0].path;
+      videoPaths.push(videoPath);
+
+      const tempOutputPath = path.join(__dirname, `processed/temp_output${i}_${Date.now()}.mp4`);
+      tempOutputPaths.push(tempOutputPath);
+
+      const sliceStartKey = `slice1Start${i}`;
+      const sliceEndKey = `slice1End${i}`;
+      const sliceStart = parseFloat(req.body[sliceStartKey]);
+      const sliceEnd = parseFloat(req.body[sliceEndKey]);
+
+      console.log(`Video ${i}: Slice Start = ${sliceStart}, Slice End = ${sliceEnd}`);
+
+      if (!isNaN(sliceStart) && !isNaN(sliceEnd) && sliceEnd > sliceStart) {
+        slices.push([{ start: sliceStart, end: sliceEnd }]);
+      } else {
+        slices.push([]);
+      }
     }
   }
 
-  console.log("Uploaded video paths:", videoPaths);
-
-  if (videoPaths.length === 0) {
-    console.log("No videos uploaded.");
-    return res.status(400).send("No videos uploaded.");
-  }
+  console.log("Slices Array:", slices);
 
   let finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
-  console.log("Final output path:", finalOutputPath);
 
   const processVideo = (videoPath, slices, outputPath, targetWidth, targetHeight) => {
     return new Promise((resolve, reject) => {
       let filterComplex = "";
       let inputs = [];
-      let durations = [];
 
       slices.forEach((slice, index) => {
         const { start, end } = slice;
         if (!isNaN(start) && !isNaN(end) && end > start) {
           let duration = end - start;
-          durations.push(duration);
           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,crop=${targetWidth}:${targetHeight}:(in_w-out_w)/2:(in_h-out_h)/2[v${index}]; `;
           inputs.push(`[v${index}]`);
         }
       });
 
       if (inputs.length > 0) {
-        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
+        filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
       } else {
         return reject("No valid video segments specified.");
       }
 
-      console.log(`Processing video: ${videoPath}`);
-      console.log("FFmpeg filter_complex:", filterComplex);
+      console.log(`FFmpeg Filter Complex for ${videoPath}:`, filterComplex);
 
-      const ffmpegCommand = `ffmpeg -y -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
-      console.log("Executing FFmpeg command:", ffmpegCommand);
+      const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+      console.log(`Executing FFmpeg Command: ${ffmpegCommand}`);
 
       exec(ffmpegCommand, (error, stdout, stderr) => {
         if (error) {
-          console.log("FFmpeg error during processVideo:", stderr);
+          console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
           return reject("Failed to process video.");
         }
-        console.log("FFmpeg processVideo stdout:", stdout);
-        resolve(durations);
+        console.log(`Processed video saved to ${outputPath}`);
+        resolve();
       });
     });
   };
 
-  const concatenateVideosWithTransitions = (inputPaths, outputPath, transition, durations, transitionDuration = 0.5) => {
+  const concatenateVideos = (inputPaths, outputPath) => {
     return new Promise((resolve, reject) => {
-      if (transition === "fade") {
-        let filterComplex = "";
-        let inputArgs = "";
-        inputPaths.forEach((inputPath, index) => {
-          inputArgs += `-i "${inputPath}" `;
-          filterComplex += `[${index}:v]format=yuv420p,setsar=1[v${index}]; `;
-        });
+      const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+      const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
 
-        let cumulativeOffset = 0;
-        let transitionFilters = "";
-        for (let i = 1; i < inputPaths.length; i++) {
-          cumulativeOffset += durations[i - 1] - transitionDuration;
-          if (i === 1) {
-            transitionFilters += `[v${i - 1}][v${i}]xfade=transition=fade:duration=${transitionDuration}:offset=${cumulativeOffset}[vxf${i}]; `;
-          } else {
-            transitionFilters += `[vxf${i - 1}][v${i}]xfade=transition=fade:duration=${transitionDuration}:offset=${cumulativeOffset}[vxf${i}]; `;
-          }
-          console.log(`Transition ${i}: offset=${cumulativeOffset}`);
+      fs.writeFileSync(concatFilePath, concatFileContent);
+      console.log(`Created Concat File at ${concatFilePath}`);
+
+      const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+      console.log(`Executing FFmpeg Concat Command: ${ffmpegConcatCommand}`);
+
+      exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error("Error executing FFmpeg concat command:", stderr);
+          return reject("Failed to concatenate videos.");
         }
-
-        filterComplex += transitionFilters;
-        const lastFilter = `[vxf${inputPaths.length - 1}]`;
-
-        const ffmpegCommand = `ffmpeg -y ${inputArgs}-filter_complex "${filterComplex}" -map "${lastFilter}" -c:v libx264 -pix_fmt yuv420p "${outputPath}"`;
-        console.log("Executing FFmpeg concatenateVideosWithTransitions command:", ffmpegCommand);
-
-        exec(ffmpegCommand, (error, stdout, stderr) => {
-          if (error) {
-            console.log("FFmpeg error during concatenateVideosWithTransitions:", stderr);
-            return reject("Failed to apply transitions.");
-          }
-          console.log("FFmpeg concatenateVideosWithTransitions stdout:", stdout);
-          resolve();
-        });
-      } else {
-        const concatFileContent = inputPaths.map((p) => `file '${p}'`).join("\n");
-        const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
-        fs.writeFileSync(concatFilePath, concatFileContent);
-        console.log("Created concat file at:", concatFilePath);
-        console.log("Concat file content:", concatFileContent);
-
-        const ffmpegConcatCommand = `ffmpeg -y -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
-        console.log("Executing FFmpeg concatenateVideosWithTransitions (no transition) command:", ffmpegConcatCommand);
-
-        exec(ffmpegConcatCommand, (error, stdout, stderr) => {
-          if (error) {
-            console.log("FFmpeg error during concatenateVideosWithTransitions (no transition):", stderr);
-            return reject("Failed to concatenate videos.");
-          }
-          console.log("FFmpeg concatenateVideosWithTransitions (no transition) stdout:", stdout);
-          fs.unlinkSync(concatFilePath);
-          resolve();
-        });
-      }
+        fs.unlinkSync(concatFilePath);
+        console.log(`Deleted Concat File at ${concatFilePath}`);
+        resolve();
+      });
     });
   };
 
+  // Function to apply colored overlay
   const applyOverlay = (inputPath, outputPath, color, opacity) => {
     return new Promise((resolve, reject) => {
       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
         if (error) {
-          console.log("FFprobe error during applyOverlay:", error);
+          console.error("Error getting video size:", error);
           return reject("Failed to get video size.");
         }
 
         const [width, height] = stdout.trim().split(",");
-        const overlayPath = path.join(__dirname, "overlay", `overlay_${Date.now()}.png`);
-        console.log("Overlay path:", overlayPath);
-        console.log("Overlay color and opacity:", color, opacity);
+        const overlayPath = path.join(__dirname, `overlay/overlay_${Date.now()}.png`);
+
+        console.log(`Video Dimensions: Width=${width}, Height=${height}`);
+        console.log(`Creating Overlay at ${overlayPath}`);
 
         exec(
           `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(
             color.substring(4, 6),
             16
           )},${opacity})" "${overlayPath}"`,
-          (overlayError, overlayStdout, overlayStderr) => {
+          (overlayError) => {
             if (overlayError) {
-              console.log("ImageMagick convert error during applyOverlay:", overlayStderr);
+              console.error("Error creating overlay:", overlayError);
               return reject("Failed to create overlay.");
             }
 
-            console.log("Created overlay image at:", overlayPath);
+            console.log(`Applying Overlay to ${inputPath}, Output at ${outputPath}`);
 
-            exec(`ffmpeg -y -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError, ffmpegStdout, ffmpegStderr) => {
+            exec(`ffmpeg -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
               if (ffmpegError) {
-                console.log("FFmpeg error during applyOverlay:", ffmpegStderr);
+                console.error("Error applying overlay:", ffmpegError);
                 return reject("Failed to apply overlay.");
               }
 
-              console.log("Applied overlay. FFmpeg stdout:", ffmpegStdout);
               fs.unlinkSync(overlayPath);
+              console.log(`Deleted Overlay File at ${overlayPath}`);
               resolve();
             });
           }
@@ -683,16 +644,17 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     });
   };
 
+  // Function to apply gradient overlay
   const applyGradientOverlay = (inputPath, outputPath, color, type) => {
     return new Promise((resolve, reject) => {
       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
         if (error) {
-          console.log("FFprobe error during applyGradientOverlay:", error);
+          console.error("Error getting video size:", error);
           return reject("Failed to get video size.");
         }
 
         const [width, height] = stdout.trim().split(",");
-        const gradientPath = path.join(__dirname, "overlay", `gradient_${Date.now()}.png`);
+        const gradientPath = path.join(__dirname, `overlay/gradient_${Date.now()}.png`);
         let gradientSize, overlayPosition;
 
         switch (type) {
@@ -713,25 +675,24 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
             overlayPosition = "0:0";
         }
 
-        console.log("Gradient path:", gradientPath, "Gradient size and position:", gradientSize, overlayPosition);
-        console.log("Gradient color:", color);
+        console.log(`Creating Gradient: Size=${gradientSize}, Position=${overlayPosition}, Color=#${color}`);
 
-        exec(`convert -size ${gradientSize} gradient:#00000000-#${color} "${gradientPath}"`, (gradientError, gradientStdout, gradientStderr) => {
+        exec(`convert -size ${gradientSize} gradient:#00000000-#${color} "${gradientPath}"`, (gradientError) => {
           if (gradientError) {
-            console.log("ImageMagick convert error during applyGradientOverlay:", gradientStderr);
+            console.error("Error creating gradient:", gradientError);
             return reject("Failed to create gradient.");
           }
 
-          console.log("Created gradient image at:", gradientPath);
+          console.log(`Applying Gradient Overlay to ${inputPath}, Output at ${outputPath}`);
 
-          exec(`ffmpeg -y -i "${inputPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition}" -c:a copy "${outputPath}"`, (ffmpegError, ffmpegStdout, ffmpegStderr) => {
+          exec(`ffmpeg -i "${inputPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition}" -c:a copy "${outputPath}"`, (ffmpegError) => {
             if (ffmpegError) {
-              console.log("FFmpeg error during applyGradientOverlay:", ffmpegStderr);
+              console.error("Error applying gradient overlay:", ffmpegError);
               return reject("Failed to apply gradient overlay.");
             }
 
-            console.log("Applied gradient overlay. FFmpeg stdout:", ffmpegStdout);
             fs.unlinkSync(gradientPath);
+            console.log(`Deleted Gradient File at ${gradientPath}`);
             resolve();
           });
         });
@@ -739,74 +700,77 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     });
   };
 
+  // Function to apply slow motion
   const applySlowVideo = (inputPath, outputPath, factor) => {
     return new Promise((resolve, reject) => {
-      exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${inputPath}"`, (error, stdout) => {
+      exec(`ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "${inputPath}"`, (error, stdout) => {
         let ffmpegCommand;
 
-        if (stdout.trim()) {
-          ffmpegCommand = `ffmpeg -y -i "${inputPath}" -filter_complex "[0:v]setpts=${factor}*PTS[v];[0:a]atempo=${1 / factor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
+        if (stdout.trim() === "audio") {
+          // Has audio
+          ffmpegCommand = `ffmpeg -i "${inputPath}" -filter_complex "[0:v]setpts=${factor}*PTS[v];[0:a]atempo=${1 / factor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
         } else {
-          ffmpegCommand = `ffmpeg -y -i "${inputPath}" -filter:v "setpts=${factor}*PTS" "${outputPath}"`;
+          // No audio
+          ffmpegCommand = `ffmpeg -i "${inputPath}" -filter:v "setpts=${factor}*PTS" "${outputPath}"`;
         }
 
-        console.log("Executing FFmpeg applySlowVideo command:", ffmpegCommand);
+        console.log(`Executing FFmpeg Slow Video Command: ${ffmpegCommand}`);
 
         exec(ffmpegCommand, (error, stdout, stderr) => {
           if (error) {
-            console.log("FFmpeg error during applySlowVideo:", stderr);
+            console.error("Error executing FFmpeg slow video command:", stderr);
             return reject("Failed to slow down video.");
           }
 
-          console.log("Applied slow video. FFmpeg stdout:", stdout);
+          console.log(`Applied Slow Motion: ${outputPath}`);
           resolve();
         });
       });
     });
   };
 
+  // Function to convert video to GIF
   const convertToGif = (videoPath, fps, quality) => {
     return new Promise((resolve, reject) => {
       const framesDir = path.join(__dirname, `frames_${Date.now()}`);
       const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.gif`);
 
       fs.mkdirSync(framesDir, { recursive: true });
-      console.log("Created frames directory at:", framesDir);
+      console.log(`Created Frames Directory at ${framesDir}`);
 
-      const extractFramesCommand = `ffmpeg -y -i "${videoPath}" -vf fps=${fps} "${path.join(framesDir, "frame_%04d.png")}"`;
-      console.log("Executing FFmpeg extract frames command:", extractFramesCommand);
+      const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=${fps} "${path.join(framesDir, "frame_%04d.png")}"`;
 
-      exec(extractFramesCommand, (extractError, extractStdout, extractStderr) => {
+      console.log(`Executing FFmpeg Extract Frames Command: ${extractFramesCommand}`);
+
+      exec(extractFramesCommand, (extractError) => {
         if (extractError) {
-          console.log("FFmpeg error during convertToGif frame extraction:", extractStderr);
+          console.error("Error extracting frames:", extractError);
+          cleanup(framesDir);
           return reject("Error extracting frames.");
         }
 
-        console.log("Extracted frames successfully.");
-
         fs.readdir(framesDir, (err, files) => {
           if (err) {
-            console.log("Error reading frames directory during convertToGif:", err);
+            console.error("Error reading frames directory:", err);
+            cleanup(framesDir);
             return reject("Could not read frames directory.");
           }
 
-          files.sort((a, b) =>
-            a.localeCompare(b, undefined, {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
+          files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
           const frameFiles = files.map((file) => path.join(framesDir, file));
 
-          console.log("Frame files for GIF:", frameFiles);
+          console.log(`Frame Files:`, frameFiles);
 
-          execFile("gifski", ["-o", outputPath, "--fps", `${fps}`, "--quality", `${quality}`, ...frameFiles], (gifskiError, gifskiStdout, gifskiStderr) => {
+          execFile("gifski", ["-o", outputPath, "--fps", `${fps}`, "--quality", `${quality}`, ...frameFiles], (gifskiError, stdout, stderr) => {
             if (gifskiError) {
-              console.log("gifski error during convertToGif:", gifskiStderr);
+              console.error("Error creating GIF with gifski:", gifskiError);
+              console.error("stderr:", stderr);
+              cleanup(framesDir);
               return reject("Error creating GIF with gifski.");
             }
 
-            console.log("Created GIF at:", outputPath);
+            console.log(`GIF Created at ${outputPath}`);
             resolve(outputPath);
             cleanup(framesDir);
           });
@@ -815,94 +779,101 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
     });
   };
 
+  // Cleanup function to delete temporary directories
   const cleanup = (framesDir) => {
     if (framesDir) {
       fs.rm(framesDir, { recursive: true, force: true }, (err) => {
-        if (err) {
-          console.log("Error during cleanup:", err);
-        } else {
-          console.log("Cleaned up frames directory:", framesDir);
-        }
+        if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
+        else console.log(`Deleted Frames Directory at ${framesDir}`);
       });
     }
   };
 
-  try {
-    const allDurations = [];
-    for (let i = 0; i < videoPaths.length; i++) {
-      const durations = await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], outputWidth, outputHeight);
-      console.log(`Processed video ${i + 1}, durations:`, durations);
-      allDurations.push(...durations);
-    }
-
-    let concatenatedOutputPath = finalOutputPath;
-    console.log("Starting concatenation with transitions:", transitionOption);
-
-    if (transitionOption === "fade") {
-      await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "fade", allDurations, 0.5);
-      console.log("Applied fade transitions successfully.");
-    } else {
-      await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "none", allDurations, 0.5);
-      console.log("Concatenated videos without transitions.");
-    }
-
-    if (enableOverlay) {
-      const overlayedOutputPath = path.join(__dirname, `processed/final_output_overlayed_${Date.now()}.mp4`);
-      await applyOverlay(concatenatedOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
-      console.log("Applied overlay successfully.");
-      fs.unlinkSync(concatenatedOutputPath);
-      concatenatedOutputPath = overlayedOutputPath;
-    }
-
-    if (enableGradientOverlay) {
-      const gradientOverlayedOutputPath = path.join(__dirname, `processed/final_output_gradient_overlayed_${Date.now()}.mp4`);
-      await applyGradientOverlay(concatenatedOutputPath, gradientOverlayedOutputPath, gradientColor, gradientDirection);
-      console.log("Applied gradient overlay successfully.");
-      fs.unlinkSync(concatenatedOutputPath);
-      concatenatedOutputPath = gradientOverlayedOutputPath;
-    }
-
-    if (enableSlowVideo) {
-      const slowedOutputPath = path.join(__dirname, `processed/final_output_slowed_${Date.now()}.mp4`);
-      await applySlowVideo(concatenatedOutputPath, slowedOutputPath, slowFactor);
-      console.log("Applied slow motion successfully.");
-      fs.unlinkSync(concatenatedOutputPath);
-      concatenatedOutputPath = slowedOutputPath;
-    }
-
-    if (enableGifConversion) {
-      const gifOutputPath = await convertToGif(concatenatedOutputPath, gifFps, gifQuality);
-      console.log("Converted video to GIF successfully.");
-      fs.unlinkSync(concatenatedOutputPath);
-      res.download(gifOutputPath, (downloadErr) => {
-        if (downloadErr) {
-          console.log("Error sending the converted GIF:", downloadErr);
+  // Main processing logic
+  (async () => {
+    try {
+      // Process each video slice
+      for (let i = 0; i < videoPaths.length; i++) {
+        if (slices[i].length > 0) {
+          await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], outputWidth, outputHeight);
+          console.log(`Processed Video ${i + 1}: ${videoPaths[i]}`);
         } else {
-          console.log("Sent GIF successfully.");
+          console.warn(`No valid slice for Video ${i + 1}: ${videoPaths[i]}`);
         }
-        videoPaths.forEach((path) => fs.unlinkSync(path));
-        tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-        fs.unlinkSync(gifOutputPath);
-      });
-    } else {
-      res.download(concatenatedOutputPath, (downloadErr) => {
-        if (downloadErr) {
-          console.log("Error sending the processed video:", downloadErr);
-        } else {
-          console.log("Sent video successfully.");
-        }
-        videoPaths.forEach((path) => fs.unlinkSync(path));
-        tempOutputPaths.forEach((path) => fs.unlinkSync(path));
-        fs.unlinkSync(concatenatedOutputPath);
-      });
+      }
+
+      // Check if at least one video was processed
+      const validProcessedVideos = tempOutputPaths.filter((path, index) => slices[index].length > 0);
+
+      if (validProcessedVideos.length === 0) {
+        throw "No valid video segments specified.";
+      }
+
+      // Concatenate all processed videos
+      await concatenateVideos(validProcessedVideos, finalOutputPath);
+      console.log(`Concatenated Videos into ${finalOutputPath}`);
+
+      // Apply Colored Overlay if enabled
+      if (enableOverlay) {
+        const overlayedOutputPath = path.join(__dirname, `processed/final_output_overlayed_${Date.now()}.mp4`);
+        await applyOverlay(finalOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
+        fs.unlinkSync(finalOutputPath);
+        finalOutputPath = overlayedOutputPath;
+        console.log(`Applied Colored Overlay: ${overlayedOutputPath}`);
+      }
+
+      // Apply Gradient Overlay if enabled
+      if (enableGradientOverlay) {
+        const gradientOverlayedOutputPath = path.join(__dirname, `processed/final_output_gradient_overlayed_${Date.now()}.mp4`);
+        await applyGradientOverlay(finalOutputPath, gradientOverlayedOutputPath, gradientColor, gradientDirection);
+        fs.unlinkSync(finalOutputPath);
+        finalOutputPath = gradientOverlayedOutputPath;
+        console.log(`Applied Gradient Overlay: ${gradientOverlayedOutputPath}`);
+      }
+
+      // Apply Slow Motion if enabled
+      if (enableSlowVideo) {
+        const slowedOutputPath = path.join(__dirname, `processed/final_output_slowed_${Date.now()}.mp4`);
+        await applySlowVideo(finalOutputPath, slowedOutputPath, slowFactor);
+        fs.unlinkSync(finalOutputPath);
+        finalOutputPath = slowedOutputPath;
+        console.log(`Applied Slow Motion: ${slowedOutputPath}`);
+      }
+
+      // Convert to GIF if enabled
+      if (enableGifConversion) {
+        const gifOutputPath = await convertToGif(finalOutputPath, gifFps, gifQuality);
+        fs.unlinkSync(finalOutputPath);
+        console.log(`Converted to GIF: ${gifOutputPath}`);
+        res.download(gifOutputPath, (downloadErr) => {
+          if (downloadErr) {
+            console.error("Error sending the converted GIF:", downloadErr);
+          }
+          // Cleanup uploaded and temporary files
+          videoPaths.forEach((path) => fs.unlinkSync(path));
+          validProcessedVideos.forEach((path) => fs.unlinkSync(path));
+          fs.unlinkSync(gifOutputPath);
+        });
+      } else {
+        res.download(finalOutputPath, (downloadErr) => {
+          if (downloadErr) {
+            console.error("Error sending the processed video:", downloadErr);
+          }
+          // Cleanup uploaded and temporary files
+          videoPaths.forEach((path) => fs.unlinkSync(path));
+          validProcessedVideos.forEach((path) => fs.unlinkSync(path));
+          fs.unlinkSync(finalOutputPath);
+        });
+      }
+    } catch (error) {
+      console.error("Processing Error:", error);
+      res.status(500).send(error);
     }
-  } catch (error) {
-    console.log("Error during /slice-multi processing:", error);
-    res.status(500).send(`Error processing videos: ${error}`);
-  }
+  })();
 });
 
-// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), async (req, res) => {
+//latest working
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
 //   const numVideos = parseInt(req.body.numVideos, 10);
 //   const outputWidth = parseInt(req.body.outputWidth, 10);
 //   const outputHeight = parseInt(req.body.outputHeight, 10);
@@ -917,9 +888,329 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //   const enableGifConversion = req.body.enableGifConversion === "on";
 //   const gifFps = parseInt(req.body.gifFps || "15", 10);
 //   const gifQuality = parseInt(req.body.gifQuality || "80", 10);
+
+//   const videoPaths = [];
+//   const tempOutputPaths = [];
+//   const slices = [];
+
+//   if (numVideos >= 1) {
+//     videoPaths.push(req.files["video1"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output1_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start1"]), end: parseFloat(req.body["slice1End1"]) },
+//       { start: parseFloat(req.body["slice2Start1"]), end: parseFloat(req.body["slice2End1"]) },
+//       { start: parseFloat(req.body["slice3Start1"]), end: parseFloat(req.body["slice3End1"]) },
+//     ]);
+//   }
+
+//   if (numVideos >= 2) {
+//     videoPaths.push(req.files["video2"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output2_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start2"]), end: parseFloat(req.body["slice1End2"]) },
+//       { start: parseFloat(req.body["slice2Start2"]), end: parseFloat(req.body["slice2End2"]) },
+//       { start: parseFloat(req.body["slice3Start2"]), end: parseFloat(req.body["slice3End2"]) },
+//     ]);
+//   }
+
+//   if (numVideos === 3) {
+//     videoPaths.push(req.files["video3"][0].path);
+//     tempOutputPaths.push(path.join(__dirname, `processed/temp_output3_${Date.now()}.mp4`));
+//     slices.push([
+//       { start: parseFloat(req.body["slice1Start3"]), end: parseFloat(req.body["slice1End3"]) },
+//       { start: parseFloat(req.body["slice2Start3"]), end: parseFloat(req.body["slice2End3"]) },
+//       { start: parseFloat(req.body["slice3Start3"]), end: parseFloat(req.body["slice3End3"]) },
+//     ]);
+//   }
+
+//   let finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
+
+//   const processVideo = (videoPath, slices, outputPath, targetWidth, targetHeight) => {
+//     return new Promise((resolve, reject) => {
+//       let filterComplex = "";
+//       let inputs = [];
+
+//       slices.forEach((slice, index) => {
+//         const { start, end } = slice;
+//         if (!isNaN(start) && !isNaN(end) && end > start) {
+//           let duration = end - start;
+//           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,crop=${targetWidth}:${targetHeight}:(in_w-out_w)/2:(in_h-out_h)/2[v${index}]; `;
+//           inputs.push(`[v${index}]`);
+//         }
+//       });
+
+//       if (inputs.length > 0) {
+//         filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv];`;
+//       } else {
+//         return reject("No valid video segments specified.");
+//       }
+
+//       const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${outputPath}"`;
+
+//       exec(ffmpegCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error(`Error executing FFmpeg command for ${videoPath}:`, stderr);
+//           return reject("Failed to process video.");
+//         }
+//         resolve();
+//       });
+//     });
+//   };
+
+//   const concatenateVideos = (inputPaths, outputPath) => {
+//     return new Promise((resolve, reject) => {
+//       const concatFileContent = inputPaths.map((path) => `file '${path}'`).join("\n");
+//       const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
+
+//       fs.writeFileSync(concatFilePath, concatFileContent);
+
+//       const ffmpegConcatCommand = `ffmpeg -f concat -safe 0 -i "${concatFilePath}" -c copy "${outputPath}"`;
+
+//       exec(ffmpegConcatCommand, (error, stdout, stderr) => {
+//         if (error) {
+//           console.error("Error executing FFmpeg concat command:", stderr);
+//           return reject("Failed to concatenate videos.");
+//         }
+//         fs.unlinkSync(concatFilePath);
+//         resolve();
+//       });
+//     });
+//   };
+
+//   const applyOverlay = (inputPath, outputPath, color, opacity) => {
+//     return new Promise((resolve, reject) => {
+//       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
+//         if (error) {
+//           console.error("Error getting video size:", error);
+//           return reject("Failed to get video size.");
+//         }
+
+//         const [width, height] = stdout.trim().split(",");
+//         const overlayPath = path.join(__dirname, "overlay", `overlay_${Date.now()}.png`);
+
+//         exec(
+//           `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(1, 3), 16)},${parseInt(color.substring(3, 5), 16)},${parseInt(
+//             color.substring(5, 7),
+//             16
+//           )},${opacity})" "${overlayPath}"`,
+//           (overlayError) => {
+//             if (overlayError) {
+//               console.error("Error creating overlay:", overlayError);
+//               return reject("Failed to create overlay.");
+//             }
+
+//             exec(`ffmpeg -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+//               if (ffmpegError) {
+//                 console.error("Error applying overlay:", ffmpegError);
+//                 return reject("Failed to apply overlay.");
+//               }
+
+//               fs.unlinkSync(overlayPath);
+//               resolve();
+//             });
+//           }
+//         );
+//       });
+//     });
+//   };
+
+//   const applyGradientOverlay = (inputPath, outputPath, color, type) => {
+//     return new Promise((resolve, reject) => {
+//       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
+//         if (error) {
+//           console.error("Error getting video size:", error);
+//           return reject("Failed to get video size.");
+//         }
+
+//         const [width, height] = stdout.trim().split(",");
+//         const gradientPath = path.join(__dirname, "overlay", `gradient_${Date.now()}.png`);
+//         let gradientSize, overlayPosition;
+
+//         switch (type) {
+//           case "full":
+//             gradientSize = `${width}x${height}`;
+//             overlayPosition = "0:0";
+//             break;
+//           case "half":
+//             gradientSize = `${width}x${parseInt(height / 2)}`;
+//             overlayPosition = `0:${parseInt(height / 2)}`;
+//             break;
+//           case "quarter":
+//             gradientSize = `${width}x${parseInt(height / 4)}`;
+//             overlayPosition = `0:${3 * parseInt(height / 4)}`;
+//             break;
+//         }
+
+//         const gradientCommand = `convert -size ${gradientSize} gradient:#00000000-#${color} "${gradientPath}"`;
+
+//         exec(gradientCommand, (gradientError) => {
+//           if (gradientError) {
+//             console.error("Error creating gradient:", gradientError);
+//             return reject("Failed to create gradient.");
+//           }
+
+//           exec(`ffmpeg -i "${inputPath}" -i "${gradientPath}" -filter_complex "[0:v][1:v] overlay=${overlayPosition}" -c:a copy "${outputPath}"`, (ffmpegError) => {
+//             if (ffmpegError) {
+//               console.error("Error applying gradient overlay:", ffmpegError);
+//               return reject("Failed to apply gradient overlay.");
+//             }
+
+//             fs.unlinkSync(gradientPath);
+//             resolve();
+//           });
+//         });
+//       });
+//     });
+//   };
+
+//   const applySlowVideo = (inputPath, outputPath, factor) => {
+//     return new Promise((resolve, reject) => {
+//       exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${inputPath}"`, (error, stdout) => {
+//         let ffmpegCommand;
+
+//         if (stdout) {
+//           // has audio
+//           ffmpegCommand = `ffmpeg -i "${inputPath}" -filter_complex "[0:v]setpts=${factor}*PTS[v];[0:a]atempo=1/${factor}[a]" -map "[v]" -map "[a]" "${outputPath}"`;
+//         } else {
+//           // no audio
+//           ffmpegCommand = `ffmpeg -i "${inputPath}" -filter:v "setpts=${factor}*PTS" "${outputPath}"`;
+//         }
+
+//         exec(ffmpegCommand, (error, stdout, stderr) => {
+//           if (error) {
+//             console.error("Error executing FFmpeg command:", stderr);
+//             return reject("Failed to slow down video.");
+//           }
+
+//           resolve();
+//         });
+//       });
+//     });
+//   };
+
+//   const convertToGif = (videoPath, fps, quality) => {
+//     return new Promise((resolve, reject) => {
+//       const framesDir = path.join(__dirname, `frames_${Date.now()}`);
+//       const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.gif`);
+
+//       fs.mkdirSync(framesDir, { recursive: true });
+
+//       const extractFramesCommand = `ffmpeg -i "${videoPath}" -vf fps=${fps} "${path.join(framesDir, "frame_%04d.png")}"`;
+
+//       exec(extractFramesCommand, (extractError) => {
+//         if (extractError) {
+//           console.error("Error extracting frames:", extractError);
+//           cleanup(framesDir);
+//           return reject("Error extracting frames.");
+//         }
+
+//         fs.readdir(framesDir, (err, files) => {
+//           if (err) {
+//             console.error("Error reading frames directory:", err);
+//             cleanup(framesDir);
+//             return reject("Could not read frames directory.");
+//           }
+
+//           files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+
+//           const frameFiles = files.map((file) => path.join(framesDir, file));
+
+//           execFile("gifski", ["-o", outputPath, "--fps", `${fps}`, "--quality", `${quality}`, ...frameFiles], (gifskiError, stdout, stderr) => {
+//             if (gifskiError) {
+//               console.error("Error creating GIF with gifski:", gifskiError);
+//               console.error("stderr:", stderr);
+//               cleanup(framesDir);
+//               return reject("Error creating GIF with gifski.");
+//             }
+
+//             resolve(outputPath);
+//             cleanup(framesDir);
+//           });
+//         });
+//       });
+//     });
+//   };
+
+//   const cleanup = (framesDir) => {
+//     if (framesDir) {
+//       fs.rm(framesDir, { recursive: true }, (err) => {
+//         if (err) console.error(`Error deleting frames directory: ${framesDir}`, err);
+//       });
+//     }
+//   };
+
+//   (async () => {
+//     try {
+//       for (let i = 0; i < videoPaths.length; i++) {
+//         await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], outputWidth, outputHeight);
+//       }
+
+//       await concatenateVideos(tempOutputPaths, finalOutputPath);
+
+//       if (enableOverlay) {
+//         const overlayedOutputPath = path.join(__dirname, `processed/final_output_overlayed_${Date.now()}.mp4`);
+//         await applyOverlay(finalOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
+//         fs.unlinkSync(finalOutputPath);
+//         finalOutputPath = overlayedOutputPath;
+//       }
+
+//       if (enableGradientOverlay) {
+//         const gradientOverlayedOutputPath = path.join(__dirname, `processed/final_output_gradient_overlayed_${Date.now()}.mp4`);
+//         await applyGradientOverlay(finalOutputPath, gradientOverlayedOutputPath, gradientColor, gradientDirection);
+//         fs.unlinkSync(finalOutputPath);
+//         finalOutputPath = gradientOverlayedOutputPath;
+//       }
+
+//       if (enableSlowVideo) {
+//         const slowedOutputPath = path.join(__dirname, `processed/final_output_slowed_${Date.now()}.mp4`);
+//         await applySlowVideo(finalOutputPath, slowedOutputPath, slowFactor);
+//         fs.unlinkSync(finalOutputPath);
+//         finalOutputPath = slowedOutputPath;
+//       }
+
+//       if (enableGifConversion) {
+//         const gifOutputPath = await convertToGif(finalOutputPath, gifFps, gifQuality);
+//         fs.unlinkSync(finalOutputPath);
+//         res.download(gifOutputPath, (downloadErr) => {
+//           if (downloadErr) {
+//             console.error("Error sending the converted GIF:", downloadErr);
+//           }
+//           videoPaths.forEach((path) => fs.unlinkSync(path));
+//           tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//         });
+//       } else {
+//         res.download(finalOutputPath, (downloadErr) => {
+//           if (downloadErr) {
+//             console.error("Error sending the processed video:", downloadErr);
+//           }
+//           videoPaths.forEach((path) => fs.unlinkSync(path));
+//           tempOutputPaths.forEach((path) => fs.unlinkSync(path));
+//         });
+//       }
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).send(error);
+//     }
+//   })();
+// });
+
+// app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), async (req, res) => {
+//   const numVideos = parseInt(req.body.numVideos, 10);
+//   const outputWidth = parseInt(req.body.outputWidth, 10);
+//   const outputHeight = parseInt(req.body.outputHeight, 10);
+//   const enableOverlay = req.body.enableOverlay === "on";
+//   const overlayColor = req.body.overlayColor || "";
+//   const overlayOpacity = parseFloat(req.body.overlayOpacity || "0");
+//   const enableGradientOverlay = req.body.enableGradientOverlay === "on";
+//   const gradientColor = req.body.gradientColor ? req.body.gradientColor.replace("#", "") : "";
+//   const gradientDirection = req.body.gradientDirection || "";
+//   const enableSlowVideo = req.body.enableSlowVideo === "on";
+//   const slowFactor = parseFloat(req.body.slowFactor || "1");
+//   const enableGifConversion = req.body.enableGifConversion === "on";
+//   const gifFps = parseInt(req.body.gifFps || "25", 10); // Changed to 25 for alignment
+//   const gifQuality = parseInt(req.body.gifQuality || "80", 10);
 //   let transitionOption = req.body.transitionOption || "none";
 
-//   // Handle transitionOption if it's an array
 //   if (Array.isArray(transitionOption)) {
 //     transitionOption = transitionOption[0];
 //   }
@@ -947,23 +1238,25 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //   const tempOutputPaths = [];
 //   const slices = [];
 
+//   // Collect uploaded video paths and slices
 //   for (let i = 1; i <= numVideos; i++) {
 //     const videoKey = `video${i}`;
 //     if (req.files[videoKey] && req.files[videoKey][0]) {
 //       videoPaths.push(req.files[videoKey][0].path);
 //       tempOutputPaths.push(path.join(__dirname, `processed/temp_output${i}_${Date.now()}.mp4`));
+//       // Assuming slice start and end times are provided in the form data
 //       slices.push([
 //         {
-//           start: parseFloat(req.body[`slice1Start${i}`]),
-//           end: parseFloat(req.body[`slice1End${i}`]),
+//           start: parseFloat(req.body[`slice1Start${i}`]) || 0,
+//           end: parseFloat(req.body[`slice1End${i}`]) || 3, // Default to 3 seconds if not provided
 //         },
 //         {
-//           start: parseFloat(req.body[`slice2Start${i}`]),
-//           end: parseFloat(req.body[`slice2End${i}`]),
+//           start: parseFloat(req.body[`slice2Start${i}`]) || 0,
+//           end: parseFloat(req.body[`slice2End${i}`]) || 3,
 //         },
 //         {
-//           start: parseFloat(req.body[`slice3Start${i}`]),
-//           end: parseFloat(req.body[`slice3End${i}`]),
+//           start: parseFloat(req.body[`slice3Start${i}`]) || 0,
+//           end: parseFloat(req.body[`slice3End${i}`]) || 3,
 //         },
 //       ]);
 //     }
@@ -979,6 +1272,21 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //   let finalOutputPath = path.join(__dirname, `processed/final_output_${Date.now()}.mp4`);
 //   console.log("Final output path:", finalOutputPath);
 
+//   // Function to get video duration using FFprobe
+//   const getVideoDuration = (videoPath) => {
+//     return new Promise((resolve, reject) => {
+//       exec(`ffprobe -v error -select_streams v:0 -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`, (error, stdout, stderr) => {
+//         if (error) {
+//           console.log("FFprobe error:", stderr);
+//           return reject("Failed to get video duration.");
+//         }
+//         const duration = parseFloat(stdout.trim());
+//         resolve(duration);
+//       });
+//     });
+//   };
+
+//   // Function to process video slices
 //   const processVideo = (videoPath, slices, outputPath, targetWidth, targetHeight) => {
 //     return new Promise((resolve, reject) => {
 //       let filterComplex = "";
@@ -992,6 +1300,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //           durations.push(duration);
 //           filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS,crop=${targetWidth}:${targetHeight}:(in_w-out_w)/2:(in_h-out_h)/2[v${index}]; `;
 //           inputs.push(`[v${index}]`);
+//           console.log(`Slice ${index + 1}: start=${start.toFixed(6)}, end=${end.toFixed(6)}, duration=${duration.toFixed(6)}`);
 //         }
 //       });
 
@@ -1018,7 +1327,8 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
-//   const concatenateVideosWithTransitions = (inputPaths, outputPath, transition, durations, transitionDuration = 0.5) => {
+//   // Function to concatenate videos with transitions
+//   const concatenateVideosWithTransitions = (inputPaths, outputPath, transition, durations, transitionDuration = 0.48) => {
 //     return new Promise((resolve, reject) => {
 //       if (transition === "fade") {
 //         let filterComplex = "";
@@ -1028,12 +1338,15 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //           filterComplex += `[${index}:v]format=yuv420p,setsar=1[v${index}]; `;
 //         });
 
-//         let cumulativeOffset = 0;
 //         let transitionFilters = "";
 //         for (let i = 1; i < inputPaths.length; i++) {
-//           cumulativeOffset += durations[i - 1] - transitionDuration;
-//           transitionFilters += `[v${i - 1}][v${i}]xfade=transition=fade:duration=${transitionDuration}:offset=${cumulativeOffset}[vxf${i}]; `;
-//           console.log(`Transition ${i}: offset=${cumulativeOffset}`);
+//           const previousLabel = i === 1 ? `v0` : `vxf${i - 1}`;
+//           const currentLabel = `v${i}`;
+//           const outputLabel = `vxf${i}`;
+//           const offset = durations.slice(0, i).reduce((a, b) => a + b, 0) - transitionDuration;
+
+//           transitionFilters += `[${previousLabel}][${currentLabel}]xfade=transition=fade:duration=${transitionDuration}:offset=${offset.toFixed(6)}[${outputLabel}]; `;
+//           console.log(`Transition ${i}: offset=${offset.toFixed(6)} seconds`);
 //         }
 
 //         filterComplex += transitionFilters;
@@ -1051,6 +1364,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //           resolve();
 //         });
 //       } else {
+//         // Handle other transitions if any
 //         const concatFileContent = inputPaths.map((p) => `file '${p}'`).join("\n");
 //         const concatFilePath = path.join(__dirname, `processed/concat_${Date.now()}.txt`);
 //         fs.writeFileSync(concatFilePath, concatFileContent);
@@ -1073,6 +1387,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
+//   // Function to apply overlay
 //   const applyOverlay = (inputPath, outputPath, color, opacity) => {
 //     return new Promise((resolve, reject) => {
 //       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
@@ -1086,35 +1401,35 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //         console.log("Overlay path:", overlayPath);
 //         console.log("Overlay color and opacity:", color, opacity);
 
-//         exec(
-//           `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(
-//             color.substring(4, 6),
-//             16
-//           )},${opacity})" "${overlayPath}"`,
-//           (overlayError, overlayStdout, overlayStderr) => {
-//             if (overlayError) {
-//               console.log("ImageMagick convert error during applyOverlay:", overlayStderr);
-//               return reject("Failed to create overlay.");
+//         // Convert hex color to decimal RGB
+//         const r = parseInt(color.substring(0, 2), 16);
+//         const g = parseInt(color.substring(2, 4), 16);
+//         const b = parseInt(color.substring(4, 6), 16);
+
+//         exec(`convert -size ${width}x${height} xc:"rgba(${r},${g},${b},${opacity})" "${overlayPath}"`, (overlayError, overlayStdout, overlayStderr) => {
+//           if (overlayError) {
+//             console.log("ImageMagick convert error during applyOverlay:", overlayStderr);
+//             return reject("Failed to create overlay.");
+//           }
+
+//           console.log("Created overlay image at:", overlayPath);
+
+//           exec(`ffmpeg -y -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError, ffmpegStdout, ffmpegStderr) => {
+//             if (ffmpegError) {
+//               console.log("FFmpeg error during applyOverlay:", ffmpegStderr);
+//               return reject("Failed to apply overlay.");
 //             }
 
-//             console.log("Created overlay image at:", overlayPath);
-
-//             exec(`ffmpeg -y -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError, ffmpegStdout, ffmpegStderr) => {
-//               if (ffmpegError) {
-//                 console.log("FFmpeg error during applyOverlay:", ffmpegStderr);
-//                 return reject("Failed to apply overlay.");
-//               }
-
-//               console.log("Applied overlay. FFmpeg stdout:", ffmpegStdout);
-//               fs.unlinkSync(overlayPath);
-//               resolve();
-//             });
-//           }
-//         );
+//             console.log("Applied overlay. FFmpeg stdout:", ffmpegStdout);
+//             fs.unlinkSync(overlayPath);
+//             resolve();
+//           });
+//         });
 //       });
 //     });
 //   };
 
+//   // Function to apply gradient overlay
 //   const applyGradientOverlay = (inputPath, outputPath, color, type) => {
 //     return new Promise((resolve, reject) => {
 //       exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`, (error, stdout) => {
@@ -1171,6 +1486,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
+//   // Function to apply slow motion
 //   const applySlowVideo = (inputPath, outputPath, factor) => {
 //     return new Promise((resolve, reject) => {
 //       exec(`ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${inputPath}"`, (error, stdout) => {
@@ -1197,6 +1513,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
+//   // Function to convert video to GIF
 //   const convertToGif = (videoPath, fps, quality) => {
 //     return new Promise((resolve, reject) => {
 //       const framesDir = path.join(__dirname, `frames_${Date.now()}`);
@@ -1247,6 +1564,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //     });
 //   };
 
+//   // Function to clean up temporary frames
 //   const cleanup = (framesDir) => {
 //     if (framesDir) {
 //       fs.rm(framesDir, { recursive: true, force: true }, (err) => {
@@ -1261,23 +1579,70 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 
 //   try {
 //     const allDurations = [];
+//     const transitionDuration = 0.48; // Transition duration in seconds
+//     const extraSliceDuration = 1; // 1 second extra slice from the first video
+
+//     // Process all videos
 //     for (let i = 0; i < videoPaths.length; i++) {
-//       const durations = await processVideo(videoPaths[i], slices[i], tempOutputPaths[i], outputWidth, outputHeight);
-//       console.log(`Processed video ${i + 1}, durations:`, durations);
-//       allDurations.push(...durations);
+//       const isFirstVideo = i === 0;
+//       const currentVideoPath = videoPaths[i];
+//       const tempOutputPath = tempOutputPaths[i];
+//       let currentSlices = slices[i];
+
+//       if (isFirstVideo) {
+//         // Get total duration of the first video
+//         const totalDuration = await getVideoDuration(currentVideoPath);
+//         console.log(`Total duration of first video: ${totalDuration.toFixed(6)} seconds`);
+
+//         // Define main slice (exclude first 1 second)
+//         const mainSlice = {
+//           start: extraSliceDuration,
+//           end: totalDuration,
+//         };
+
+//         // Define extra slice (first 1 second)
+//         const extraSlice = {
+//           start: 0,
+//           end: extraSliceDuration,
+//         };
+
+//         console.log(`Main Slice: start=${mainSlice.start.toFixed(6)}, end=${mainSlice.end.toFixed(6)}, duration=${(mainSlice.end - mainSlice.start).toFixed(6)}`);
+//         console.log(`Extra Slice: start=${extraSlice.start.toFixed(6)}, end=${extraSlice.end.toFixed(6)}, duration=${(extraSlice.end - extraSlice.start).toFixed(6)}`);
+
+//         // Process main slice for the first video
+//         const durations = await processVideo(currentVideoPath, [mainSlice], tempOutputPath, outputWidth, outputHeight);
+//         console.log(`Processed video ${i + 1} (main slice), durations:`, durations);
+//         allDurations.push(...durations);
+
+//         // Extract the extra slice from the first video
+//         const extraSlicePath = path.join(__dirname, `processed/temp_output_extra_${Date.now()}.mp4`);
+//         await processVideo(currentVideoPath, [extraSlice], extraSlicePath, outputWidth, outputHeight);
+//         tempOutputPaths.push(extraSlicePath);
+//         allDurations.push(extraSlice.end - extraSlice.start);
+//         console.log(`Appended extra slice for looping: ${extraSlicePath}`);
+//       } else {
+//         // Process other videos normally
+//         // Assuming each slice is a separate segment
+//         const validSlices = currentSlices.filter((slice) => slice.end > slice.start);
+//         console.log(`Processing video ${i + 1} with ${validSlices.length} slices.`);
+//         const durations = await processVideo(currentVideoPath, validSlices, tempOutputPath, outputWidth, outputHeight);
+//         console.log(`Processed video ${i + 1}, durations:`, durations);
+//         allDurations.push(...durations);
+//       }
 //     }
 
 //     let concatenatedOutputPath = finalOutputPath;
 //     console.log("Starting concatenation with transitions:", transitionOption);
 
 //     if (transitionOption === "fade") {
-//       await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "fade", allDurations, 0.5);
+//       await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "fade", allDurations, transitionDuration);
 //       console.log("Applied fade transitions successfully.");
 //     } else {
-//       await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "none", allDurations, 0.5);
+//       await concatenateVideosWithTransitions(tempOutputPaths, concatenatedOutputPath, "none", allDurations, transitionDuration);
 //       console.log("Concatenated videos without transitions.");
 //     }
 
+//     // Apply overlays if enabled
 //     if (enableOverlay) {
 //       const overlayedOutputPath = path.join(__dirname, `processed/final_output_overlayed_${Date.now()}.mp4`);
 //       await applyOverlay(concatenatedOutputPath, overlayedOutputPath, overlayColor, overlayOpacity);
@@ -1302,6 +1667,7 @@ app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, 
 //       concatenatedOutputPath = slowedOutputPath;
 //     }
 
+//     // Convert to GIF if enabled
 //     if (enableGifConversion) {
 //       const gifOutputPath = await convertToGif(concatenatedOutputPath, gifFps, gifQuality);
 //       console.log("Converted video to GIF successfully.");
