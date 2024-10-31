@@ -11,39 +11,33 @@
         <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
         <span>Home</span>
       </a>
-
-      <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
-
-      <h2>YouTube Downloader</h2>
-
-      <div class="overlay-group">
-        <form id="fetchFormatsForm" class="form-group">
-          <label for="url">YouTube URL:</label>
-          <input type="url" id="url" name="url" style="width: 90%" required />
-          <div class="button-group">
-            <button type="submit" class="form-button">Fetch Formats</button>
-          </div>
-        </form>
-
-        <form id="downloadForm" class="form-group" style="display: none">
-          <label for="format">Select Format:</label>
-          <select id="format" name="format" required></select>
-          <div class="button-group">
-            <button type="submit" class="form-button">Download</button>
-          </div>
-        </form>
-      </div>
+      <a href="youtube-downloader.html" class="active">
+        <img src="./images/download-icon.png" alt="YouTube Downloader" class="download-icon" />
+        <span>YouTube Downloader</span>
+      </a>
     </div>
 
     <div class="main-content">
-      <div id="videoContainer">
-        <div>
-          <h3>Download Link</h3>
-          <a id="downloadLink" href="#" style="display: none" download>Download Video</a>
+      <h1>YouTube Downloader</h1>
+      <form id="youtubeDownloaderForm">
+        <div class="form-group">
+          <label for="youtubeUrl">YouTube URL:</label>
+          <input type="url" id="youtubeUrl" name="youtubeUrl" required />
         </div>
-      </div>
+        <div class="form-group">
+          <label for="formatSelect">Select Format:</label>
+          <select id="formatSelect" name="format" required>
+            <option value="mp4">MP4 (Video)</option>
+            <option value="webm">WEBM (Video)</option>
+            <option value="mp3">MP3 (Audio)</option>
+          </select>
+        </div>
+        <button type="submit" id="downloadButton">Download</button>
+      </form>
+      <div id="notification" style="display: none">Processing your request, please wait...</div>
+      <div id="downloadLinkContainer"></div>
     </div>
 
-    <script src="youtube-downloader.js"></script>
+    <script src="youtube-downloader.js" defer></script>
   </body>
 </html>

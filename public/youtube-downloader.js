@@ -1,73 +1,46 @@
-document.getElementById("fetchFormatsForm").addEventListener("submit", async function (event) {
-  event.preventDefault();
-  const url = document.getElementById("url").value;
-  const processingNotification = document.getElementById("processingNotification");
-  const downloadForm = document.getElementById("downloadForm");
-  const formatSelect = document.getElementById("format");
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("youtubeDownloaderForm");
+  const notification = document.getElementById("notification");
+  const downloadLinkContainer = document.getElementById("downloadLinkContainer");
 
-  processingNotification.style.display = "block";
-  downloadForm.style.display = "none";
-  formatSelect.innerHTML = "";
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    downloadLinkContainer.innerHTML = "";
+    const youtubeUrl = document.getElementById("youtubeUrl").value.trim();
+    const format = document.getElementById("formatSelect").value;
 
-  try {
-    const response = await fetch("/get-formats", {
+    if (!youtubeUrl) {
+      alert("Please enter a YouTube URL.");
+      return;
+    }
+
+    notification.style.display = "block";
+
+    fetch("/download-youtube", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url }),
-    });
-
-    if (response.ok) {
-      const formats = await response.json();
-      formats.forEach((format) => {
-        const option = document.createElement("option");
-        option.value = format.itag;
-        option.textContent = `${format.container} (${format.qualityLabel || format.resolution})`;
-        formatSelect.appendChild(option);
+      body: JSON.stringify({ youtubeUrl, format }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        notification.style.display = "none";
+        if (data.success) {
+          const downloadLink = document.createElement("a");
+          downloadLink.href = data.downloadUrl;
+          downloadLink.textContent = "Download Your File";
+          downloadLink.download = data.filename;
+          downloadLink.className = "download-link";
+          downloadLinkContainer.appendChild(downloadLink);
+        } else {
+          alert(data.message || "An error occurred.");
+        }
+      })
+      .catch((error) => {
+        notification.style.display = "none";
+        console.error("Error:", error);
+        alert("An error occurred while processing your request.");
       });
-
-      downloadForm.style.display = "block";
-    } else {
-      console.error("Failed to fetch formats:", await response.text());
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    processingNotification.style.display = "none";
-  }
-});
-
-document.getElementById("downloadForm").addEventListener("submit", async function (event) {
-  event.preventDefault();
-  const url = document.getElementById("url").value;
-  const format = document.getElementById("format").value;
-  const processingNotification = document.getElementById("processingNotification");
-  const downloadLink = document.getElementById("downloadLink");
-
-  processingNotification.style.display = "block";
-
-  try {
-    const response = await fetch("/download-youtube", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ url, format }),
-    });
-
-    if (response.ok) {
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      downloadLink.href = downloadUrl;
-      downloadLink.style.display = "inline";
-      downloadLink.click();
-    } else {
-      console.error("Download failed:", await response.text());
-    }
-  } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    processingNotification.style.display = "none";
-  }
+  });
 });

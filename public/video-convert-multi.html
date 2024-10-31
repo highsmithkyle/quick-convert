@@ -16,17 +16,20 @@
           <label for="videoInput">Upload Video:</label>
           <input type="file" id="videoInput" name="video" accept="video/*" required />
         </div>
-        <div class="form-group">
-          <label for="formatSelect">Select Format:</label>
-          <select id="formatSelect" required>
-            <option value="mp4">MP4</option>
-            <option value="gif">GIF</option>
-            <option value="avif">AVIF</option>
-            <option value="webm">WEBM</option>
-          </select>
-        </div>
-        <div class="button-group">
-          <button type="button" id="convertButton">Convert</button>
+
+        <div class="overlay-group">
+          <div class="form-group">
+            <label for="formatSelect">Select Format:</label>
+            <select id="formatSelect" required>
+              <option value="mp4">MP4</option>
+              <option value="gif">GIF</option>
+              <option value="avif">AVIF</option>
+              <!-- <option value="webm">WEBM</option> -->
+            </select>
+          </div>
+          <div class="button-group">
+            <button type="button" id="convertButton">Convert</button>
+          </div>
         </div>
       </form>
     </div>

@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const formData = new FormData(this);
     notification.style.display = "block";
 
-    fetch("/text-to-image", {
+    fetch("http://localhost:3000/text-to-image", {
       method: "POST",
       body: formData,
     })

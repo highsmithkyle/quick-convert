@@ -1,0 +1,164 @@
+// gradient background creator
+
+app.post("/preview-overlay", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const color = req.body.color.replace("#", "");
+  const opacity = parseFloat(req.body.opacity);
+  const outputPath = path.join(__dirname, "preview", `preview_overlay_video_${Date.now()}.mp4`);
+
+  exec(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${videoPath}"`, (error, stdout) => {
+    if (error) {
+      console.error("Error getting video size:", error);
+      return res.status(500).send("Failed to get video size.");
+    }
+
+    const [width, height] = stdout.trim().split(",");
+    const overlayPath = path.join(__dirname, "overlay", `preview_overlay_${Date.now()}.png`);
+
+    exec(
+      `convert -size ${width}x${height} xc:"rgba(${parseInt(color.substring(0, 2), 16)},${parseInt(color.substring(2, 4), 16)},${parseInt(color.substring(4, 6), 16)},${opacity})" "${overlayPath}"`,
+      (overlayError) => {
+        if (overlayError) {
+          console.error("Error creating overlay:", overlayError);
+          return res.status(500).send("Failed to create overlay.");
+        }
+
+        exec(`ffmpeg -i "${videoPath}" -i "${overlayPath}" -filter_complex "[0:v][1:v] overlay=0:0" -c:a copy "${outputPath}"`, (ffmpegError) => {
+          if (ffmpegError) {
+            console.error("Error applying overlay:", ffmpegError);
+            return res.status(500).send("Failed to apply overlay.");
+          }
+
+          res.download(outputPath, (downloadErr) => {
+            if (downloadErr) {
+              console.error("Error sending the overlay video:", downloadErr);
+            }
+            fs.unlinkSync(videoPath);
+            fs.unlinkSync(overlayPath);
+          });
+        });
+      }
+    );
+  });
+});
+
+app.post("/createGradientImage", (req, res) => {
+  const { gradientType, topColor, bottomColor, size } = req.body;
+
+  let dimensions;
+  switch (size) {
+    case "small":
+      dimensions = "600x1000";
+      break;
+    case "medium":
+      dimensions = "600x1500";
+      break;
+    case "large":
+      dimensions = "600x2000";
+      break;
+    default:
+      dimensions = "600x1000";
+  }
+
+  const outputFile = path.join(__dirname, "gradient-background", `gradient_${Date.now()}.png`);
+  let command;
+
+  switch (gradientType) {
+    case "radial":
+      command = `convert -size ${dimensions} radial-gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "left-right":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+      break;
+    case "diagonal-tl-br":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 45 ${outputFile}`;
+      break;
+    case "diagonal-tr-bl":
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} -rotate 135 ${outputFile}`;
+      break;
+    case "linear":
+    default:
+      command = `convert -size ${dimensions} gradient:#${topColor}-#${bottomColor} ${outputFile}`;
+  }
+
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return res.status(500).send("Failed to create gradient image.");
+    }
+    res.sendFile(outputFile);
+  });
+});
+
+// reimagine image - Clipdrop API Effect
+
+app.post("/reimagine-image", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No image file uploaded.");
+  }
+
+  const imagePath = req.file.path;
+  const formData = new FormData();
+  formData.append("image_file", fs.createReadStream(imagePath));
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/reimagine/v1/reimagine", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    fs.unlinkSync(imagePath);
+    res.setHeader("Content-Type", "image/jpeg");
+    res.send(response.data);
+  } catch (error) {
+    console.error("API Call Failed:", error.response ? error.response.data : error.message);
+    res.status(500).send("Failed to reimagine image");
+  }
+});
+
+//
+
+// video-slice - old, single video version
+app.post("/slice", upload.single("video"), (req, res) => {
+  const videoPath = req.file.path;
+  const finalOutputPath = path.join(__dirname, "processed", `final_output_${Date.now()}.mp4`);
+
+  let filterComplex = "";
+  let inputs = [];
+
+  for (let i = 1; i <= 3; i++) {
+    const start = parseFloat(req.body[`slice${i}Start`]);
+    const end = parseFloat(req.body[`slice${i}End`]);
+
+    if (!isNaN(start) && !isNaN(end) && end > start) {
+      let duration = end - start;
+      filterComplex += `[0:v]trim=start=${start}:duration=${duration},setpts=PTS-STARTPTS[v${i}]; `;
+      inputs.push(`[v${i}]`);
+    }
+  }
+
+  if (inputs.length > 0) {
+    filterComplex += `${inputs.join("")}concat=n=${inputs.length}:v=1:a=0[outv]`;
+  } else {
+    return res.status(400).send("No valid video segments specified.");
+  }
+
+  const ffmpegCommand = `ffmpeg -i "${videoPath}" -filter_complex "${filterComplex}" -map "[outv]" "${finalOutputPath}"`;
+
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    if (error) {
+      console.error("Error executing FFmpeg command:", stderr);
+      return res.status(500).send("Failed to process video.");
+    }
+
+    res.download(finalOutputPath, (downloadErr) => {
+      if (downloadErr) {
+        console.error("Error sending the processed video:", downloadErr);
+      }
+      fs.unlinkSync(videoPath);
+    });
+  });
+});
