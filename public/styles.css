@@ -1670,3 +1670,96 @@ a.inline-download-button:hover {
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+
+#mp4ConversionModal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  max-width: 90%;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Show the modal */
+#mp4ConversionModal.show {
+  display: block;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Modal Content */
+#mp4ConversionModal .modal-content {
+  padding: 20px;
+}
+
+#mp4ConversionModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+#mp4ConversionModal .modal-title {
+  font-size: 18px;
+}
+
+#mp4ConversionModal .close-button {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
+#mp4ConversionModal .modal-body {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+#mp4ConversionModal .button-group {
+  display: flex;
+  justify-content: space-between;
+}
+
+#mp4ConversionModal .button-group button {
+  width: 48%;
+  padding: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#mp4ConversionModal .form-button {
+  background-color: #007bff;
+  color: white;
+}
+
+#mp4ConversionModal .form-button:hover {
+  background-color: #0056b3;
+}
+
+/* Overlay Background */
+#modalOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* Show the overlay */
+#modalOverlay.show {
+  display: block;
+}

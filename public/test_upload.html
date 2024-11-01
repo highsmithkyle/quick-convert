@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Video Upload</title>
+  </head>
+  <body>
+    <h1>Test Video Upload and Conversion</h1>
+    <form id="testUploadForm" enctype="multipart/form-data">
+      <input type="file" name="video" id="testVideoInput" accept="video/*" required />
+      <button type="submit">Upload and Convert</button>
+    </form>
+
+    <h2>Converted Video</h2>
+    <video id="convertedVideo" controls style="max-width: 100%; display: none"></video>
+
+    <script src="test_upload.js"></script>
+  </body>
+</html>
