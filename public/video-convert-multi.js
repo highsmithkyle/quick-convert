@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (file) {
       selectedFile = file;
       const fileSizeMB = file.size / (1024 * 1024);
-      const maxSizeMB = 3; // Set your desired max size in MB
+      const maxSizeMB = 50; // Set your desired max size in MB
 
       uploadedVideo.src = URL.createObjectURL(file);
       uploadedVideo.parentElement.style.display = "block";
