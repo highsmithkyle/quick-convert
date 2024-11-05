@@ -491,41 +491,6 @@ app.post("/SliceMultiConvertToMp4", upload.single("video"), (req, res) => {
     });
   });
 });
-// app.post("/SliceMultiConvertToMp4", upload.single("video"), (req, res) => {
-//   // Check if a video file was uploaded
-//   if (!req.file) {
-//     console.error("No file uploaded.");
-//     return res.status(400).send("No file uploaded.");
-//   }
-
-//   const videoPath = req.file.path; // Get the uploaded video path
-//   const outputDir = path.join(__dirname, "converted");
-
-//   // Ensure the 'converted' directory exists
-//   if (!fs.existsSync(outputDir)) {
-//     fs.mkdirSync(outputDir);
-//   }
-
-//   const outputPath = path.join(outputDir, `converted_${Date.now()}.mp4`); // Output path for MP4
-
-//   // Convert the video to MP4 format using ffmpeg
-//   const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
-
-//   exec(convertCommand, (convertError) => {
-//     if (convertError) {
-//       console.error("Error converting video to MP4:", convertError);
-//       fs.unlinkSync(videoPath); // Clean up the uploaded file
-//       return res.status(500).send("Error converting video to MP4.");
-//     }
-
-//     // Send the converted MP4 file directly in the response
-//     res.sendFile(outputPath, () => {
-//       // Clean up original and output files
-//       fs.unlinkSync(videoPath);
-//       fs.unlinkSync(outputPath);
-//     });
-//   });
-// });
 
 // ------- Image Effects ------- //
 
@@ -1803,6 +1768,35 @@ app.post("/convertToJpeg", upload.single("image"), (req, res) => {
 });
 
 // ------- Convert to MP4 ------- //
+
+// app.post("/convertToMp4", upload.single("video"), (req, res) => {
+//   // Check if a video file was uploaded
+//   if (!req.file) {
+//     console.error("No file uploaded.");
+//     return res.status(400).send("No file uploaded.");
+//   }
+
+//   const videoPath = req.file.path; // Get the uploaded video path
+//   const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.mp4`); // Output path for MP4
+
+//   // Convert the video to MP4 format using ffmpeg
+//   const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
+
+//   exec(convertCommand, (convertError) => {
+//     if (convertError) {
+//       console.error("Error converting video to MP4:", convertError);
+//       return res.status(500).send("Error converting video to MP4.");
+//     }
+
+//     // Download the converted MP4 file
+//     res.download(outputPath, () => {
+//       // Clean up original and output files
+//       fs.unlinkSync(videoPath);
+//       fs.unlinkSync(outputPath);
+//     });
+//   });
+// });
+
 app.post("/convertToMp4", upload.single("video"), (req, res) => {
   // Check if a video file was uploaded
   if (!req.file) {
@@ -1813,11 +1807,16 @@ app.post("/convertToMp4", upload.single("video"), (req, res) => {
   const videoPath = req.file.path; // Get the uploaded video path
   const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.mp4`); // Output path for MP4
 
-  // Convert the video to MP4 format using ffmpeg
+  // Convert the video to MP4 format using ffmpeg with a 10-minute timeout
   const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
 
-  exec(convertCommand, (convertError) => {
+  // Set the timeout to 10 minutes (600,000 ms)
+  exec(convertCommand, { timeout: 600000 }, (convertError) => {
     if (convertError) {
+      if (convertError.killed) {
+        console.error("Conversion process timed out after 10 minutes.");
+        return res.status(500).send("Conversion process timed out.");
+      }
       console.error("Error converting video to MP4:", convertError);
       return res.status(500).send("Error converting video to MP4.");
     }
