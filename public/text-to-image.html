@@ -6,19 +6,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="sidebar">
+    <div class="sidebar scrollable-sidebar">
       <a href="index.html" class="home-button">
         <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
         <span>Home</span>
       </a>
 
-      <div id="processingNotification" style="display: none">Processing your request, please wait...</div>
-
       <h2>Text to Image</h2>
-      <form id="textToImageForm" enctype="multipart/form-data" class="form-group">
-        <label for="textPrompt">Enter text prompt:</label>
-        <textarea id="textPrompt" name="prompt" rows="4" style="width: 90%" required></textarea>
-
+      <form id="textToImageForm" class="form-group">
+        <div class="form-group">
+          <label for="prompt">Enter your text prompt:</label>
+          <textarea id="prompt" name="prompt" rows="4" maxlength="1000" placeholder="Describe the desired image..." required class="sidebar-input"></textarea>
+        </div>
         <div class="button-group">
           <button type="submit" class="form-button">Generate Image</button>
         </div>
@@ -27,11 +26,53 @@
 
     <div class="main-content">
       <div id="imageContainer">
-        <h3>Generated Image from Text</h3>
-        <img id="generatedImage" src="" alt="Generated Image" style="width: 450px" />
+        <div class="video-display">
+          <h3>Generated Image</h3>
+          <img id="generatedImage" src="" alt="Generated Image" />
+        </div>
       </div>
     </div>
+
+    <div id="processingNotification">Generating your image, please wait...</div>
 
     <script src="text-to-image.js"></script>
   </body>
 </html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Text to Image</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <h2>Text to Image</h2>
+      <form id="textToImageForm" class="form-group">
+        <div class="form-group">
+          <label for="prompt">Enter your text prompt:</label>
+          <textarea id="prompt" name="prompt" rows="4" maxlength="1000" placeholder="Describe the desired image..." required class="sidebar-input"></textarea>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="form-button">Generate Image</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <h3>Generated Image</h3>
+        <img id="generatedImage" src="" alt="Generated Image" class="generated-image" />
+      </div>
+    </div>
+
+    <div id="processingNotification" class="processing-notification">Generating your image, please wait...</div>
+
+    <script src="text-to-image.js"></script>
+  </body>
+</html> -->

@@ -14,13 +14,11 @@ const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 const Vibrant = require("node-vibrant");
 
-// const uploadSingleVideo = multer({ dest: "uploads/" });
+const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
 
 const sharp = require("sharp");
 
-// remove-text
-
-// Google Cloud
+// Google Cloud setup
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 const speechClient = new speech.SpeechClient();
 const storage = new Storage({
@@ -28,27 +26,94 @@ const storage = new Storage({
 });
 const bucket = storage.bucket("image-2d-to-3d");
 
-// Express
+// Express setup
 const app = express();
 const upload = multer({ dest: "uploads/" });
-app.use("/videos", express.static(path.join(__dirname, "videos")));
 
 app.use(cors());
-app.use(express.static("public"));
-app.use("/videos", express.static(path.join(__dirname, "videos")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
 
 // Environment Path
 process.env.PATH += ":/usr/bin";
-const convertedDir = path.join(__dirname, "converted");
-const compressedDir = path.join(__dirname, "compressed");
+
+// Serve general static files (used by the rest of the application)
+app.use(express.static("public"));
+
+// Serve static files for specific paths
+app.use("/videos", express.static(path.join(__dirname, "videos")));
+app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
+app.use("/compressed", express.static(path.join(__dirname, "compressed")));
+
+// Serve static files for chatbot assets
+app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
+app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
+
+// Use chatbot routes
+app.use("/chatbot/api", chatbotRoutes);
+
+// Serve chatbot.html for the chatbot interface
+app.get("/chatbot", (req, res) => {
+  res.sendFile(path.join(__dirname, "chatbot", "public", "chatbot.html"));
+});
 
 const outputDir = path.join(__dirname, "converted");
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir);
 }
+
+app.post("/text-to-image", upload.none(), async (req, res) => {
+  const prompt = req.body.prompt;
+
+  // Validate prompt
+  if (!prompt || prompt.length > 1000) {
+    return res.status(400).send("Invalid prompt. Please provide a prompt with up to 1000 characters.");
+  }
+
+  // Prepare form data for Clipdrop API
+  const formData = new FormData();
+  formData.append("prompt", prompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    // Check if the response is an image
+    if (response.headers["content-type"] === "image/png") {
+      // Set appropriate headers
+      res.setHeader("Content-Type", "image/png");
+
+      // Optionally, set headers for credits remaining and consumed
+      res.setHeader("x-remaining-credits", response.headers["x-remaining-credits"]);
+      res.setHeader("x-credits-consumed", response.headers["x-credits-consumed"]);
+
+      // Send the image buffer
+      res.send(response.data);
+    } else {
+      // If not an image, it's likely an error in JSON format
+      const errorData = JSON.parse(Buffer.from(response.data).toString("utf-8"));
+      console.error("API Error:", errorData);
+      res.status(response.status).send(errorData.error || "Unknown error from Text to Image API.");
+    }
+  } catch (error) {
+    console.error("Failed to generate image:", error.response ? error.response.data : error.message);
+    if (error.response && error.response.data) {
+      try {
+        const errorData = JSON.parse(Buffer.from(error.response.data).toString("utf-8"));
+        res.status(error.response.status).send(errorData.error || "Unknown error from Text to Image API.");
+      } catch (parseError) {
+        res.status(error.response.status).send("Error generating image.");
+      }
+    } else {
+      res.status(500).send("Failed to generate image.");
+    }
+  }
+});
 
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   console.log("Received /slice-multi POST request");
@@ -1323,172 +1388,6 @@ app.post("/compress-gif-gifski", upload.single("image"), (req, res) => {
   });
 });
 
-// app.post("/compress-webp", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const compressionLevel = parseInt(req.body.compression_level, 10);
-//   const outputFileName = `compressed_${Date.now()}.webp`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) return res.status(500).send("Failed to compress WebP.");
-//     res.sendFile(outputFilePath, () => {
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
-// app.post("/compress-jpeg", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const compressionLevel = parseInt(req.body.compression_level, 10);
-//   const outputFileName = `compressed_${Date.now()}.jpg`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-//   exec(compressCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-
-//     if (error) {
-//       console.error("Error compressing JPEG:", stderr);
-//       return res.status(500).send("Failed to compress JPEG.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending compressed JPEG:", err);
-//         return res.status(500).send("Error sending compressed JPEG.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
-// app.post("/compress-png", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const outputFileName = `compressed_${Date.now()}.png`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   if (!fs.existsSync("processed")) {
-//     fs.mkdirSync("processed");
-//   }
-
-//   const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
-
-//   exec(compressCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-
-//     if (error) {
-//       console.error("Error compressing PNG:", stderr);
-//       return res.status(500).send("Failed to compress PNG.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending compressed PNG:", err);
-//         return res.status(500).send("Error sending compressed PNG.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
-// app.post("/compress-gif", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const outputFileName = `compressed_${Date.now()}.gif`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const lossy = req.body.lossy;
-//   const colors = req.body.colors;
-//   const optimize = req.body.optimize;
-
-//   if (!fs.existsSync("processed")) {
-//     fs.mkdirSync("processed");
-//   }
-
-//   const compressCommand = `gifsicle --optimize=${optimize} --lossy=${lossy} --colors=${colors} "${imagePath}" > "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       console.error("Error compressing GIF:", error);
-//       return res.status(500).send("Failed to compress GIF.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending compressed GIF:", err);
-//         return res.status(500).send("Error sending compressed GIF.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
-// app.post("/compress-gif-gifsicle", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const outputFileName = `compressed_${Date.now()}.gif`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const lossy = req.body.lossy;
-//   const colors = req.body.colors;
-//   const optimize = req.body.optimize;
-
-//   if (!fs.existsSync("processed")) {
-//     fs.mkdirSync("processed");
-//   }
-
-//   const compressCommand = `gifsicle --optimize=${optimize} --lossy=${lossy} --colors=${colors} "${imagePath}" > "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       console.error("Error compressing GIF:", error);
-//       return res.status(500).send("Failed to compress GIF.");
-//     }
-
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending compressed GIF:", err);
-//         return res.status(500).send("Error sending compressed GIF.");
-//       }
-
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
-// app.post("/compress-gif-gifski", upload.single("image"), (req, res) => {
-//   const imagePath = req.file.path;
-//   const outputFileName = `compressed_${Date.now()}.gif`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const fps = req.body.gifskiFps;
-//   const quality = req.body.gifskiQuality;
-
-//   const gifskiCommand = `gifski --fps ${fps} --quality ${quality} --output ${outputFilePath} ${imagePath}`;
-
-//   exec(gifskiCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       console.error("Error compressing GIF with Gifski:", error);
-//       return res.status(500).send("Failed to compress GIF with Gifski.");
-//     }
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         console.error("Error sending Gifski-compressed GIF:", err);
-//         return res.status(500).send("Error sending compressed GIF.");
-//       }
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// });
-
 // Callbacks for compression
 
 // ------- Callback Function to Compress JPEG ------- //
@@ -1628,85 +1527,6 @@ function compressGif(imagePath, res) {
   });
 }
 
-// function compressJpeg(imagePath, res) {
-//   const compressionLevel = 85;
-//   const outputFileName = `compressed_${Date.now()}.jpg`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       return res.status(500).send("Failed to compress JPEG.");
-//     }
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         return res.status(500).send("Error sending compressed JPEG.");
-//       }
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// }
-
-// function compressPng(imagePath, res) {
-//   const outputFileName = `compressed_${Date.now()}.png`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `convert "${imagePath}" -strip -quality 80 "${outputFilePath}"`;
-
-//   exec(compressCommand, (error, stdout, stderr) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       return res.status(500).send("Failed to compress PNG.");
-//     }
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         return res.status(500).send("Error sending compressed PNG.");
-//       }
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// }
-
-// function compressWebp(imagePath, res) {
-//   const compressionLevel = 80;
-//   const outputFileName = `compressed_${Date.now()}.webp`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `convert "${imagePath}" -quality ${compressionLevel} "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       return res.status(500).send("Failed to compress WebP.");
-//     }
-//     res.sendFile(outputFilePath, () => {
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// }
-
-// function compressGif(imagePath, res) {
-//   const outputFileName = `compressed_${Date.now()}.gif`;
-//   const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-//   const compressCommand = `gifsicle --optimize=3 --lossy=80 --colors 128 "${imagePath}" > "${outputFilePath}"`;
-
-//   exec(compressCommand, (error) => {
-//     fs.unlinkSync(imagePath);
-//     if (error) {
-//       return res.status(500).send("Failed to compress GIF.");
-//     }
-//     res.sendFile(outputFilePath, (err) => {
-//       if (err) {
-//         return res.status(500).send("Error sending compressed GIF.");
-//       }
-//       fs.unlinkSync(outputFilePath);
-//     });
-//   });
-// }
-
 // ------- Convert to ------- //
 
 // ------- Convert to PNG ------- //
@@ -1766,36 +1586,6 @@ app.post("/convertToJpeg", upload.single("image"), (req, res) => {
     });
   });
 });
-
-// ------- Convert to MP4 ------- //
-
-// app.post("/convertToMp4", upload.single("video"), (req, res) => {
-//   // Check if a video file was uploaded
-//   if (!req.file) {
-//     console.error("No file uploaded.");
-//     return res.status(400).send("No file uploaded.");
-//   }
-
-//   const videoPath = req.file.path; // Get the uploaded video path
-//   const outputPath = path.join(__dirname, "converted", `converted_${Date.now()}.mp4`); // Output path for MP4
-
-//   // Convert the video to MP4 format using ffmpeg
-//   const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
-
-//   exec(convertCommand, (convertError) => {
-//     if (convertError) {
-//       console.error("Error converting video to MP4:", convertError);
-//       return res.status(500).send("Error converting video to MP4.");
-//     }
-
-//     // Download the converted MP4 file
-//     res.download(outputPath, () => {
-//       // Clean up original and output files
-//       fs.unlinkSync(videoPath);
-//       fs.unlinkSync(outputPath);
-//     });
-//   });
-// });
 
 app.post("/convertToMp4", upload.single("video"), (req, res) => {
   // Check if a video file was uploaded

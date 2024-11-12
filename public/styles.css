@@ -1583,17 +1583,17 @@ a.inline-download-button:hover {
 }
 
 .video-slider .noUi-handle {
-  width: 20px;
-  height: 10px;
+  width: 12px !important;
+  height: 30px !important;
   background: #fff;
   border: 2px solid #4caf50;
   cursor: pointer;
 }
 
 .noUi-horizontal .noUi-handle {
-  width: 20px;
-  height: 20px;
-  right: -10px;
+  width: 12px !important;
+  height: 30px !important;
+  right: -5px !important;
   top: -5px;
 }
 

@@ -23,20 +23,23 @@
       <form id="uploadForm" enctype="multipart/form-data" class="form-group">
         <label for="image">Upload your image:</label>
         <input type="file" id="image" name="image" accept="image/*" required />
-        <label for="mode">Processing Mode:</label>
-        <select id="mode" name="mode">
-          <option value="quality">Quality</option>
-          <option value="fast">Fast</option>
-        </select>
-        <label for="brushSize">Brush Size:</label>
-        <input type="range" id="brushSize" name="brushSize" min="10" max="120" value="50" style="width: 80%" />
 
-        <div class="button-group">
-          <button type="button" id="cleanupButton" class="form-button">Cleanup Image</button>
-        </div>
+        <div class="overlay-group">
+          <label for="mode">Processing Mode:</label>
+          <select id="mode" name="mode">
+            <option value="quality">Quality</option>
+            <option value="fast">Fast</option>
+          </select>
+          <label for="brushSize">Brush Size:</label>
+          <input type="range" id="brushSize" name="brushSize" min="10" max="120" value="50" style="width: 80%" />
 
-        <div class="button-group">
-          <button type="button" id="clearButton" class="form-button" style="display: none">Clear</button>
+          <div class="button-group">
+            <button type="button" id="cleanupButton" class="form-button">Cleanup Image</button>
+          </div>
+
+          <div class="button-group">
+            <button type="button" id="clearButton" class="form-button" style="display: none">Clear</button>
+          </div>
         </div>
       </form>
     </div>
@@ -44,7 +47,7 @@
     <div class="main-content">
       <div id="imageContainer">
         <div>
-          <canvas id="imageCanvas"></canvas>
+          <canvas id="imageCanvas" style="width: 600px"></canvas>
         </div>
       </div>
     </div>

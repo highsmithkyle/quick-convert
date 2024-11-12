@@ -1,0 +1,230 @@
+{
+  "video_title": "New_author_training",
+  "part": "Basics",
+  "segments": [
+    {
+      "timestamp_start": "00:00:02",
+      "timestamp_end": "00:00:10",
+      "category": "Introduction",
+      "tags": ["Training Overview", "Email Setup"],
+      "summary": "Introduction to the training session, outlining the objectives to build and send the first email.",
+      "text": "Welcome to the quick training for the application where we'll get you oriented to build your very first e-mail and send it."
+    },
+    {
+      "timestamp_start": "00:00:10",
+      "timestamp_end": "00:00:28",
+      "category": "Training Objectives",
+      "tags": ["Terminology", "Learning Curve", "Email Building"],
+      "summary": "Overview of the training objectives, including understanding terminology and building an email within five minutes.",
+      "text": "And we'll give you some background as to the terminology of the application. It will ramp up your learning curve to send your very first e-mail within 5 minutes. We'll give an example of building an e-mail. We'll design it, we'll test it and we'll go through the motions of broadcasting."
+    },
+    {
+      "timestamp_start": "00:00:28",
+      "timestamp_end": "00:00:48",
+      "category": "Reporting Basics",
+      "tags": ["Reporting", "Email Anatomy", "Productivity Tips", "AI Features"],
+      "summary": "Introduction to reporting basics and the anatomy of an email, including productivity tips and AI features.",
+      "text": "We'll give you an overview of some of the reporting basics, and then we'll repeat the e-mail building process, but we'll literate with productivity tips as well as some of our AI features. Some ways to really get the most out of the application as a background, the anatomy of an e-mail."
+    },
+    {
+      "timestamp_start": "00:00:48",
+      "timestamp_end": "00:01:08",
+      "category": "Landing Pages",
+      "tags": ["Landing Pages", "Email Creation"],
+      "summary": "Explanation of creating landing pages within the application, similar to creating emails.",
+      "text": "We also put planning page up here. You can create landing pages inside of our application. They're identical to creating an e-mail."
+    },
+    {
+      "timestamp_start": "00:01:08",
+      "timestamp_end": "00:01:24",
+      "category": "Email Format",
+      "tags": ["Newsletter Style", "Articles"],
+      "summary": "Description of a typical newsletter-style email format with various articles.",
+      "text": "But over to the left you see a typical e-mail format. This is in newsletter style. There may be all sorts of articles that are included."
+    },
+    {
+      "timestamp_start": "00:01:24",
+      "timestamp_end": "00:02:01",
+      "category": "Templates and Content Blocks",
+      "tags": ["Templates", "Content Blocks", "Email Components"],
+      "summary": "Introduction to the two main components of the application: templates and content blocks that make up an email.",
+      "text": "Within our application we have two moving parts, basically templates and content blocks that make up this e-mail. So our templates have a header, a footer and a a center body area where your content blocks will."
+    },
+    {
+      "timestamp_start": "00:02:01",
+      "timestamp_end": "00:02:23",
+      "category": "Content Block Advantages",
+      "tags": ["Content Blocks", "Targeting", "Segmentation"],
+      "summary": "Advantages of using content blocks, including the ability to target different segments of the audience individually.",
+      "text": "Block approach we have you build each one at a time. You could throw everything into a single content block if you want, but I want to give you an orientation as to why separating them can be so. One key thing is that from an authoring standpoint, you can target them individually to different people."
+    },
+    {
+      "timestamp_start": "00:02:23",
+      "timestamp_end": "00:02:45",
+      "category": "Audience Segmentation",
+      "tags": ["Audience Segmentation", "Relevance"],
+      "summary": "Explains how audience segmentation ensures recipients receive only relevant content, preventing burnout.",
+      "text": "Inside the application that you're storing. That allows you to be able to target or segment your audience. Those are available to you as you create content blocks. The obvious benefit for the audience is that they're only receiving content that's relevant to them. It's not littered with content that's irrelevant, which causes them to burn out."
+    },
+    {
+      "timestamp_start": "00:02:45",
+      "timestamp_end": "00:03:12",
+      "category": "Benefits of Targeted Emails",
+      "tags": ["Targeted Emails", "AI Assistant", "Metrics"],
+      "summary": "Details benefits from an authoring standpoint, including using AI assistants and comparing content block performance.",
+      "text": "On the emails you send, you want them to be as relevant and as targeted as possible. But there are numerous other benefits from an authoring standpoint of you get to use our AI assistant to build headlines and images, or condense your articles or rewrite them, proofread them. You have the ability to compare in reports the performance of block versus block or blocks over time across numerous emails."
+    },
+    {
+      "timestamp_start": "00:03:12",
+      "timestamp_end": "00:03:26",
+      "category": "Advanced Features",
+      "tags": ["AB Testing", "Translation", "Approval Workflows"],
+      "summary": "Introduction to advanced features like AB testing, translation, and approval workflows for content blocks.",
+      "text": "That you may create to find the most popular blocks of content, for example. To do AB testing, to translate them to be able to send individual blocks for approval, maybe the legal or bosses and cover."
+    },
+    {
+      "timestamp_start": "00:03:26",
+      "timestamp_end": "00:04:10",
+      "category": "Audience Benefits",
+      "tags": ["Audience Interaction", "Metrics"],
+      "summary": "Describes additional benefits for the audience, such as sharing, bookmarking, and rating content blocks, along with metrics tracking.",
+      "text": "Workers. The audience has also numerous benefits. We won't go through all of them or they won't be immediately apparent in this particular demo here, but there are numerous cool things that we do that allow the audience to be able to maybe share individual blocks or bookmark or rate them, and so on, and you get all sorts of metrics behind that as well."
+    },
+    {
+      "timestamp_start": "00:04:10",
+      "timestamp_end": "00:04:33",
+      "category": "Content Block Anatomy",
+      "tags": ["Content Block Structure", "Reusability"],
+      "summary": "Explains the simple structure of a content block and its reusability across different projects.",
+      "text": "But the anatomy of a content block is really pretty simple and straightforward. There is the title, you give it a name. It allows you to easily remember it or understand the core essence of an individual block and what it's about that you can view that in reports makes it easy for you to find and share and import."
+    },
+    {
+      "timestamp_start": "00:04:33",
+      "timestamp_end": "00:05:03",
+      "category": "Drag and Drop Components",
+      "tags": ["Drag and Drop", "Components", "Customization"],
+      "summary": "Overview of the drag-and-drop functionality for building content blocks with customizable components.",
+      "text": "Them across different projects. You can optionally target them as we talked. But building them is a very simple drag and drop set of components. We give you a number of components, individual parts, layouts. We give you these simple, smart, mobile, responsive, ready to go components."
+    },
+    {
+      "timestamp_start": "00:05:03",
+      "timestamp_end": "00:06:11",
+      "category": "Customization and Branding",
+      "tags": ["Branding", "Reusable Components"],
+      "summary": "Describes customization options to match company branding and create reusable components for all authors.",
+      "text": "You can fashion them in your own branded look and feel and create company wide components that are available for all your authors."
+    },
+    {
+      "timestamp_start": "00:06:11",
+      "timestamp_end": "00:07:15",
+      "category": "Menu Structure",
+      "tags": ["Menu Navigation", "Features"],
+      "summary": "Introduction to the menu structure, highlighting key areas like Create, Reports, Subscribers, and Administrative settings.",
+      "text": "The menu structure is up here. In the top left it's always following you throughout the application. For example, there's create that's creating actual content of course reports. Subs meaning subscribers or employees or lists that you may be creating or synchronizing with from your internal systems, as well as an administrative area."
+    },
+    {
+      "timestamp_start": "00:07:15",
+      "timestamp_end": "00:08:07",
+      "category": "Project View",
+      "tags": ["Project Management", "Email Organization"],
+      "summary": "Explains the Project View for organizing emails into projects or folders, and managing them with the account manager.",
+      "text": "This is adding on new authors in the system or creating templates or turnkey default things so to create. E-mail we'll click create we go to Project View so creating an e-mail is organized into what we call projects. Let's take a look at what that means."
+    },
+    {
+      "timestamp_start": "00:08:07",
+      "timestamp_end": "00:09:22",
+      "category": "Creating a New Email",
+      "tags": ["Email Creation", "Templates Selection"],
+      "summary": "Walkthrough of creating a new email by selecting a template and naming the project.",
+      "text": "So down the left hand side these might be different. We could consider them folders, we call them projects that you can have any number of these and they'll probably all be set up for you as you start authoring within the application."
+    },
+    {
+      "timestamp_start": "00:09:22",
+      "timestamp_end": "00:10:28",
+      "category": "Template Editing",
+      "tags": ["Template Editing", "Customization"],
+      "summary": "Instructions on editing templates and adding content blocks between header and footer.",
+      "text": "So let's click the add content block. And by default, we're given some system components with you just drag and bring them over. Ohh I want a title and I want an image and I want some text and I want a button. You pretty much have created the essence."
+    },
+    {
+      "timestamp_start": "00:10:28",
+      "timestamp_end": "00:12:36",
+      "category": "Adding Content Blocks",
+      "tags": ["Content Blocks", "Images", "AI Tools"],
+      "summary": "Demonstrates adding and customizing content blocks, including images and using AI tools for enhancements.",
+      "text": "But in essence I have created a content block. Here and I can say save and close and what you'll see is as it's saving, it'll snap me back into this view where I have my content block."
+    },
+    {
+      "timestamp_start": "00:12:36",
+      "timestamp_end": "00:14:42",
+      "category": "Content Block Customization",
+      "tags": ["Customization", "Image Handling", "Linking"],
+      "summary": "Shows how to customize content blocks, including adding images, hyperlinks, and maintaining consistent formatting.",
+      "text": "But by default it's selected one here in the past, the most recent one I can come here though and pick from a different set of. Pinned templates. These might be templates from all of the templates that are available to you."
+    },
+    {
+      "timestamp_start": "00:14:42",
+      "timestamp_end": "00:16:36",
+      "category": "Finalizing Content Blocks",
+      "tags": ["Finalization", "Preview", "Editing Tips"],
+      "summary": "Finalizes content blocks, provides tips for previewing and sharing links, and emphasizes the importance of saving work.",
+      "text": "I'm maybe going to get rid of a whole bunch of it, just so that I can keep it nice and simple. So let's talk about Joanne."
+    },
+    {
+      "timestamp_start": "00:16:36",
+      "timestamp_end": "00:18:24",
+      "category": "Testing Emails",
+      "tags": ["Testing", "Test Users", "AI Helpers"],
+      "summary": "Explains the process of sending test emails, verifying details, and utilizing AI helpers for subject lines.",
+      "text": "But it's now a clickable link that will be automatically placed into your content. Now I'm just going to say save and close and you'll see I now have two content blocks here."
+    },
+    {
+      "timestamp_start": "00:18:24",
+      "timestamp_end": "00:19:56",
+      "category": "Broadcast Wizard",
+      "tags": ["Broadcasting", "Scheduling", "Recipients"],
+      "summary": "Introduction to the Broadcast Wizard for sending emails, including setting recipient lists and scheduling options.",
+      "text": "OK, so I've built my content. I now go and I send a test. Your test users will all be listed here. You can paste in some e-mail addresses."
+    },
+    {
+      "timestamp_start": "00:19:56",
+      "timestamp_end": "00:21:08",
+      "category": "Scheduling Broadcasts",
+      "tags": ["Scheduling", "Time Zones", "Predictive Mode"],
+      "summary": "Details scheduling options for broadcasts, including sending immediately, scheduling for future dates, and using predictive mode for optimal engagement.",
+      "text": "We've got an AI helper to build subject lines and so forth. We'll go through that in our second pass, there are layout tests and approval workflows. Again, we'll go through that later."
+    },
+    {
+      "timestamp_start": "00:21:08",
+      "timestamp_end": "00:22:22",
+      "category": "Scheduling Options",
+      "tags": ["Immediate Sending", "Future Scheduling", "Predictive Delivery"],
+      "summary": "Explains different scheduling options, including sending immediately, scheduling for a specific future time, and predictive delivery based on user engagement.",
+      "text": "So in this scenario we will be able to send it right now, that's what it defaults to and I can just click start now and away we go."
+    },
+    {
+      "timestamp_start": "00:22:22",
+      "timestamp_end": "00:23:03",
+      "category": "Report Overview",
+      "tags": ["Reporting", "Open Rates", "Click Rates"],
+      "summary": "Provides an overview of reporting features, including open rates, click rates, and detailed metrics.",
+      "text": "We're going to now take a look at the reports after a broadcast is. Yeah. So you can send that e-mail more than once or go back and tweak something and resend it or send it to people who didn't open or click the first time."
+    },
+    {
+      "timestamp_start": "00:23:03",
+      "timestamp_end": "00:24:53",
+      "category": "Detailed Reporting",
+      "tags": ["Detailed Metrics", "Heat Maps", "User Interaction"],
+      "summary": "Delves into detailed reporting features, including heat maps, open time charts, and user interaction metrics.",
+      "text": "View this is saying it was sent to 2400 people. Here's the open rate I got. Meaning when we use the word open nerves, that's really meaning unique number of people who opened the e-mail. So 1600 or so people out of the 2400 people opened the e-mail for a 68% open rate."
+    },
+    {
+      "timestamp_start": "00:24:53",
+      "timestamp_end": "00:26:37",
+      "category": "Advanced Reporting Features",
+      "tags": ["Advanced Reporting", "User Segmentation", "Privacy Settings"],
+      "summary": "Explains advanced reporting features, including user segmentation, privacy settings, and drill-down capabilities for in-depth analysis.",
+      "text": "But here it's showing person by person ranked and sorted from most active to least we could have drilled on these 24 and it'll show us."
+    }
+  ]
+}
