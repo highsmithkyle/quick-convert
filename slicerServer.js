@@ -49,6 +49,171 @@ app.use("/compressed", express.static(path.join(__dirname, "compressed")));
 app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
 app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
 
+// Add this route in server.js
+
+app.post("/compress-video", upload.single("video"), async (req, res) => {
+  const videoPath = req.file.path;
+  const { crf, preset, scaleWidth } = req.body;
+  let outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
+
+  // Validate inputs
+  const crfValue = parseInt(crf, 10);
+  const presetValue = preset || "medium"; // Default to 'medium' if not provided
+  const width = parseInt(scaleWidth, 10);
+
+  if (
+    isNaN(crfValue) ||
+    crfValue < 0 ||
+    crfValue > 51 ||
+    isNaN(width) ||
+    width < 320 || // Set a reasonable minimum width
+    width > 3840 // Set a reasonable maximum width
+  ) {
+    fs.unlinkSync(videoPath);
+    return res.status(400).send("Invalid compression parameters.");
+  }
+
+  // Define the FFmpeg scaling filter to scale based on width and maintain aspect ratio
+  const scalingFilter = `scale=${width}:-2`; // FFmpeg will automatically calculate height to maintain aspect ratio
+
+  // Validate preset
+  const effectivePreset = presetValue.toLowerCase();
+  const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+  if (!allowedPresets.includes(effectivePreset)) {
+    fs.unlinkSync(videoPath);
+    return res.status(400).send("Invalid preset value.");
+  }
+
+  // Build FFmpeg command with adjusted preset and scaling
+  const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${effectivePreset} -crf ${crfValue} -vf "${scalingFilter},format=yuv420p" "${outputPath}"`;
+
+  // Execute FFmpeg command
+  exec(ffmpegCommand, (error, stdout, stderr) => {
+    // Log FFmpeg output for debugging
+    console.log("FFmpeg stdout:", stdout);
+    console.log("FFmpeg stderr:", stderr);
+
+    // Delete the original uploaded video to save space
+    fs.unlinkSync(videoPath);
+
+    if (error) {
+      console.error("Error compressing video:", stderr);
+      return res.status(500).send("Failed to compress video.");
+    }
+
+    // Send the compressed video back to the client
+    res.sendFile(outputPath, (err) => {
+      if (err) {
+        console.error("Error sending compressed video:", err);
+        return res.status(500).send("Error sending compressed video.");
+      }
+
+      // Delete the compressed video after sending
+      fs.unlinkSync(outputPath);
+    });
+  });
+});
+
+// app.post("/compress-video", upload.single("video"), async (req, res) => {
+//   const videoPath = req.file.path;
+//   const { crf, preset, scaleWidth, scaleHeight } = req.body;
+//   const outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
+
+//   // Ensure 'processed' directory exists
+//   if (!fs.existsSync("processed")) {
+//     fs.mkdirSync("processed");
+//   }
+
+//   // Validate inputs
+//   const crfValue = parseInt(crf, 10);
+//   const presetValue = preset || "ultrafast";
+//   const width = parseInt(scaleWidth, 10);
+//   const height = parseInt(scaleHeight, 10);
+
+//   if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || isNaN(height)) {
+//     fs.unlinkSync(videoPath);
+//     return res.status(400).send("Invalid compression parameters.");
+//   }
+
+//   // Build ffmpeg command
+//   const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${presetValue} -crf ${crfValue} -vf "scale=${width}:${height}" "${outputPath}"`;
+
+//   exec(ffmpegCommand, (error, stdout, stderr) => {
+//     // Delete the original uploaded video to save space
+//     fs.unlinkSync(videoPath);
+
+//     if (error) {
+//       console.error("Error compressing video:", stderr);
+//       return res.status(500).send("Failed to compress video.");
+//     }
+
+//     // Send the compressed video back to the client
+//     res.sendFile(outputPath, (err) => {
+//       if (err) {
+//         console.error("Error sending compressed video:", err);
+//         return res.status(500).send("Error sending compressed video.");
+//       }
+
+//       // Delete the compressed video after sending
+//       fs.unlinkSync(outputPath);
+//     });
+//   });
+// });
+
+async function fetchChatReport() {
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - 60); // Fetch data for the last 60 days
+  const toDate = new Date();
+
+  const filters = {
+    filters: {
+      from: fromDate.toISOString(),
+      to: toDate.toISOString(),
+    },
+  };
+
+  try {
+    const response = await axios.post("https://api.livechatinc.com/v3.5/reports/chats/total_chats", filters, {
+      headers: {
+        Authorization: `Basic ${process.env.LIVECHAT_BASE64_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching chat report:", error.response?.data || error.message);
+    throw new Error("Failed to fetch chat report.");
+  }
+}
+
+// Route to fetch and export chat data
+app.get("/livechat/export", async (req, res) => {
+  try {
+    const chatReport = await fetchChatReport();
+
+    // Save the report to a JSON file
+    const fileName = `chats_report_${Date.now()}.json`;
+    const filePath = path.join(__dirname, fileName);
+
+    fs.writeFileSync(filePath, JSON.stringify(chatReport, null, 2));
+
+    // Send the file for download
+    res.download(filePath, (err) => {
+      if (err) {
+        console.error("Error sending file:", err.message);
+      } else {
+        // Delete the file after download
+        fs.unlinkSync(filePath);
+      }
+    });
+  } catch (error) {
+    console.error("Error exporting chat report:", error.message);
+    res.status(500).send("Failed to export chat report.");
+  }
+});
+
 // Use chatbot routes
 app.use("/chatbot/api", chatbotRoutes);
 
@@ -1296,7 +1461,7 @@ app.post("/compress-gif", upload.single("image"), (req, res) => {
   });
 });
 
-// ------- Compress GIF Image Using Gifsicle (Duplicate Route) ------- //
+// ------- Compress GIF Image Using Gifsicle ------- //
 app.post("/compress-gif-gifsicle", upload.single("image"), (req, res) => {
   // Get the path of the uploaded GIF image
   const imagePath = req.file.path;

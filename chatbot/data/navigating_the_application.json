@@ -1,0 +1,93 @@
+{
+  "id": "navigating_the_application",
+  "title": "Navigating The Application",
+  "video": "navigating_the_application.mp4",
+  "summary": "This video provides a detailed overview of the application's navigation system. It explains the two primary navigation areas: the top right corner for switching between multiple databases or sub-accounts, and the left-side black vertical bar for accessing various features such as Home, Create, Reports, Subscribers, and Admin. Each main navigation option contains sub-menus for more specific functions. Additionally, the video covers the Chooser feature for storing files and the process for logging out or switching between sub-accounts.",
+  "transcript": "The main navigation for the application runs along the left side of the page. In this black bar. There's different options depending on what you need to perform and each of them has its own menu of further options, so starting at the top the home button will bring you back to this dashboard page. The create menu, anything that has to do with creating content will live here. So that's project view where you build and send emails, sms, microsites, video and dynamic tags contains tools like video, countdown clocks or image carousels. Next is templates where you build your email templates, next is calendar invites, then forms, then surveys, then polls then quizzes. All of that will live inside the create menu. Next button down is reports where there are multiple different types of reports for you to use. The next option down is Subs, so that's our subscribers. Anything that we need to do to manage our audience would be in this menu and then admin is the last main option here and this is just settings. In the bottom left we see the chooser and the chooser is where you can store all of the files that you might need to use in your emails. So that's your images and word documents and PDFs and other files like that. Further down is a button to access to help resources. And then a log out option. If you happen to be in an account that has multiple sub accounts. You can toggle between those sub accounts in the very top right of the app, so here you'll find your company name and then your sub accounts if you. Click. On the one that you see visible, this is the one I'm currently inside of. I can click that and see the list of other sub accounts that I can switch into it.",
+  "tags": ["navigation"],
+  "qa_pairs": [
+    {
+      "question": "How do I toggle between different databases in the application?",
+      "answer": "To toggle between different databases or sub-accounts, go to the top right corner of the application where your company name is displayed. Click on it to see a list of available sub-accounts and select the one you wish to switch to.",
+      "variations": [
+        "How can I switch databases within the app?",
+        "Where can I change between databases?",
+        "What's the method to toggle databases in the application?",
+        "How do I alternate between multiple databases?",
+        "How to switch from one database to another?"
+      ]
+    },
+    {
+      "question": "Where is the main navigation bar located in the application?",
+      "answer": "The main navigation bar is located on the left side of the application page within a black vertical bar.",
+      "variations": [
+        "Where can I find the primary navigation bar?",
+        "Location of the main nav bar in the app?",
+        "Where does the main navigation run in the application?",
+        "How to locate the main navigation bar?",
+        "Where is the primary navigation situated?"
+      ]
+    },
+    {
+      "question": "What options are available under the Create menu?",
+      "answer": "Under the Create menu, you can find options such as Project View for building and sending emails, SMS, microsites, and videos. It also includes Dynamic Tags with tools like video countdown clocks and image carousels, Templates for building email templates, Calendar Invites, Forms, Surveys, Polls, and Quizzes.",
+      "variations": [
+        "Which features are listed in the Create menu?",
+        "What can I find in the Create section?",
+        "Options available when I click Create?",
+        "What does the Create menu include?",
+        "What are the tools under Create?"
+      ]
+    },
+    {
+      "question": "How do I access the reports section in the application?",
+      "answer": "To access the Reports section, click on the Reports button located below the Create menu in the main navigation bar. This section offers multiple types of reports for your use.",
+      "variations": [
+        "Where can I find the reports menu?",
+        "How to navigate to the reports section?",
+        "Accessing reports in the app?",
+        "Where is the reports option located?",
+        "How do I open the reports area?"
+      ]
+    },
+    {
+      "question": "What is the Chooser used for in the application?",
+      "answer": "The Chooser is used to store all the files you might need for your emails, such as images, Word documents, PDFs, and other files.",
+      "variations": ["Purpose of the Chooser in the app?", "How do I use the Chooser?", "What can I store in the Chooser?", "What is the Chooser feature for?", "How does the Chooser work?"]
+    },
+
+    {
+      "question": "What options are available under the Subscribers menu?",
+      "answer": "Under the Subscribers menu, you can manage your audience. This includes tasks related to managing your subscriber lists and related audience management functions.",
+      "variations": [
+        "What can I do in the Subscribers section?",
+        "Features under Subscribers in the app?",
+        "What does the Subscribers menu offer?",
+        "Options available when accessing Subscribers?",
+        "What are the tools in the Subscribers menu?"
+      ]
+    },
+    {
+      "question": "How do I access help resources in the application?",
+      "answer": "To access help resources, click the Help button located towards the bottom of the main navigation bar. This will provide you with access to various support materials and resources.",
+      "variations": ["Where can I find help resources?", "How to open help in the app?", "Accessing support resources?", "Where is the help button located?", "How do I get to the help section?"]
+    },
+    {
+      "question": "What functionalities are available in the Admin section?",
+      "answer": "The Admin section primarily contains settings where you can configure various aspects of your account. This includes managing account preferences, user permissions, and other administrative settings.",
+      "variations": [
+        "Where can I find more help information",
+        "What can I do in the Admin menu?",
+        "Features under Admin in the app?",
+        "What does the Admin section include?",
+        "Options available in Admin?",
+        "What settings are managed in Admin?"
+      ]
+    },
+    {
+      "question": "How can I log out of the application?",
+      "answer": "To log out of the application, click the Log Out option located at the bottom of the main navigation bar.",
+      "variations": ["What is the process to log out?", "Where is the logout option?", "How do I sign out of the app?", "Steps to log out from the application?", "How to exit my account?"]
+    }
+  ]
+}

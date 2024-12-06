@@ -1,4 +1,4 @@
-#!/Users/kyle/Desktop/FFMPEG_GIF_Slicer/venv/bin/python3.12
+#!/Users/kyle/Desktop/FFMPEG_GIF_Slicer/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video Compression Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Add favicon if available to prevent 404 errors -->
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="/images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <h2>Video Compress</h2>
+      <form id="uploadFormVideoCompression" enctype="multipart/form-data" method="post">
+        <div class="form-group">
+          <label for="video">Upload Video (MP4):</label>
+          <input type="file" id="video" name="video" accept="video/mp4" required />
+        </div>
+
+        <div class="overlay-group" id="compressionOptionsSection" style="display: none">
+          <div class="form-group">
+            <label for="crf">Compression Quality (Higher = more compression):</label>
+            <input type="range" id="crf" name="crf" min="0" max="51" value="28" style="width: 80%; padding-top: 10px" />
+            <span style="padding-bottom: 10px" id="crf_display">28</span>
+          </div>
+
+          <div class="form-group">
+            <label for="preset">Speed (slower = more compression):</label>
+            <select id="preset" name="preset">
+              <option value="ultrafast">Ultrafast</option>
+              <option value="superfast">Superfast</option>
+              <option value="veryfast">Very Fast</option>
+              <option value="faster">Faster</option>
+              <option value="fast">Fast</option>
+              <option value="medium" selected>Medium</option>
+              <option value="slow">Slow</option>
+              <option value="slower">Slower</option>
+              <option value="veryslow">Very Slow</option>
+              <option value="placebo">Placebo</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="scaleWidth">Scale Width (px):</label>
+            <input type="number" id="scaleWidth" name="scaleWidth" min="320" max="3840" value="1280" />
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Compress Video</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Video</h3>
+            <span id="uploadedVideoDimensions" class="video-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedVideoSize" class="video-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <video id="uploadedVideo" controls width="400">
+            <source src="" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Compressed Video</h3>
+            <span id="compressedVideoDimensions" class="video-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="compressedVideoSize" class="video-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+            <div id="inlineDownloadButtonContainer" class="inline-download-button-container" style="display: none">
+              <a id="inlineDownloadButton" class="inline-download-button">Download</a>
+            </div>
+          </div>
+          <video id="processedVideo" controls width="400">
+            <source src="" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
+
+    <script src="video-compression.js"></script>
+  </body>
+</html>

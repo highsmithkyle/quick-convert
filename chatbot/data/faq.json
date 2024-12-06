@@ -1,0 +1,18 @@
+[
+  {
+    "question": "What options are available under the Create menu?",
+    "answer": "Under the Create menu, you can find options such as Project View for building and sending emails, SMS, microsites, and videos. It also includes Dynamic Tags with tools like video countdown clocks and image carousels, Templates for building email templates, Calendar Invites, Forms, Surveys, Polls, and Quizzes.",
+    "variations": [
+      "Which features are listed in the Create menu?",
+      "What can I find in the Create section?",
+      "Options available when I click Create?",
+      "What does the Create menu include?",
+      "What are the tools under Create?"
+    ]
+  },
+  {
+    "question": "How do I access help resources in the application?",
+    "answer": "To access help resources, click the Help button located towards the bottom of the main navigation bar. This will provide you with access to various support materials and resources.",
+    "variations": ["Where can I find help resources?", "How to open help in the app?", "Accessing support resources?", "Where is the help button located?", "How do I get to the help section?"]
+  }
+]

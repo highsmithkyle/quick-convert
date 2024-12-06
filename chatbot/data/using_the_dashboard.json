@@ -1,0 +1,101 @@
+{
+  "id": "using_the_dashboard",
+  "title": "Using The Dashboard",
+  "video": "using_the_dashboard.mp4",
+  "summary": "This video provides an in-depth look at the Dashboard, the first page you see upon logging into the application. It highlights key components such as the broadcast calendar, broadcast results, projects and latest editions, announcements, support contact information, a floating chat icon, broadcast performance charts, and active subscriber statistics. These elements offer valuable insights and quick access to various features within the application.",
+  "transcript": "Your dashboard can give you lots of helpful data points about how things are going in your account. In the top left is the broadcast calendar, which gives you a visual representation of the current month and how many broadcasts are scheduled to be sent or have been sent in the past you can see. On May the 15th, there is a blue number which shows the number of broadcasts on that day. Under that are the broadcast results, which displays the five most recently sent mails broadcasted emails and they will be listed out here in reverse chronological order and you can quickly see the name, the date, how many mails were sent, and then click the little graph icon to quickly get to the broadcast summary report for that broadcast. The next block down in the bottom left are projects and latest editions, so these are the most recently created emails in your account, so this is what you are most recently working on so you can quickly send yourself a test or get to those emails you're working on. Up in the top right, you'll see any sort of announcements that we feel you need to know about. They'll be shown in this box and you can click this to get more information. There's also support contact information if you need to get a hold of someone for help. There's also e-mail and then phone call. In the bottom left corner of the screen is the floating chat icon. Under the contact information is a broadcast chart of the last 10 broadcasts and the open and click rate for each of those, so you can see you'll have a line graph, and then finally below in the bottom right is the active subscribers is similarly a line graph, but it shows you month over month. What percentage of all of your subscribers are active in any given month.",
+  "tags": ["navigation"],
+  "qa_pairs": [
+    {
+      "question": "What is the broadcast calendar?",
+      "answer": "The broadcast calendar provides a visual representation of the current month, showing the number of broadcasts scheduled to be sent or those that have been sent in the past. For example, on May 15th, a blue number indicates the number of broadcasts on that specific day.",
+      "variations": [
+        "How does the broadcast calendar display data?",
+        "What can I see in the broadcast calendar?",
+        "What information does the broadcast calendar on the dashboard provide?",
+        "Details shown in the broadcast calendar?",
+        "What does the broadcast calendar show?",
+        "Information provided by the broadcast calendar?"
+      ]
+    },
+
+    {
+      "question": "Where can I find announcements on the dashboard?",
+      "answer": "Announcements can be found in the top right corner of the dashboard within a dedicated box. This area displays any important updates or notifications, and you can click on them to get more detailed information.",
+      "variations": [
+        "How to access announcements in the dashboard?",
+        "Location of announcement notifications?",
+        "Where are the dashboard announcements displayed?",
+        "How do I view announcements on the dashboard?",
+        "Where does the dashboard show announcements?"
+      ]
+    },
+    {
+      "question": "How can I contact support from the dashboard?",
+      "answer": "Support contact information is available on the dashboard. You can reach out via email or phone call using the provided contact details. Additionally, there's a floating chat icon in the bottom left corner for instant assistance.",
+      "variations": [
+        "Where is the support contact information located?",
+        "How to reach support through the dashboard?",
+        "Accessing support contact details?",
+        "Where can I find support options on the dashboard?",
+        "How do I get support from the dashboard?"
+      ]
+    },
+    {
+      "question": "What does the floating chat icon do on the dashboard?",
+      "answer": "The floating chat icon located in the bottom left corner of the dashboard allows you to engage in real-time conversations with support representatives for immediate assistance.",
+      "variations": [
+        "Purpose of the floating chat icon?",
+        "How to use the floating chat on the dashboard?",
+        "What is the function of the floating chat icon?",
+        "How does the floating chat icon work?",
+        "What can I do with the floating chat icon?"
+      ]
+    },
+    {
+      "question": "What information is shown in the broadcast chart?",
+      "answer": "The broadcast chart displays data from the last 10 broadcasts, including open rates and click rates for each. This is presented in a line graph format, allowing you to analyze the performance trends of your broadcasts.",
+      "variations": [
+        "Details displayed in the broadcast chart?",
+        "What does the broadcast chart illustrate?",
+        "What data is available in the broadcast chart?",
+        "How is information presented in the broadcast chart?",
+        "What metrics are shown in the broadcast chart?"
+      ]
+    },
+    {
+      "question": "How does the active subscribers graph represent data?",
+      "answer": "The active subscribers graph, located in the bottom right corner, is a line graph that shows the percentage of active subscribers month over month. It provides insights into subscriber engagement and trends over time.",
+      "variations": [
+        "What is the active subscribers graph?",
+        "What does the active subscribers graph show?",
+        "How is active subscriber data displayed?",
+        "Details of the active subscribers graph?",
+        "What information is in the active subscribers chart?",
+        "How to interpret the active subscribers graph?"
+      ]
+    },
+    {
+      "question": "Can I access the broadcast summary report from the dashboard?",
+      "answer": "Yes, you can access the broadcast summary report directly from the broadcast results section. Click on the little graph icon next to a specific broadcast to open its summary report.",
+      "variations": [
+        "How to reach the broadcast summary report?",
+        "Accessing broadcast summary from the dashboard?",
+        "Where is the broadcast summary report located?",
+        "How do I view the broadcast summary report?",
+        "Can the broadcast summary report be found on the dashboard?"
+      ]
+    },
+    {
+      "question": "What types of support are available through the dashboard?",
+      "answer": "Through the dashboard, support is available via email and phone call. Additionally, the floating chat icon provides instant chat support for real-time assistance.",
+      "variations": [
+        "What support options can I find on the dashboard?",
+        "Types of support provided in the dashboard?",
+        "What kind of support is accessible via the dashboard?",
+        "Support methods available on the dashboard?",
+        "What assistance can I get from the dashboard?"
+      ]
+    }
+  ]
+}
