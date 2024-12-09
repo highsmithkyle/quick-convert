@@ -108,6 +108,11 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
 
   let ffmpegStderr = "";
 
+  // Capture FFmpeg stdout
+  ffmpeg.stdout.on("data", (data) => {
+    console.log(`[FFmpeg STDOUT]: ${data}`);
+  });
+
   // Capture FFmpeg stderr
   ffmpeg.stderr.on("data", (data) => {
     ffmpegStderr += data.toString();
@@ -137,33 +142,17 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
 
     console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
 
-    // Set headers for file download
-    res.setHeader("Content-Type", "video/mp4");
-    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(outputPath)}"`);
-    res.setHeader("Connection", "keep-alive");
-
-    // Create read stream and pipe to response
-    const readStream = fs.createReadStream(outputPath);
-
-    readStream.pipe(res);
-
-    readStream.on("close", () => {
+    // Use res.download to send the file
+    res.download(outputPath, `compressed_${Date.now()}.mp4`, (err) => {
+      if (err) {
+        console.error("[ERROR] Error sending compressed video:", err.message);
+        return;
+      }
       console.log("[INFO] Compressed video sent successfully.");
       // Delete the compressed video file after sending
       fs.unlink(outputPath, (err) => {
         if (err) console.error(`[ERROR] Failed to delete compressed video: ${err.message}`);
       });
-    });
-
-    readStream.on("error", (err) => {
-      console.error("[ERROR] Error sending compressed video:", err.message);
-      // Attempt to delete the compressed video file
-      if (fs.existsSync(outputPath)) {
-        fs.unlink(outputPath, (unlinkErr) => {
-          if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
-        });
-      }
-      res.status(500).send("Error sending compressed video.");
     });
   });
 
