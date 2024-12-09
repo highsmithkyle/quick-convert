@@ -59,6 +59,7 @@ const server = app.listen(3000, "0.0.0.0", () => {
   console.log("Server running on port 3000");
 });
 server.timeout = 600000; // Increased server timeout
+server.keepAliveTimeout = 600000;
 
 app.post("/compress-video", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
@@ -79,51 +80,27 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
     console.error("[ERROR] Invalid compression parameters.");
     fs.unlink(videoPath, (err) => {
       if (err) console.error("[ERROR] Failed to delete original video:", err);
-      return res.status(400).send("Invalid compression parameters.");
     });
-    return;
+    return res.status(400).send("Invalid compression parameters.");
   }
 
   const scalingFilter = `scale=${width}:-2`;
-  const ffmpegArgs = [
-    "-i",
-    videoPath,
-    "-vcodec",
-    "libx264",
-    "-preset",
-    presetValue,
-    "-crf",
-    crfValue.toString(),
-    "-vf",
-    `${scalingFilter},format=yuv420p`,
-    "-movflags",
-    "faststart", // For better streaming
-    outputPath,
-  ];
+  const ffmpegArgs = ["-i", videoPath, "-vcodec", "libx264", "-preset", presetValue, "-crf", crfValue.toString(), "-vf", `${scalingFilter},format=yuv420p`, "-movflags", "faststart", outputPath];
 
   console.log("[INFO] Executing FFmpeg command:", `ffmpeg ${ffmpegArgs.join(" ")}`);
 
-  // Spawn FFmpeg process
   const ffmpeg = spawn("ffmpeg", ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
   let ffmpegStderr = "";
 
-  // Capture FFmpeg stdout
-  ffmpeg.stdout.on("data", (data) => {
-    console.log(`[FFmpeg STDOUT]: ${data}`);
-  });
-
-  // Capture FFmpeg stderr
   ffmpeg.stderr.on("data", (data) => {
     ffmpegStderr += data.toString();
     console.error(`[FFmpeg STDERR]: ${data}`);
   });
 
-  // Handle FFmpeg process completion
   ffmpeg.on("close", (code) => {
     console.log(`[FFmpeg] Process exited with code ${code}`);
 
-    // Delete original video file
     fs.unlink(videoPath, (err) => {
       if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
     });
@@ -131,7 +108,6 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
     if (code !== 0) {
       console.error(`[ERROR] FFmpeg failed with code ${code}`);
       console.error(`[FFmpeg STDERR]: ${ffmpegStderr}`);
-      // Delete output file if it exists
       if (fs.existsSync(outputPath)) {
         fs.unlink(outputPath, (err) => {
           if (err) console.error(`[ERROR] Failed to delete output file: ${err.message}`);
@@ -142,97 +118,23 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
 
     console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
 
-    // Use res.download to send the file
-    res.download(outputPath, `compressed_${Date.now()}.mp4`, (err) => {
+    res.sendFile(outputPath, (err) => {
       if (err) {
         console.error("[ERROR] Error sending compressed video:", err.message);
-        return;
+      } else {
+        console.log("[INFO] Compressed video sent successfully.");
       }
-      console.log("[INFO] Compressed video sent successfully.");
-      // Delete the compressed video file after sending
-      fs.unlink(outputPath, (err) => {
-        if (err) console.error(`[ERROR] Failed to delete compressed video: ${err.message}`);
+      fs.unlink(outputPath, (unlinkErr) => {
+        if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
       });
     });
   });
 
-  // Handle FFmpeg errors
-  ffmpeg.on("error", (err) => {
-    console.error("[ERROR] FFmpeg process error:", err.message);
-    // Delete original and output files if they exist
-    if (fs.existsSync(videoPath)) {
-      fs.unlink(videoPath, (unlinkErr) => {
-        if (unlinkErr) console.error(`[ERROR] Failed to delete original video: ${unlinkErr.message}`);
-      });
-    }
-    if (fs.existsSync(outputPath)) {
-      fs.unlink(outputPath, (unlinkErr) => {
-        if (unlinkErr) console.error(`[ERROR] Failed to delete output file: ${unlinkErr.message}`);
-      });
-    }
-    res.status(500).send("Failed to compress video due to FFmpeg error.");
-  });
-
-  // Handle client disconnect
   req.on("close", () => {
     console.warn("[WARNING] Client disconnected before response was sent.");
-    ffmpeg.kill("SIGKILL"); // Force kill FFmpeg process
+    ffmpeg.kill("SIGKILL");
   });
 });
-
-async function fetchChatReport() {
-  const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - 60); // Fetch data for the last 60 days
-  const toDate = new Date();
-
-  const filters = {
-    filters: {
-      from: fromDate.toISOString(),
-      to: toDate.toISOString(),
-    },
-  };
-
-  try {
-    const response = await axios.post("https://api.livechatinc.com/v3.5/reports/chats/total_chats", filters, {
-      headers: {
-        Authorization: `Basic ${process.env.LIVECHAT_BASE64_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching chat report:", error.response?.data || error.message);
-    throw new Error("Failed to fetch chat report.");
-  }
-}
-
-// Route to fetch and export chat data
-app.get("/livechat/export", async (req, res) => {
-  try {
-    const chatReport = await fetchChatReport();
-
-    // Save the report to a JSON file
-    const fileName = `chats_report_${Date.now()}.json`;
-    const filePath = path.join(__dirname, fileName);
-
-    fs.writeFileSync(filePath, JSON.stringify(chatReport, null, 2));
-
-    // Send the file for download
-    res.download(filePath, (err) => {
-      if (err) {
-        console.error("Error sending file:", err.message);
-      } else {
-        // Delete the file after download
-        fs.unlinkSync(filePath);
-      }
-    });
-  } catch (error) {
-    console.error("Error exporting chat report:", error.message);
-    res.status(500).send("Failed to export chat report.");
-  }
-});
-
 // Use chatbot routes
 app.use("/chatbot/api", chatbotRoutes);
 
