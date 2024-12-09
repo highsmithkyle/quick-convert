@@ -54,7 +54,10 @@ app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "publi
 app.post("/compress-video", upload.single("video"), async (req, res) => {
   const videoPath = req.file.path;
   const { crf, preset, scaleWidth } = req.body;
-  let outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
+  const outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
+
+  console.log(`[INFO] Received request to compress video: ${videoPath}`);
+  console.log(`[INFO] Compression Parameters - CRF: ${crf}, Preset: ${preset}, Scale Width: ${scaleWidth}`);
 
   // Validate inputs
   const crfValue = parseInt(crf, 10);
@@ -69,77 +72,121 @@ app.post("/compress-video", upload.single("video"), async (req, res) => {
     width < 320 || // Set a reasonable minimum width
     width > 3840 // Set a reasonable maximum width
   ) {
+    console.error(`[ERROR] Invalid compression parameters - CRF: ${crfValue}, Width: ${width}`);
     fs.unlinkSync(videoPath);
     return res.status(400).send("Invalid compression parameters.");
   }
 
+  console.log(`[INFO] Valid compression parameters. CRF: ${crfValue}, Preset: ${presetValue}, Width: ${width}`);
+
   // Define the FFmpeg scaling filter to scale based on width and maintain aspect ratio
-  const scalingFilter = `scale=${width}:-2`; // FFmpeg will automatically calculate height to maintain aspect ratio
+  const scalingFilter = `scale=${width}:-2`;
+  console.log(`[INFO] Scaling filter: ${scalingFilter}`);
 
   // Validate preset
   const effectivePreset = presetValue.toLowerCase();
   const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
 
   if (!allowedPresets.includes(effectivePreset)) {
+    console.error(`[ERROR] Invalid preset value: ${effectivePreset}`);
     fs.unlinkSync(videoPath);
     return res.status(400).send("Invalid preset value.");
   }
 
+  console.log(`[INFO] Using FFmpeg preset: ${effectivePreset}`);
+
   // Build FFmpeg command with adjusted preset and scaling
   const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${effectivePreset} -crf ${crfValue} -vf "${scalingFilter},format=yuv420p" "${outputPath}"`;
 
-  // Execute FFmpeg command
-  exec(ffmpegCommand, (error, stdout, stderr) => {
-    // Log FFmpeg output for debugging
-    console.log("FFmpeg stdout:", stdout);
-    console.log("FFmpeg stderr:", stderr);
+  console.log(`[INFO] Executing FFmpeg command: ${ffmpegCommand}`);
+
+  // Execute FFmpeg command with a 10-minute timeout (600,000 ms)
+  exec(ffmpegCommand, { timeout: 600000 }, (error, stdout, stderr) => {
+    console.log(`[INFO] FFmpeg stdout: ${stdout}`);
+    console.log(`[INFO] FFmpeg stderr: ${stderr}`);
 
     // Delete the original uploaded video to save space
-    fs.unlinkSync(videoPath);
+    try {
+      fs.unlinkSync(videoPath);
+      console.log(`[INFO] Deleted original uploaded video: ${videoPath}`);
+    } catch (unlinkErr) {
+      console.error(`[ERROR] Failed to delete original video: ${unlinkErr}`);
+    }
 
     if (error) {
-      console.error("Error compressing video:", stderr);
+      if (error.killed) {
+        console.error(`[ERROR] FFmpeg process timed out.`);
+        return res.status(500).send("Compression process timed out.");
+      }
+      console.error(`[ERROR] Error compressing video: ${stderr}`);
       return res.status(500).send("Failed to compress video.");
     }
+
+    console.log(`[INFO] Compression successful. Sending compressed video: ${outputPath}`);
 
     // Send the compressed video back to the client
     res.sendFile(outputPath, (err) => {
       if (err) {
-        console.error("Error sending compressed video:", err);
+        console.error(`[ERROR] Error sending compressed video: ${err}`);
         return res.status(500).send("Error sending compressed video.");
       }
 
+      console.log(`[INFO] Compressed video sent successfully: ${outputPath}`);
+
       // Delete the compressed video after sending
-      fs.unlinkSync(outputPath);
+      try {
+        fs.unlinkSync(outputPath);
+        console.log(`[INFO] Deleted compressed video: ${outputPath}`);
+      } catch (unlinkErr) {
+        console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr}`);
+      }
     });
   });
 });
 
 // app.post("/compress-video", upload.single("video"), async (req, res) => {
 //   const videoPath = req.file.path;
-//   const { crf, preset, scaleWidth, scaleHeight } = req.body;
-//   const outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
-
-//   // Ensure 'processed' directory exists
-//   if (!fs.existsSync("processed")) {
-//     fs.mkdirSync("processed");
-//   }
+//   const { crf, preset, scaleWidth } = req.body;
+//   let outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
 
 //   // Validate inputs
 //   const crfValue = parseInt(crf, 10);
-//   const presetValue = preset || "ultrafast";
+//   const presetValue = preset || "medium"; // Default to 'medium' if not provided
 //   const width = parseInt(scaleWidth, 10);
-//   const height = parseInt(scaleHeight, 10);
 
-//   if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || isNaN(height)) {
+//   if (
+//     isNaN(crfValue) ||
+//     crfValue < 0 ||
+//     crfValue > 51 ||
+//     isNaN(width) ||
+//     width < 320 || // Set a reasonable minimum width
+//     width > 3840 // Set a reasonable maximum width
+//   ) {
 //     fs.unlinkSync(videoPath);
 //     return res.status(400).send("Invalid compression parameters.");
 //   }
 
-//   // Build ffmpeg command
-//   const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${presetValue} -crf ${crfValue} -vf "scale=${width}:${height}" "${outputPath}"`;
+//   // Define the FFmpeg scaling filter to scale based on width and maintain aspect ratio
+//   const scalingFilter = `scale=${width}:-2`; // FFmpeg will automatically calculate height to maintain aspect ratio
 
+//   // Validate preset
+//   const effectivePreset = presetValue.toLowerCase();
+//   const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+//   if (!allowedPresets.includes(effectivePreset)) {
+//     fs.unlinkSync(videoPath);
+//     return res.status(400).send("Invalid preset value.");
+//   }
+
+//   // Build FFmpeg command with adjusted preset and scaling
+//   const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${effectivePreset} -crf ${crfValue} -vf "${scalingFilter},format=yuv420p" "${outputPath}"`;
+
+//   // Execute FFmpeg command
 //   exec(ffmpegCommand, (error, stdout, stderr) => {
+//     // Log FFmpeg output for debugging
+//     console.log("FFmpeg stdout:", stdout);
+//     console.log("FFmpeg stderr:", stderr);
+
 //     // Delete the original uploaded video to save space
 //     fs.unlinkSync(videoPath);
 
