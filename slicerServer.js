@@ -20,6 +20,8 @@ const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
 
 const sharp = require("sharp");
 
+const processedDir = path.join(__dirname, "processed");
+
 // Google Cloud setup
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
 const speechClient = new speech.SpeechClient();
