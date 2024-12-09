@@ -51,6 +51,11 @@ app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "publi
 
 // Add this route in server.js
 
+const server = app.listen(3000, "0.0.0.0", () => {
+  console.log("Server running on port 3000");
+});
+server.timeout = 600000; // Increased server timeout
+
 app.post("/compress-video", upload.single("video"), async (req, res) => {
   const videoPath = req.file.path;
   const { crf, preset, scaleWidth } = req.body;
@@ -101,86 +106,33 @@ app.post("/compress-video", upload.single("video"), async (req, res) => {
 
     console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
 
-    res.sendFile(outputPath, (err) => {
-      if (err) {
-        console.error("[ERROR] Error sending compressed video:", err.message);
-        return res.status(500).send("Error sending compressed video.");
-      }
+    // Ensure larger files can be sent by setting appropriate headers
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(outputPath)}"`);
+    res.setHeader("Connection", "keep-alive"); // Keep the connection alive for long transfers
+
+    // Create a read stream for sending the file
+    const readStream = fs.createReadStream(outputPath);
+
+    readStream.pipe(res);
+
+    readStream.on("close", () => {
       console.log("[INFO] Compressed video sent successfully.");
       fs.unlinkSync(outputPath); // Clean up compressed video
     });
+
+    readStream.on("error", (err) => {
+      console.error("[ERROR] Error sending compressed video:", err.message);
+      res.status(500).send("Error sending compressed video.");
+    });
   });
 
+  // Handle client disconnect during processing
   req.on("close", () => {
     console.warn("[WARNING] Client disconnected before response was sent.");
     ffmpegProcess.kill(); // Kill FFmpeg process if the client disconnects
   });
 });
-
-// app.post("/compress-video", upload.single("video"), async (req, res) => {
-//   const videoPath = req.file.path;
-//   const { crf, preset, scaleWidth } = req.body;
-//   let outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
-
-//   // Validate inputs
-//   const crfValue = parseInt(crf, 10);
-//   const presetValue = preset || "medium"; // Default to 'medium' if not provided
-//   const width = parseInt(scaleWidth, 10);
-
-//   if (
-//     isNaN(crfValue) ||
-//     crfValue < 0 ||
-//     crfValue > 51 ||
-//     isNaN(width) ||
-//     width < 320 || // Set a reasonable minimum width
-//     width > 3840 // Set a reasonable maximum width
-//   ) {
-//     fs.unlinkSync(videoPath);
-//     return res.status(400).send("Invalid compression parameters.");
-//   }
-
-//   // Define the FFmpeg scaling filter to scale based on width and maintain aspect ratio
-//   const scalingFilter = `scale=${width}:-2`; // FFmpeg will automatically calculate height to maintain aspect ratio
-
-//   // Validate preset
-//   const effectivePreset = presetValue.toLowerCase();
-//   const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
-
-//   if (!allowedPresets.includes(effectivePreset)) {
-//     fs.unlinkSync(videoPath);
-//     return res.status(400).send("Invalid preset value.");
-//   }
-
-//   // Build FFmpeg command with adjusted preset and scaling
-//   const ffmpegCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ${effectivePreset} -crf ${crfValue} -vf "${scalingFilter},format=yuv420p" "${outputPath}"`;
-
-//   // Execute FFmpeg command
-//   exec(ffmpegCommand, (error, stdout, stderr) => {
-//     // Log FFmpeg output for debugging
-//     console.log("FFmpeg stdout:", stdout);
-//     console.log("FFmpeg stderr:", stderr);
-
-//     // Delete the original uploaded video to save space
-//     fs.unlinkSync(videoPath);
-
-//     if (error) {
-//       console.error("Error compressing video:", stderr);
-//       return res.status(500).send("Failed to compress video.");
-//     }
-
-//     // Send the compressed video back to the client
-//     res.sendFile(outputPath, (err) => {
-//       if (err) {
-//         console.error("Error sending compressed video:", err);
-//         return res.status(500).send("Error sending compressed video.");
-//       }
-
-//       // Delete the compressed video after sending
-//       fs.unlinkSync(outputPath);
-//     });
-//   });
-// });
-
 async function fetchChatReport() {
   const fromDate = new Date();
   fromDate.setDate(fromDate.getDate() - 60); // Fetch data for the last 60 days
@@ -2493,7 +2445,3 @@ setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
 // app.get("/", (req, res) => {
 //   res.sendFile(path.join(__dirname, "views", "3d-animation.html"));
 // });
-
-app.listen(3000, "0.0.0.0", () => {
-  console.log(`Server running on port 3000`);
-});
