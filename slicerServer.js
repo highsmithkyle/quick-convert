@@ -14,6 +14,8 @@ const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
 const Vibrant = require("node-vibrant");
 
+const { spawn } = require("child_process");
+
 const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
 
 const sharp = require("sharp");
@@ -56,94 +58,134 @@ const server = app.listen(3000, "0.0.0.0", () => {
 });
 server.timeout = 600000; // Increased server timeout
 
-app.post("/compress-video", upload.single("video"), async (req, res) => {
+app.post("/compress-video", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
   const { crf, preset, scaleWidth } = req.body;
-  const outputPath = path.join(__dirname, "processed", `compressed_${Date.now()}.mp4`);
+  const outputPath = path.join(processedDir, `compressed_${Date.now()}.mp4`);
 
   console.log("[INFO] Received video for compression:", videoPath);
   console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth });
 
   // Validate inputs
   const crfValue = parseInt(crf, 10);
-  const presetValue = preset || "medium";
+  const presetValue = (preset || "medium").toLowerCase();
   const width = parseInt(scaleWidth, 10);
 
-  if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840) {
+  const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+  if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840 || !allowedPresets.includes(presetValue)) {
     console.error("[ERROR] Invalid compression parameters.");
-    await unlinkAsync(videoPath);
-    return res.status(400).send("Invalid compression parameters.");
+    fs.unlink(videoPath, (err) => {
+      if (err) console.error("[ERROR] Failed to delete original video:", err);
+      return res.status(400).send("Invalid compression parameters.");
+    });
+    return;
   }
 
   const scalingFilter = `scale=${width}:-2`;
-  const effectivePreset = presetValue.toLowerCase();
-  const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+  const ffmpegArgs = [
+    "-i",
+    videoPath,
+    "-vcodec",
+    "libx264",
+    "-preset",
+    presetValue,
+    "-crf",
+    crfValue.toString(),
+    "-vf",
+    `${scalingFilter},format=yuv420p`,
+    "-movflags",
+    "faststart", // For better streaming
+    outputPath,
+  ];
 
-  if (!allowedPresets.includes(effectivePreset)) {
-    console.error("[ERROR] Invalid preset value.");
-    await unlinkAsync(videoPath);
-    return res.status(400).send("Invalid preset value.");
-  }
+  console.log("[INFO] Executing FFmpeg command:", `ffmpeg ${ffmpegArgs.join(" ")}`);
 
-  const ffmpegCommand = `ffmpeg -loglevel error -i "${videoPath}" -vcodec libx264 -preset ${effectivePreset} -crf ${crfValue} -vf "${scalingFilter},format=yuv420p" "${outputPath}"`;
+  // Spawn FFmpeg process
+  const ffmpeg = spawn("ffmpeg", ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
-  console.log("[INFO] Executing FFmpeg command:", ffmpegCommand);
+  let ffmpegStderr = "";
 
-  const ffmpegProcess = exec(ffmpegCommand, { timeout: 600000 }, async (error, stdout, stderr) => {
-    if (stderr) {
-      console.error("[FFmpeg STDERR]:", stderr);
-    }
-
-    try {
-      await unlinkAsync(videoPath); // Delete the original video after processing
-
-      if (error) {
-        if (error.killed) {
-          console.error("[ERROR] Compression process timed out.");
-          return res.status(500).send("Compression process timed out.");
-        }
-        console.error("[ERROR] Error compressing video:", error.message);
-        return res.status(500).send(`Failed to compress video: ${error.message}`);
-      }
-
-      console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
-
-      // Set headers for large file transfer
-      res.setHeader("Content-Type", "video/mp4");
-      res.setHeader("Content-Disposition", `attachment; filename="${path.basename(outputPath)}"`);
-      res.setHeader("Connection", "keep-alive");
-
-      const readStream = fs.createReadStream(outputPath);
-      readStream.pipe(res);
-
-      readStream.on("close", async () => {
-        console.log("[INFO] Compressed video sent successfully.");
-        await unlinkAsync(outputPath); // Clean up the compressed video file
-      });
-
-      readStream.on("error", async (err) => {
-        console.error("[ERROR] Error sending compressed video:", err.message);
-        await unlinkAsync(outputPath);
-        res.status(500).send("Error sending compressed video.");
-      });
-    } catch (cleanupError) {
-      console.error("[ERROR] Cleanup error:", cleanupError.message);
-    }
-  });
-
-  // Real-time logging of FFmpeg output
-  ffmpegProcess.stdout.on("data", (data) => {
-    console.log(`[FFmpeg STDOUT]: ${data}`);
-  });
-
-  ffmpegProcess.stderr.on("data", (data) => {
+  // Capture FFmpeg stderr
+  ffmpeg.stderr.on("data", (data) => {
+    ffmpegStderr += data.toString();
     console.error(`[FFmpeg STDERR]: ${data}`);
+  });
+
+  // Handle FFmpeg process completion
+  ffmpeg.on("close", (code) => {
+    console.log(`[FFmpeg] Process exited with code ${code}`);
+
+    // Delete original video file
+    fs.unlink(videoPath, (err) => {
+      if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
+    });
+
+    if (code !== 0) {
+      console.error(`[ERROR] FFmpeg failed with code ${code}`);
+      console.error(`[FFmpeg STDERR]: ${ffmpegStderr}`);
+      // Delete output file if it exists
+      if (fs.existsSync(outputPath)) {
+        fs.unlink(outputPath, (err) => {
+          if (err) console.error(`[ERROR] Failed to delete output file: ${err.message}`);
+        });
+      }
+      return res.status(500).send("Failed to compress video.");
+    }
+
+    console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
+
+    // Set headers for file download
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(outputPath)}"`);
+    res.setHeader("Connection", "keep-alive");
+
+    // Create read stream and pipe to response
+    const readStream = fs.createReadStream(outputPath);
+
+    readStream.pipe(res);
+
+    readStream.on("close", () => {
+      console.log("[INFO] Compressed video sent successfully.");
+      // Delete the compressed video file after sending
+      fs.unlink(outputPath, (err) => {
+        if (err) console.error(`[ERROR] Failed to delete compressed video: ${err.message}`);
+      });
+    });
+
+    readStream.on("error", (err) => {
+      console.error("[ERROR] Error sending compressed video:", err.message);
+      // Attempt to delete the compressed video file
+      if (fs.existsSync(outputPath)) {
+        fs.unlink(outputPath, (unlinkErr) => {
+          if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
+        });
+      }
+      res.status(500).send("Error sending compressed video.");
+    });
+  });
+
+  // Handle FFmpeg errors
+  ffmpeg.on("error", (err) => {
+    console.error("[ERROR] FFmpeg process error:", err.message);
+    // Delete original and output files if they exist
+    if (fs.existsSync(videoPath)) {
+      fs.unlink(videoPath, (unlinkErr) => {
+        if (unlinkErr) console.error(`[ERROR] Failed to delete original video: ${unlinkErr.message}`);
+      });
+    }
+    if (fs.existsSync(outputPath)) {
+      fs.unlink(outputPath, (unlinkErr) => {
+        if (unlinkErr) console.error(`[ERROR] Failed to delete output file: ${unlinkErr.message}`);
+      });
+    }
+    res.status(500).send("Failed to compress video due to FFmpeg error.");
   });
 
   // Handle client disconnect
   req.on("close", () => {
     console.warn("[WARNING] Client disconnected before response was sent.");
-    ffmpegProcess.kill(); // Kill FFmpeg process if the client disconnects
+    ffmpeg.kill("SIGKILL"); // Force kill FFmpeg process
   });
 });
 
