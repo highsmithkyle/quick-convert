@@ -20,6 +20,9 @@ const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
 
 const sharp = require("sharp");
 
+const http = require("http"); // Added for Socket.io
+const { Server } = require("socket.io"); // Added for Socket.io
+
 const processedDir = path.join(__dirname, "processed");
 
 // Google Cloud setup
@@ -53,21 +56,67 @@ app.use("/compressed", express.static(path.join(__dirname, "compressed")));
 app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
 app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
 
-// Add this route in server.js
+// Create HTTP server
+const server = http.createServer(app);
 
-const server = app.listen(3000, "0.0.0.0", () => {
-  console.log("Server running on port 3000");
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust this as needed for security
+    methods: ["GET", "POST"],
+  },
+});
+
+// Handle Socket.io connections
+io.on("connection", (socket) => {
+  console.log(`Client connected: ${socket.id}`);
+
+  socket.on("disconnect", () => {
+    console.log(`Client disconnected: ${socket.id}`);
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
 server.timeout = 600000; // Increased server timeout
 server.keepAliveTimeout = 600000;
 
+// Helper function to parse FFmpeg time format (e.g., "00:00:10.00") to seconds
+const parseTime = (timeStr) => {
+  const parts = timeStr.split(":");
+  const hours = parseFloat(parts[0]);
+  const minutes = parseFloat(parts[1]);
+  const seconds = parseFloat(parts[2]);
+  return hours * 3600 + minutes * 60 + seconds;
+};
+
+// Compress Video Route with Progress Updates
 app.post("/compress-video", upload.single("video"), (req, res) => {
   const videoPath = req.file.path;
-  const { crf, preset, scaleWidth } = req.body;
+  const { crf, preset, scaleWidth, socketId } = req.body;
   const outputPath = path.join(processedDir, `compressed_${Date.now()}.mp4`);
 
   console.log("[INFO] Received video for compression:", videoPath);
-  console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth });
+  console.log("[INFO] Compression parameters:", {
+    crf,
+    preset,
+    scaleWidth,
+    socketId,
+  });
+
+  // Validate socketId
+  if (!socketId || !io.sockets.sockets.get(socketId)) {
+    console.error("[ERROR] Invalid or missing socketId.");
+    fs.unlink(videoPath, (err) => {
+      if (err) console.error("[ERROR] Failed to delete original video:", err);
+    });
+    return res.status(400).send("Invalid socket ID.");
+  }
+
+  const socket = io.sockets.sockets.get(socketId);
 
   // Validate inputs
   const crfValue = parseInt(crf, 10);
@@ -89,52 +138,181 @@ app.post("/compress-video", upload.single("video"), (req, res) => {
 
   console.log("[INFO] Executing FFmpeg command:", `ffmpeg ${ffmpegArgs.join(" ")}`);
 
-  const ffmpeg = spawn("ffmpeg", ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"] });
+  const ffmpegProcess = spawn("ffmpeg", ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
-  let ffmpegStderr = "";
+  let totalDuration = 0;
 
-  ffmpeg.stderr.on("data", (data) => {
-    ffmpegStderr += data.toString();
-    console.error(`[FFmpeg STDERR]: ${data}`);
+  // First, get the total duration using FFprobe
+  const ffprobe = spawn("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoPath]);
+
+  ffprobe.stdout.on("data", (data) => {
+    totalDuration = parseFloat(data.toString());
+    console.log(`[INFO] Total Duration: ${totalDuration} seconds`);
   });
 
-  ffmpeg.on("close", (code) => {
-    console.log(`[FFmpeg] Process exited with code ${code}`);
+  ffprobe.stderr.on("data", (data) => {
+    console.error(`[FFprobe STDERR]: ${data}`);
+  });
 
-    fs.unlink(videoPath, (err) => {
-      if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
+  ffprobe.on("close", (code) => {
+    if (code !== 0) {
+      console.error(`[FFprobe] Process exited with code ${code}`);
+      socket.emit("compressionError", { message: "Failed to retrieve video duration." });
+      fs.unlink(videoPath, (err) => {
+        if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
+      });
+      return res.status(500).send("Failed to retrieve video duration.");
+    }
+
+    // Now, handle FFmpeg's stderr for progress
+    ffmpegProcess.stderr.on("data", (data) => {
+      const message = data.toString();
+      // Example FFmpeg progress line:
+      // frame=  240 fps= 24 q=28.0 size=    1024kB time=00:00:10.00 bitrate= 838.9kbits/s speed=1.00x
+      const regex = /time=\s*([0-9:.]+)/;
+      const match = message.match(regex);
+      if (match && match[1]) {
+        const currentTime = parseTime(match[1]);
+        const percentage = Math.min(((currentTime / totalDuration) * 100).toFixed(2), 100);
+        console.log(`[FFmpeg] Progress: ${percentage}% (${currentTime}/${totalDuration}s)`);
+        // Emit progress to client
+        socket.emit("compressionProgress", {
+          percentage: percentage,
+          elapsed: currentTime,
+          total: totalDuration,
+        });
+      }
     });
 
-    if (code !== 0) {
-      console.error(`[ERROR] FFmpeg failed with code ${code}`);
-      console.error(`[FFmpeg STDERR]: ${ffmpegStderr}`);
+    ffmpegProcess.on("close", (code) => {
+      console.log(`[FFmpeg] Process exited with code ${code}`);
+
+      fs.unlink(videoPath, (err) => {
+        if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
+      });
+
+      if (code !== 0) {
+        console.error(`[ERROR] FFmpeg failed with code ${code}`);
+        if (fs.existsSync(outputPath)) {
+          fs.unlink(outputPath, (err) => {
+            if (err) console.error(`[ERROR] Failed to delete output file: ${err.message}`);
+          });
+        }
+        socket.emit("compressionError", { message: "FFmpeg failed during compression." });
+        return res.status(500).send("Failed to compress video.");
+      }
+
+      console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
+      socket.emit("compressionComplete", { message: "Compression completed successfully." });
+
+      res.sendFile(outputPath, (err) => {
+        if (err) {
+          console.error("[ERROR] Error sending compressed video:", err.message);
+        } else {
+          console.log("[INFO] Compressed video sent successfully.");
+        }
+        fs.unlink(outputPath, (unlinkErr) => {
+          if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
+        });
+      });
+    });
+
+    ffmpegProcess.on("error", (err) => {
+      console.error("[FFmpeg ERROR]:", err.message);
+      socket.emit("compressionError", { message: "FFmpeg encountered an error." });
+      fs.unlink(videoPath, (unlinkErr) => {
+        if (unlinkErr) console.error(`[ERROR] Failed to delete original video: ${unlinkErr.message}`);
+      });
       if (fs.existsSync(outputPath)) {
-        fs.unlink(outputPath, (err) => {
-          if (err) console.error(`[ERROR] Failed to delete output file: ${err.message}`);
+        fs.unlink(outputPath, (unlinkErr) => {
+          if (unlinkErr) console.error(`[ERROR] Failed to delete output file: ${unlinkErr.message}`);
         });
       }
       return res.status(500).send("Failed to compress video.");
-    }
+    });
 
-    console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
-
-    res.sendFile(outputPath, (err) => {
-      if (err) {
-        console.error("[ERROR] Error sending compressed video:", err.message);
-      } else {
-        console.log("[INFO] Compressed video sent successfully.");
-      }
-      fs.unlink(outputPath, (unlinkErr) => {
-        if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
-      });
+    // Handle client disconnection
+    req.on("close", () => {
+      console.warn("[WARNING] Client disconnected before response was sent.");
+      ffmpegProcess.kill("SIGKILL");
     });
   });
-
-  req.on("close", () => {
-    console.warn("[WARNING] Client disconnected before response was sent.");
-    ffmpeg.kill("SIGKILL");
-  });
 });
+
+// app.post("/compress-video", upload.single("video"), (req, res) => {
+//   const videoPath = req.file.path;
+//   const { crf, preset, scaleWidth } = req.body;
+//   const outputPath = path.join(processedDir, `compressed_${Date.now()}.mp4`);
+
+//   console.log("[INFO] Received video for compression:", videoPath);
+//   console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth });
+
+//   // Validate inputs
+//   const crfValue = parseInt(crf, 10);
+//   const presetValue = (preset || "medium").toLowerCase();
+//   const width = parseInt(scaleWidth, 10);
+
+//   const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+//   if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840 || !allowedPresets.includes(presetValue)) {
+//     console.error("[ERROR] Invalid compression parameters.");
+//     fs.unlink(videoPath, (err) => {
+//       if (err) console.error("[ERROR] Failed to delete original video:", err);
+//     });
+//     return res.status(400).send("Invalid compression parameters.");
+//   }
+
+//   const scalingFilter = `scale=${width}:-2`;
+//   const ffmpegArgs = ["-i", videoPath, "-vcodec", "libx264", "-preset", presetValue, "-crf", crfValue.toString(), "-vf", `${scalingFilter},format=yuv420p`, "-movflags", "faststart", outputPath];
+
+//   console.log("[INFO] Executing FFmpeg command:", `ffmpeg ${ffmpegArgs.join(" ")}`);
+
+//   const ffmpeg = spawn("ffmpeg", ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"] });
+
+//   let ffmpegStderr = "";
+
+//   ffmpeg.stderr.on("data", (data) => {
+//     ffmpegStderr += data.toString();
+//     console.error(`[FFmpeg STDERR]: ${data}`);
+//   });
+
+//   ffmpeg.on("close", (code) => {
+//     console.log(`[FFmpeg] Process exited with code ${code}`);
+
+//     fs.unlink(videoPath, (err) => {
+//       if (err) console.error(`[ERROR] Failed to delete original video: ${err.message}`);
+//     });
+
+//     if (code !== 0) {
+//       console.error(`[ERROR] FFmpeg failed with code ${code}`);
+//       console.error(`[FFmpeg STDERR]: ${ffmpegStderr}`);
+//       if (fs.existsSync(outputPath)) {
+//         fs.unlink(outputPath, (err) => {
+//           if (err) console.error(`[ERROR] Failed to delete output file: ${err.message}`);
+//         });
+//       }
+//       return res.status(500).send("Failed to compress video.");
+//     }
+
+//     console.log("[INFO] Compression successful. Sending compressed video:", outputPath);
+
+//     res.sendFile(outputPath, (err) => {
+//       if (err) {
+//         console.error("[ERROR] Error sending compressed video:", err.message);
+//       } else {
+//         console.log("[INFO] Compressed video sent successfully.");
+//       }
+//       fs.unlink(outputPath, (unlinkErr) => {
+//         if (unlinkErr) console.error(`[ERROR] Failed to delete compressed video: ${unlinkErr.message}`);
+//       });
+//     });
+//   });
+
+//   req.on("close", () => {
+//     console.warn("[WARNING] Client disconnected before response was sent.");
+//     ffmpeg.kill("SIGKILL");
+//   });
+// });
 // Use chatbot routes
 app.use("/chatbot/api", chatbotRoutes);
 
@@ -2394,3 +2572,9 @@ setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
 // app.get("/", (req, res) => {
 //   res.sendFile(path.join(__dirname, "views", "3d-animation.html"));
 // });
+
+// const server = app.listen(3000, "0.0.0.0", () => {
+//   console.log("Server running on port 3000");
+// });
+// server.timeout = 600000; // Increased server timeout
+// server.keepAliveTimeout = 600000;
