@@ -1763,3 +1763,56 @@ a.inline-download-button:hover {
 #modalOverlay.show {
   display: block;
 }
+
+#progressSection {
+  width: 80%;
+  margin-top: 20px;
+  position: relative; /* To position the progressMessage absolutely within */
+}
+
+/* Progress Bar Background */
+#progressSection > div {
+  background-color: #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Progress Bar Styling */
+#progressBar {
+  width: 0%;
+  height: 20px;
+  background-color: #4caf50;
+  text-align: center;
+  line-height: 20px;
+  color: white;
+  transition: width 0.5s ease;
+  border-radius: 4px;
+}
+
+/* Progress Message Styling */
+#progressMessage {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%, 0);
+  font-size: 14px;
+  color: #333;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 2px 5px;
+  border-radius: 3px;
+  pointer-events: none; /* Allows clicks to pass through */
+}
+
+#progressBar {
+  transition: width 0.5s ease-in-out;
+}
+
+#timeRemaining {
+  position: absolute;
+  bottom: -25px; /* Position below the progress bar */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #333;
+}

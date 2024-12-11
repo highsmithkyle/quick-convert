@@ -30,10 +30,16 @@
           <div class="form-group">
             <label for="preset">Speed (slower = more compression):</label>
             <select id="preset" name="preset">
+              <option value="ultrafast">Ultrafast</option>
+              <option value="superfast">Superfast</option>
+              <option value="veryfast">Very Fast</option>
+              <option value="faster">Faster</option>
+              <option value="fast">Fast</option>
               <option value="medium" selected>Medium</option>
               <option value="slow">Slow</option>
               <option value="slower">Slower</option>
               <option value="veryslow">Very Slow</option>
+              <option value="placebo">Placebo</option>
             </select>
           </div>
 
@@ -82,8 +88,9 @@
       <!-- Progress Bar Section -->
       <div id="progressSection" style="display: none; width: 80%; margin-top: 20px">
         <h3>Compression Progress</h3>
-        <div style="background-color: #ddd; border-radius: 4px; overflow: hidden">
-          <div id="progressBar" style="width: 0%; height: 20px; background-color: #4caf50; text-align: center; line-height: 20px; color: white">0%</div>
+        <div style="background-color: #ddd; border-radius: 4px; overflow: hidden; position: relative">
+          <div id="progressBar" style="width: 0%; height: 20px; background-color: #4caf50; text-align: center; line-height: 20px; color: white; transition: width 0.5s ease">0%</div>
+          <div id="progressMessage" style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 14px; color: #333">Starting compression...</div>
         </div>
       </div>
 
@@ -91,7 +98,7 @@
       <div id="errorMessage" style="display: none; color: red; margin-top: 20px"></div>
     </div>
 
-    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
+    <div id="processingNotification" style="display: none">Processing, please wait. This may take a few minutes depending on the file size</div>
 
     <!-- Include Socket.io client library -->
     <script src="/socket.io/socket.io.js"></script>
@@ -105,7 +112,7 @@
     <meta charset="UTF-8" />
     <title>Video Compression Tool</title>
     <link rel="stylesheet" href="styles.css" />
-    
+
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
   </head>
   <body>
@@ -179,10 +186,22 @@
           </video>
         </div>
       </div>
+
+      <div id="progressSection" style="display: none; width: 80%; margin-top: 20px">
+        <h3>Compression Progress</h3>
+        <div style="background-color: #ddd; border-radius: 4px; overflow: hidden">
+          <div id="progressBar" style="width: 0%; height: 20px; background-color: #4caf50; text-align: center; line-height: 20px; color: white">0%</div>
+        </div>
+      </div>
+
+ 
+      <div id="errorMessage" style="display: none; color: red; margin-top: 20px"></div>
     </div>
 
     <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
 
+
+    <script src="/socket.io/socket.io.js"></script>
     <script src="video-compression.js"></script>
   </body>
 </html> -->
