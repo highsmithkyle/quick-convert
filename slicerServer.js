@@ -277,29 +277,6 @@ const concatenateChunksWithFilter = (chunkPaths, outputPath) => {
   });
 };
 
-// Function to concatenate compressed chunks into a single video
-// const concatenateChunks = (chunkPaths, outputPath, tempDir) => {
-//   return new Promise((resolve, reject) => {
-//     // Create a file list for FFmpeg
-//     const fileListPath = path.join(tempDir, "fileList.txt");
-//     const fileListContent = chunkPaths.map((chunkPath) => `file '${chunkPath}'`).join("\n");
-//     fs.writeFileSync(fileListPath, fileListContent);
-
-//     const ffmpegArgs = ["-f", "concat", "-safe", "0", "-i", fileListPath, "-c", "copy", outputPath];
-
-//     const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
-
-//     ffmpegProcess.on("close", (code) => {
-//       if (code !== 0) {
-//         reject(new Error(`FFmpeg concatenation exited with code ${code}`));
-//       } else {
-//         resolve();
-//       }
-//     });
-//   });
-// };
-
-// Compress Video Route with Progress Updates and Chunking
 app.post("/compress-video", largeFileUpload.single("video"), async (req, res) => {
   const videoPath = req.file.path;
   const { crf, preset, scaleWidth, socketId } = req.body;
@@ -317,6 +294,11 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
 
   const socket = io.sockets.sockets.get(socketId);
   console.log(`[INFO] Validated socket ID: ${socketId}`);
+
+  // Initialize tempDir
+  let tempDir;
+  let chunkPaths = [];
+  let compressedChunkPaths = [];
 
   try {
     // Validate inputs
@@ -375,12 +357,12 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
 
     // Create a temporary directory for processing
-    const tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
+    tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
     fs.mkdirSync(tempDir, { recursive: true });
     console.log(`[INFO] Created temporary directory: ${tempDir}`);
 
     // Split the video into chunks
-    const chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
+    chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
     console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
 
     // Emit initial progress
@@ -390,7 +372,6 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     });
 
     // Compress each chunk
-    const compressedChunkPaths = [];
     for (let i = 0; i < chunkPaths.length; i++) {
       const chunkPath = chunkPaths[i];
       const compressedChunkPath = path.join(tempDir, `compressed_chunk_${i}.mp4`);
@@ -428,13 +409,6 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
       message: "Compression completed successfully.",
     });
 
-    // Clean up chunk files
-    compressedChunkPaths.forEach((filePath) => deleteFile(filePath, "compressed chunk"));
-    chunkPaths.forEach((filePath) => deleteFile(filePath, "original chunk"));
-    // fs.unlinkSync(path.join(tempDir, "fileList.txt"));
-    fs.rmdirSync(tempDir);
-    console.log(`[INFO] Cleaned up temporary files in: ${tempDir}`);
-
     // Send the compressed video
     socket.emit("compressionComplete", { message: "Compression completed successfully." });
 
@@ -452,21 +426,196 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     socket.emit("compressionError", { message: error.message });
     deleteFile(videoPath, "original video");
     return res.status(500).send("Failed to compress video.");
+  } finally {
+    // Perform cleanup in the finally block to ensure it runs regardless of success or error
+    if (tempDir && fs.existsSync(tempDir)) {
+      try {
+        // Log contents of tempDir before deletion
+        const remainingFiles = fs.readdirSync(tempDir);
+        if (remainingFiles.length > 0) {
+          console.warn(`[WARNING] Temp directory not empty before deletion. Remaining files: ${remainingFiles.join(", ")}`);
+        } else {
+          console.log(`[INFO] Temp directory is empty before deletion.`);
+        }
+
+        // Attempt to delete tempDir recursively and forcefully
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        console.log(`[INFO] Successfully deleted temporary directory: ${tempDir}`);
+      } catch (err) {
+        console.error(`[ERROR] Failed to delete tempDir: ${err.message}`);
+      }
+    }
   }
 });
 
-// Use chatbot routes
-app.use("/chatbot/api", chatbotRoutes);
+// Compress Video Route with Progress Updates and Chunking
+// app.post("/compress-video", largeFileUpload.single("video"), async (req, res) => {
+//   const videoPath = req.file.path;
+//   const { crf, preset, scaleWidth, socketId } = req.body;
+//   const outputPath = path.join(processedDir, `compressed_${uuidv4()}.mp4`);
 
-// Serve chatbot.html for the chatbot interface
-app.get("/chatbot", (req, res) => {
-  res.sendFile(path.join(__dirname, "chatbot", "public", "chatbot.html"));
-});
+//   console.log("[INFO] Received video for compression:", videoPath);
+//   console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth, socketId });
 
-const outputDir = path.join(__dirname, "converted");
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir);
-}
+//   // Validate socketId
+//   if (!socketId || !io.sockets.sockets.get(socketId)) {
+//     console.error("[ERROR] Invalid or missing socketId.");
+//     deleteFile(videoPath, "original video");
+//     return res.status(400).send("Invalid socket ID.");
+//   }
+
+//   const socket = io.sockets.sockets.get(socketId);
+//   console.log(`[INFO] Validated socket ID: ${socketId}`);
+
+//   try {
+//     // Validate inputs
+//     const crfValue = parseInt(crf, 10);
+//     const presetValue = (preset || "medium").toLowerCase();
+//     const width = parseInt(scaleWidth, 10);
+
+//     const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+//     if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840 || !allowedPresets.includes(presetValue)) {
+//       console.error("[ERROR] Invalid compression parameters.");
+//       deleteFile(videoPath, "original video");
+//       return res.status(400).send("Invalid compression parameters.");
+//     }
+
+//     console.log("[INFO] Compression parameters validated successfully.");
+
+//     // Get video metadata
+//     const metadata = await getVideoMetadata(videoPath);
+//     const { duration, bitrate } = metadata; // bitrate in bps
+//     console.log(`[INFO] Video Metadata: Duration = ${duration} seconds, Bitrate = ${bitrate} bps`);
+
+//     // Calculate total file size in bytes
+//     const fileSizeInBytes = req.file.size;
+//     console.log(`[INFO] Video File Size: ${fileSizeInBytes} bytes`);
+
+//     const chunkSizeThresholds = [
+//       { maxSize: 100 * 1024 * 1024, chunks: 1 }, // <=100MB: 1 chunk
+//       { maxSize: 150 * 1024 * 1024, chunks: 2 }, // <=150MB: 2 chunks
+//       { maxSize: 200 * 1024 * 1024, chunks: 2 }, // <=200MB: 2 chunks
+//       { maxSize: 250 * 1024 * 1024, chunks: 3 }, // <=250MB: 3 chunks
+//       { maxSize: 300 * 1024 * 1024, chunks: 4 }, // <=300MB: 4 chunks
+//       { maxSize: 500 * 1024 * 1024, chunks: 5 }, // <=500MB: 5 chunks
+//       { maxSize: 800 * 1024 * 1024, chunks: 6 }, // <=800MB: 6 chunks
+//       { maxSize: 1024 * 1024 * 1024, chunks: 7 }, // <=1GB: 7 chunks
+//     ];
+
+//     // Determine number of chunks
+//     let numberOfChunks = 1;
+//     for (const threshold of chunkSizeThresholds) {
+//       if (fileSizeInBytes <= threshold.maxSize) {
+//         numberOfChunks = threshold.chunks;
+//         break;
+//       }
+//     }
+//     if (fileSizeInBytes > 1024 * 1024 * 1024) {
+//       numberOfChunks = Math.ceil(fileSizeInBytes / (300 * 1024 * 1024));
+//     }
+
+//     console.log(`[INFO] Determined number of chunks: ${numberOfChunks}`);
+
+//     // Calculate chunk duration
+//     const chunkSizeBytes = Math.min(300 * 1024 * 1024, fileSizeInBytes / numberOfChunks);
+//     const chunkDuration = (chunkSizeBytes * 8) / bitrate; // seconds
+
+//     console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
+
+//     // Create a temporary directory for processing
+//     const tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
+//     fs.mkdirSync(tempDir, { recursive: true });
+//     console.log(`[INFO] Created temporary directory: ${tempDir}`);
+
+//     // Split the video into chunks
+//     const chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
+//     console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
+
+//     // Emit initial progress
+//     socket.emit("compressionProgress", {
+//       percentage: "0.00",
+//       message: `Starting compression: ${chunkPaths.length} chunk(s) to process.`,
+//     });
+
+//     // Compress each chunk
+//     const compressedChunkPaths = [];
+//     for (let i = 0; i < chunkPaths.length; i++) {
+//       const chunkPath = chunkPaths[i];
+//       const compressedChunkPath = path.join(tempDir, `compressed_chunk_${i}.mp4`);
+//       console.log(`[INFO] Compressing chunk ${i + 1}/${chunkPaths.length}: ${chunkPath}`);
+
+//       // Emit progress before starting compression of each chunk
+//       socket.emit("compressionProgress", {
+//         percentage: ((i / (chunkPaths.length + 1)) * 100).toFixed(2),
+//         message: `Processing chunk ${i + 1}/${chunkPaths.length}`,
+//       });
+
+//       await compressChunk(chunkPath, compressedChunkPath, crfValue, presetValue, width, socket, i, chunkPaths.length);
+//       compressedChunkPaths.push(compressedChunkPath);
+//       console.log(`[INFO] Compressed chunk ${i + 1}/${chunkPaths.length}: ${compressedChunkPath}`);
+
+//       // Update progress after compression of each chunk
+//       socket.emit("compressionProgress", {
+//         percentage: (((i + 1) / (chunkPaths.length + 1)) * 100).toFixed(2),
+//         message: `Completed chunk ${i + 1}/${chunkPaths.length}`,
+//       });
+//     }
+
+//     // Concatenate compressed chunks using concat filter
+//     console.log("[INFO] Concatenating compressed chunks.");
+//     socket.emit("compressionProgress", {
+//       percentage: ((chunkPaths.length / (chunkPaths.length + 1)) * 100).toFixed(2),
+//       message: "Concatenating compressed chunks.",
+//     });
+//     await concatenateChunksWithFilter(compressedChunkPaths, outputPath);
+//     console.log(`[INFO] Concatenation complete. Output Path: ${outputPath}`);
+
+//     // Emit progress after concatenation
+//     socket.emit("compressionProgress", {
+//       percentage: "100.00",
+//       message: "Compression completed successfully.",
+//     });
+
+//     // Clean up chunk files
+//     compressedChunkPaths.forEach((filePath) => deleteFile(filePath, "compressed chunk"));
+//     chunkPaths.forEach((filePath) => deleteFile(filePath, "original chunk"));
+//     // fs.unlinkSync(path.join(tempDir, "fileList.txt"));
+//     fs.rmdirSync(tempDir);
+//     console.log(`[INFO] Cleaned up temporary files in: ${tempDir}`);
+
+//     // Send the compressed video
+//     socket.emit("compressionComplete", { message: "Compression completed successfully." });
+
+//     res.sendFile(outputPath, (err) => {
+//       if (err) {
+//         console.error("[ERROR] Error sending compressed video:", err.message);
+//         return res.status(500).send("Error sending compressed video.");
+//       } else {
+//         console.log("[INFO] Compressed video sent successfully.");
+//         deleteFile(outputPath, "compressed video");
+//       }
+//     });
+//   } catch (error) {
+//     console.error("[ERROR]", error.message);
+//     socket.emit("compressionError", { message: error.message });
+//     deleteFile(videoPath, "original video");
+//     return res.status(500).send("Failed to compress video.");
+//   }
+// });
+
+// // Use chatbot routes
+// app.use("/chatbot/api", chatbotRoutes);
+
+// // Serve chatbot.html for the chatbot interface
+// app.get("/chatbot", (req, res) => {
+//   res.sendFile(path.join(__dirname, "chatbot", "public", "chatbot.html"));
+// });
+
+// const outputDir = path.join(__dirname, "converted");
+// if (!fs.existsSync(outputDir)) {
+//   fs.mkdirSync(outputDir);
+// }
 
 app.post("/text-to-image", upload.none(), async (req, res) => {
   const prompt = req.body.prompt;
