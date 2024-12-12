@@ -113,9 +113,9 @@ document.addEventListener("DOMContentLoaded", function () {
           compressionOptionsSection.style.display = "block";
 
           // Reset compression options
-          crf.value = 28;
-          updateCRFDisplay(28);
-          preset.value = "medium"; // Match server default
+          crf.value = 20;
+          updateCRFDisplay(20);
+          preset.value = "slow"; // Match server default
           scaleWidth.value = originalWidth >= 1280 ? 1280 : originalWidth;
         };
       };

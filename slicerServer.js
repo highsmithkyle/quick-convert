@@ -1,28 +1,31 @@
+// Load environment variables first
 require("dotenv").config();
 
-const express = require("express");
-
-const { exec, execFile } = require("child_process");
+// Core Node.js modules
 const fs = require("fs");
 const path = require("path");
+const { exec, execFile, spawn } = require("child_process");
+const os = require("os");
+const http = require("http");
+
+// Third-party packages
+const express = require("express");
 const axios = require("axios");
+const cors = require("cors");
 const FormData = require("form-data");
 const { v4: uuidv4 } = require("uuid");
-const cors = require("cors");
+const { Server } = require("socket.io"); // For Socket.io
+const sharp = require("sharp");
+const Vibrant = require("node-vibrant");
+const multer = require("multer");
+
+// Google Cloud-related packages
 const { google } = require("googleapis");
 const { Storage } = require("@google-cloud/storage");
 const speech = require("@google-cloud/speech");
-const Vibrant = require("node-vibrant");
 
-const { spawn } = require("child_process");
-const os = require("os"); // Ensure this line is present
-
+// Local modules
 const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
-
-const sharp = require("sharp");
-
-const http = require("http"); // Added for Socket.io
-const { Server } = require("socket.io"); // Added for Socket.io
 
 // Google Cloud setup
 google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
@@ -34,7 +37,6 @@ const bucket = storage.bucket("image-2d-to-3d");
 
 // Express setup
 const app = express();
-const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
 app.use(cors());
@@ -44,7 +46,7 @@ app.use(express.urlencoded({ extended: true }));
 // Environment Path
 process.env.PATH += ":/usr/bin";
 
-// Serve general static files (used by the rest of the application)
+// Serve general static files
 app.use(express.static("public"));
 
 // Serve static files for specific paths
@@ -57,7 +59,6 @@ app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
 app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
 
 const server = http.createServer(app);
-
 const processedDir = path.join(__dirname, "processedDir");
 
 // Initialize Socket.io
@@ -93,6 +94,102 @@ const parseTime = (timeStr) => {
   const seconds = parseFloat(parts[2]);
   return hours * 3600 + minutes * 60 + seconds;
 };
+
+// require("dotenv").config();
+
+// const express = require("express");
+
+// const { exec, execFile } = require("child_process");
+// const fs = require("fs");
+// const path = require("path");
+// const axios = require("axios");
+// const FormData = require("form-data");
+// const { v4: uuidv4 } = require("uuid");
+// const cors = require("cors");
+// const { google } = require("googleapis");
+// const { Storage } = require("@google-cloud/storage");
+// const speech = require("@google-cloud/speech");
+// const Vibrant = require("node-vibrant");
+
+// const { spawn } = require("child_process");
+// const os = require("os"); // Ensure this line is present
+
+// const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
+
+// const sharp = require("sharp");
+
+// const http = require("http"); // Added for Socket.io
+// const { Server } = require("socket.io"); // Added for Socket.io
+
+// // Google Cloud setup
+// google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
+// const speechClient = new speech.SpeechClient();
+// const storage = new Storage({
+//   keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
+// });
+// const bucket = storage.bucket("image-2d-to-3d");
+
+// // Express setup
+// const app = express();
+// const multer = require("multer");
+// const upload = multer({ dest: "uploads/" });
+
+// app.use(cors());
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+
+// // Environment Path
+// process.env.PATH += ":/usr/bin";
+
+// // Serve general static files (used by the rest of the application)
+// app.use(express.static("public"));
+
+// // Serve static files for specific paths
+// app.use("/videos", express.static(path.join(__dirname, "videos")));
+// app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
+// app.use("/compressed", express.static(path.join(__dirname, "compressed")));
+
+// // Serve static files for chatbot assets
+// app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
+// app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
+
+// const server = http.createServer(app);
+
+// const processedDir = path.join(__dirname, "processedDir");
+
+// // Initialize Socket.io
+// const io = new Server(server, {
+//   cors: {
+//     origin: "*", // Adjust this as needed for security
+//     methods: ["GET", "POST"],
+//   },
+// });
+
+// // Handle Socket.io connections
+// io.on("connection", (socket) => {
+//   console.log(`Client connected: ${socket.id}`);
+
+//   socket.on("disconnect", () => {
+//     console.log(`Client disconnected: ${socket.id}`);
+//   });
+// });
+
+// // Start the server
+// const PORT = process.env.PORT || 3000;
+// server.listen(PORT, "0.0.0.0", () => {
+//   console.log(`Server running on port ${PORT}`);
+// });
+// server.timeout = 600000; // Increased server timeout
+// server.keepAliveTimeout = 600000;
+
+// // Helper function to parse FFmpeg time format (e.g., "00:00:10.00") to seconds
+// const parseTime = (timeStr) => {
+//   const parts = timeStr.split(":");
+//   const hours = parseFloat(parts[0]);
+//   const minutes = parseFloat(parts[1]);
+//   const seconds = parseFloat(parts[2]);
+//   return hours * 3600 + minutes * 60 + seconds;
+// };
 
 // Function to delete files safely
 const deleteFile = (filePath, description) => {
@@ -303,7 +400,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
   try {
     // Validate inputs
     const crfValue = parseInt(crf, 10);
-    const presetValue = (preset || "medium").toLowerCase();
+    const presetValue = (preset || "slow").toLowerCase();
     const width = parseInt(scaleWidth, 10);
 
     const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
@@ -447,162 +544,6 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     }
   }
 });
-
-// Compress Video Route with Progress Updates and Chunking
-// app.post("/compress-video", largeFileUpload.single("video"), async (req, res) => {
-//   const videoPath = req.file.path;
-//   const { crf, preset, scaleWidth, socketId } = req.body;
-//   const outputPath = path.join(processedDir, `compressed_${uuidv4()}.mp4`);
-
-//   console.log("[INFO] Received video for compression:", videoPath);
-//   console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth, socketId });
-
-//   // Validate socketId
-//   if (!socketId || !io.sockets.sockets.get(socketId)) {
-//     console.error("[ERROR] Invalid or missing socketId.");
-//     deleteFile(videoPath, "original video");
-//     return res.status(400).send("Invalid socket ID.");
-//   }
-
-//   const socket = io.sockets.sockets.get(socketId);
-//   console.log(`[INFO] Validated socket ID: ${socketId}`);
-
-//   try {
-//     // Validate inputs
-//     const crfValue = parseInt(crf, 10);
-//     const presetValue = (preset || "medium").toLowerCase();
-//     const width = parseInt(scaleWidth, 10);
-
-//     const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
-
-//     if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840 || !allowedPresets.includes(presetValue)) {
-//       console.error("[ERROR] Invalid compression parameters.");
-//       deleteFile(videoPath, "original video");
-//       return res.status(400).send("Invalid compression parameters.");
-//     }
-
-//     console.log("[INFO] Compression parameters validated successfully.");
-
-//     // Get video metadata
-//     const metadata = await getVideoMetadata(videoPath);
-//     const { duration, bitrate } = metadata; // bitrate in bps
-//     console.log(`[INFO] Video Metadata: Duration = ${duration} seconds, Bitrate = ${bitrate} bps`);
-
-//     // Calculate total file size in bytes
-//     const fileSizeInBytes = req.file.size;
-//     console.log(`[INFO] Video File Size: ${fileSizeInBytes} bytes`);
-
-//     const chunkSizeThresholds = [
-//       { maxSize: 100 * 1024 * 1024, chunks: 1 }, // <=100MB: 1 chunk
-//       { maxSize: 150 * 1024 * 1024, chunks: 2 }, // <=150MB: 2 chunks
-//       { maxSize: 200 * 1024 * 1024, chunks: 2 }, // <=200MB: 2 chunks
-//       { maxSize: 250 * 1024 * 1024, chunks: 3 }, // <=250MB: 3 chunks
-//       { maxSize: 300 * 1024 * 1024, chunks: 4 }, // <=300MB: 4 chunks
-//       { maxSize: 500 * 1024 * 1024, chunks: 5 }, // <=500MB: 5 chunks
-//       { maxSize: 800 * 1024 * 1024, chunks: 6 }, // <=800MB: 6 chunks
-//       { maxSize: 1024 * 1024 * 1024, chunks: 7 }, // <=1GB: 7 chunks
-//     ];
-
-//     // Determine number of chunks
-//     let numberOfChunks = 1;
-//     for (const threshold of chunkSizeThresholds) {
-//       if (fileSizeInBytes <= threshold.maxSize) {
-//         numberOfChunks = threshold.chunks;
-//         break;
-//       }
-//     }
-//     if (fileSizeInBytes > 1024 * 1024 * 1024) {
-//       numberOfChunks = Math.ceil(fileSizeInBytes / (300 * 1024 * 1024));
-//     }
-
-//     console.log(`[INFO] Determined number of chunks: ${numberOfChunks}`);
-
-//     // Calculate chunk duration
-//     const chunkSizeBytes = Math.min(300 * 1024 * 1024, fileSizeInBytes / numberOfChunks);
-//     const chunkDuration = (chunkSizeBytes * 8) / bitrate; // seconds
-
-//     console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
-
-//     // Create a temporary directory for processing
-//     const tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
-//     fs.mkdirSync(tempDir, { recursive: true });
-//     console.log(`[INFO] Created temporary directory: ${tempDir}`);
-
-//     // Split the video into chunks
-//     const chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
-//     console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
-
-//     // Emit initial progress
-//     socket.emit("compressionProgress", {
-//       percentage: "0.00",
-//       message: `Starting compression: ${chunkPaths.length} chunk(s) to process.`,
-//     });
-
-//     // Compress each chunk
-//     const compressedChunkPaths = [];
-//     for (let i = 0; i < chunkPaths.length; i++) {
-//       const chunkPath = chunkPaths[i];
-//       const compressedChunkPath = path.join(tempDir, `compressed_chunk_${i}.mp4`);
-//       console.log(`[INFO] Compressing chunk ${i + 1}/${chunkPaths.length}: ${chunkPath}`);
-
-//       // Emit progress before starting compression of each chunk
-//       socket.emit("compressionProgress", {
-//         percentage: ((i / (chunkPaths.length + 1)) * 100).toFixed(2),
-//         message: `Processing chunk ${i + 1}/${chunkPaths.length}`,
-//       });
-
-//       await compressChunk(chunkPath, compressedChunkPath, crfValue, presetValue, width, socket, i, chunkPaths.length);
-//       compressedChunkPaths.push(compressedChunkPath);
-//       console.log(`[INFO] Compressed chunk ${i + 1}/${chunkPaths.length}: ${compressedChunkPath}`);
-
-//       // Update progress after compression of each chunk
-//       socket.emit("compressionProgress", {
-//         percentage: (((i + 1) / (chunkPaths.length + 1)) * 100).toFixed(2),
-//         message: `Completed chunk ${i + 1}/${chunkPaths.length}`,
-//       });
-//     }
-
-//     // Concatenate compressed chunks using concat filter
-//     console.log("[INFO] Concatenating compressed chunks.");
-//     socket.emit("compressionProgress", {
-//       percentage: ((chunkPaths.length / (chunkPaths.length + 1)) * 100).toFixed(2),
-//       message: "Concatenating compressed chunks.",
-//     });
-//     await concatenateChunksWithFilter(compressedChunkPaths, outputPath);
-//     console.log(`[INFO] Concatenation complete. Output Path: ${outputPath}`);
-
-//     // Emit progress after concatenation
-//     socket.emit("compressionProgress", {
-//       percentage: "100.00",
-//       message: "Compression completed successfully.",
-//     });
-
-//     // Clean up chunk files
-//     compressedChunkPaths.forEach((filePath) => deleteFile(filePath, "compressed chunk"));
-//     chunkPaths.forEach((filePath) => deleteFile(filePath, "original chunk"));
-//     // fs.unlinkSync(path.join(tempDir, "fileList.txt"));
-//     fs.rmdirSync(tempDir);
-//     console.log(`[INFO] Cleaned up temporary files in: ${tempDir}`);
-
-//     // Send the compressed video
-//     socket.emit("compressionComplete", { message: "Compression completed successfully." });
-
-//     res.sendFile(outputPath, (err) => {
-//       if (err) {
-//         console.error("[ERROR] Error sending compressed video:", err.message);
-//         return res.status(500).send("Error sending compressed video.");
-//       } else {
-//         console.log("[INFO] Compressed video sent successfully.");
-//         deleteFile(outputPath, "compressed video");
-//       }
-//     });
-//   } catch (error) {
-//     console.error("[ERROR]", error.message);
-//     socket.emit("compressionError", { message: error.message });
-//     deleteFile(videoPath, "original video");
-//     return res.status(500).send("Failed to compress video.");
-//   }
-// });
 
 // // Use chatbot routes
 // app.use("/chatbot/api", chatbotRoutes);
