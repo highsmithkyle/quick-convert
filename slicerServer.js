@@ -212,23 +212,34 @@ const compressChunk = (inputPath, outputPath, crf, preset, scaleWidth, socket, c
   });
 };
 
-const concatenateChunks = (chunkPaths, outputPath, tempDir) => {
+const concatenateChunksWithFilter = (chunkPaths, outputPath) => {
   return new Promise((resolve, reject) => {
-    // Create a file list for FFmpeg
-    const fileListPath = path.join(tempDir, "fileList.txt");
-    const fileListContent = chunkPaths.map((chunkPath) => `file '${chunkPath}'`).join("\n");
+    if (chunkPaths.length === 0) {
+      return reject(new Error("No chunks provided for concatenation."));
+    }
 
-    // Log the content of fileList.txt for verification
-    console.log(`[DEBUG] FFmpeg File List (${fileListPath}):\n${fileListContent}`);
+    // Build the FFmpeg input arguments
+    const ffmpegArgs = [];
+    chunkPaths.forEach((chunkPath, index) => {
+      ffmpegArgs.push("-i", chunkPath);
+    });
 
-    fs.writeFileSync(fileListPath, fileListContent);
-    console.log(`[INFO] Created FFmpeg file list at: ${fileListPath}`);
+    // Construct the filter_complex string for the concat filter
+    const filterComplex = chunkPaths.map((_, index) => `[${index}:v:0][${index}:a:0]`).join("") + `concat=n=${chunkPaths.length}:v=1:a=1[outv][outa]`;
 
-    const ffmpegArgs = ["-f", "concat", "-safe", "0", "-i", fileListPath, "-c", "copy", outputPath];
+    ffmpegArgs.push("-filter_complex", filterComplex);
+    ffmpegArgs.push("-map", "[outv]");
+    ffmpegArgs.push("-map", "[outa]");
+    ffmpegArgs.push("-c:v", "libx264");
+    ffmpegArgs.push("-c:a", "aac");
+    ffmpegArgs.push("-strict", "experimental"); // Necessary for some FFmpeg versions
+    ffmpegArgs.push("-movflags", "faststart"); // Optimize for web streaming
+    ffmpegArgs.push(outputPath);
+
     const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(" ")}`;
 
     // Log the FFmpeg command being executed
-    console.log(`[DEBUG] Executing FFmpeg Concatenation Command:\n${ffmpegCommand}`);
+    console.log(`[DEBUG] Executing FFmpeg Concatenation Command with concat filter:\n${ffmpegCommand}`);
 
     const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
 
@@ -237,10 +248,14 @@ const concatenateChunks = (chunkPaths, outputPath, tempDir) => {
 
     ffmpegProcess.stdout.on("data", (data) => {
       ffmpegStdOut += data.toString();
+      // Optionally, log standard output incrementally
+      // console.log(`[FFmpeg STDOUT]: ${data}`);
     });
 
     ffmpegProcess.stderr.on("data", (data) => {
       ffmpegStdErr += data.toString();
+      // Optionally, log standard error incrementally
+      // console.error(`[FFmpeg STDERR]: ${data}`);
     });
 
     ffmpegProcess.on("close", (code) => {
@@ -301,6 +316,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
   }
 
   const socket = io.sockets.sockets.get(socketId);
+  console.log(`[INFO] Validated socket ID: ${socketId}`);
 
   try {
     // Validate inputs
@@ -316,12 +332,16 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
       return res.status(400).send("Invalid compression parameters.");
     }
 
+    console.log("[INFO] Compression parameters validated successfully.");
+
     // Get video metadata
     const metadata = await getVideoMetadata(videoPath);
     const { duration, bitrate } = metadata; // bitrate in bps
+    console.log(`[INFO] Video Metadata: Duration = ${duration} seconds, Bitrate = ${bitrate} bps`);
 
     // Calculate total file size in bytes
     const fileSizeInBytes = req.file.size;
+    console.log(`[INFO] Video File Size: ${fileSizeInBytes} bytes`);
 
     const chunkSizeThresholds = [
       { maxSize: 100 * 1024 * 1024, chunks: 1 }, // <=100MB: 1 chunk
@@ -346,13 +366,13 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
       numberOfChunks = Math.ceil(fileSizeInBytes / (300 * 1024 * 1024));
     }
 
-    console.log(`[INFO] File size: ${fileSizeInBytes} bytes, Number of chunks: ${numberOfChunks}`);
+    console.log(`[INFO] Determined number of chunks: ${numberOfChunks}`);
 
     // Calculate chunk duration
     const chunkSizeBytes = Math.min(300 * 1024 * 1024, fileSizeInBytes / numberOfChunks);
     const chunkDuration = (chunkSizeBytes * 8) / bitrate; // seconds
 
-    console.log(`[INFO] Chunk size: ${chunkSizeBytes} bytes, Chunk duration: ${chunkDuration} seconds`);
+    console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
 
     // Create a temporary directory for processing
     const tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
@@ -361,7 +381,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
 
     // Split the video into chunks
     const chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
-    console.log(`[INFO] Split into ${chunkPaths.length} chunks.`);
+    console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
 
     // Emit initial progress
     socket.emit("compressionProgress", {
@@ -384,6 +404,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
 
       await compressChunk(chunkPath, compressedChunkPath, crfValue, presetValue, width, socket, i, chunkPaths.length);
       compressedChunkPaths.push(compressedChunkPath);
+      console.log(`[INFO] Compressed chunk ${i + 1}/${chunkPaths.length}: ${compressedChunkPath}`);
 
       // Update progress after compression of each chunk
       socket.emit("compressionProgress", {
@@ -392,15 +413,14 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
       });
     }
 
-    // Concatenate compressed chunks
+    // Concatenate compressed chunks using concat filter
     console.log("[INFO] Concatenating compressed chunks.");
     socket.emit("compressionProgress", {
-      // Corrected: Remove template literal and apply .toFixed directly on number
       percentage: ((chunkPaths.length / (chunkPaths.length + 1)) * 100).toFixed(2),
       message: "Concatenating compressed chunks.",
     });
-    await concatenateChunks(compressedChunkPaths, outputPath, tempDir);
-    console.log("[INFO] Concatenation complete.");
+    await concatenateChunksWithFilter(compressedChunkPaths, outputPath);
+    console.log(`[INFO] Concatenation complete. Output Path: ${outputPath}`);
 
     // Emit progress after concatenation
     socket.emit("compressionProgress", {
@@ -411,7 +431,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     // Clean up chunk files
     compressedChunkPaths.forEach((filePath) => deleteFile(filePath, "compressed chunk"));
     chunkPaths.forEach((filePath) => deleteFile(filePath, "original chunk"));
-    fs.unlinkSync(path.join(tempDir, "fileList.txt"));
+    // fs.unlinkSync(path.join(tempDir, "fileList.txt"));
     fs.rmdirSync(tempDir);
     console.log(`[INFO] Cleaned up temporary files in: ${tempDir}`);
 
@@ -421,10 +441,11 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     res.sendFile(outputPath, (err) => {
       if (err) {
         console.error("[ERROR] Error sending compressed video:", err.message);
+        return res.status(500).send("Error sending compressed video.");
       } else {
         console.log("[INFO] Compressed video sent successfully.");
+        deleteFile(outputPath, "compressed video");
       }
-      deleteFile(outputPath, "compressed video");
     });
   } catch (error) {
     console.error("[ERROR]", error.message);
