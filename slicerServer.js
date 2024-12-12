@@ -212,27 +212,77 @@ const compressChunk = (inputPath, outputPath, crf, preset, scaleWidth, socket, c
   });
 };
 
-// Function to concatenate compressed chunks into a single video
 const concatenateChunks = (chunkPaths, outputPath, tempDir) => {
   return new Promise((resolve, reject) => {
     // Create a file list for FFmpeg
     const fileListPath = path.join(tempDir, "fileList.txt");
     const fileListContent = chunkPaths.map((chunkPath) => `file '${chunkPath}'`).join("\n");
+
+    // Log the content of fileList.txt for verification
+    console.log(`[DEBUG] FFmpeg File List (${fileListPath}):\n${fileListContent}`);
+
     fs.writeFileSync(fileListPath, fileListContent);
+    console.log(`[INFO] Created FFmpeg file list at: ${fileListPath}`);
 
     const ffmpegArgs = ["-f", "concat", "-safe", "0", "-i", fileListPath, "-c", "copy", outputPath];
+    const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(" ")}`;
+
+    // Log the FFmpeg command being executed
+    console.log(`[DEBUG] Executing FFmpeg Concatenation Command:\n${ffmpegCommand}`);
 
     const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
 
+    let ffmpegStdErr = "";
+    let ffmpegStdOut = "";
+
+    ffmpegProcess.stdout.on("data", (data) => {
+      ffmpegStdOut += data.toString();
+    });
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      ffmpegStdErr += data.toString();
+    });
+
     ffmpegProcess.on("close", (code) => {
       if (code !== 0) {
-        reject(new Error(`FFmpeg concatenation exited with code ${code}`));
+        console.error(`[ERROR] FFmpeg Concatenation Process Failed with Exit Code ${code}`);
+        console.error(`[ERROR] FFmpeg STDERR Output:\n${ffmpegStdErr}`);
+        console.error(`[ERROR] FFmpeg STDOUT Output:\n${ffmpegStdOut}`);
+        return reject(new Error(`FFmpeg concatenation exited with code ${code}`));
       } else {
-        resolve();
+        console.log(`[INFO] FFmpeg Concatenation Completed Successfully. Output File: ${outputPath}`);
+        return resolve();
       }
+    });
+
+    ffmpegProcess.on("error", (err) => {
+      console.error(`[ERROR] FFmpeg Concatenation Process Encountered an Error: ${err.message}`);
+      return reject(new Error(`FFmpeg concatenation process error: ${err.message}`));
     });
   });
 };
+
+// Function to concatenate compressed chunks into a single video
+// const concatenateChunks = (chunkPaths, outputPath, tempDir) => {
+//   return new Promise((resolve, reject) => {
+//     // Create a file list for FFmpeg
+//     const fileListPath = path.join(tempDir, "fileList.txt");
+//     const fileListContent = chunkPaths.map((chunkPath) => `file '${chunkPath}'`).join("\n");
+//     fs.writeFileSync(fileListPath, fileListContent);
+
+//     const ffmpegArgs = ["-f", "concat", "-safe", "0", "-i", fileListPath, "-c", "copy", outputPath];
+
+//     const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
+
+//     ffmpegProcess.on("close", (code) => {
+//       if (code !== 0) {
+//         reject(new Error(`FFmpeg concatenation exited with code ${code}`));
+//       } else {
+//         resolve();
+//       }
+//     });
+//   });
+// };
 
 // Compress Video Route with Progress Updates and Chunking
 app.post("/compress-video", largeFileUpload.single("video"), async (req, res) => {
@@ -2637,15 +2687,3 @@ const clearFolders = () => {
 clearFolders(); // clear folders on server startup
 
 setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
-
-//animation with Immersity.ai API -- desparity map creation is working, ERROR_UNKNOWN when creating animation
-
-// app.get("/", (req, res) => {
-//   res.sendFile(path.join(__dirname, "views", "3d-animation.html"));
-// });
-
-// const server = app.listen(3000, "0.0.0.0", () => {
-//   console.log("Server running on port 3000");
-// });
-// server.timeout = 600000; // Increased server timeout
-// server.keepAliveTimeout = 600000;
