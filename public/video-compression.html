@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>Video Compression Tool</title>
     <link rel="stylesheet" href="styles.css" />
-    <!-- Add favicon if available to prevent 404 errors -->
+
     <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
   </head>
   <body>
@@ -105,103 +105,3 @@
     <script src="video-compression.js"></script>
   </body>
 </html>
-
-<!-- <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Video Compression Tool</title>
-    <link rel="stylesheet" href="styles.css" />
-
-    <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
-  </head>
-  <body>
-    <div class="sidebar">
-      <a href="index.html" class="home-button">
-        <img src="/images/home-icon-black.png" alt="Home" class="home-icon" />
-        <span>Home</span>
-      </a>
-      <h2>Video Compress</h2>
-      <form id="uploadFormVideoCompression" enctype="multipart/form-data" method="post">
-        <div class="form-group">
-          <label for="video">Upload Video (MP4):</label>
-          <input type="file" id="video" name="video" accept="video/mp4" required />
-        </div>
-
-        <div class="overlay-group" id="compressionOptionsSection" style="display: none">
-          <div class="form-group">
-            <label for="crf">Compression Quality (Higher = more compression):</label>
-            <input type="range" id="crf" name="crf" min="0" max="51" value="28" style="width: 80%; padding-top: 10px" />
-            <span style="padding-bottom: 12px" id="crf_display">28</span>
-          </div>
-
-          <div class="form-group">
-            <label for="preset">Speed (slower = more compression):</label>
-            <select id="preset" name="preset">
-              <option value="medium" selected>Medium</option>
-              <option value="slow">Slow</option>
-              <option value="slower">Slower</option>
-              <option value="veryslow">Very Slow</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="scaleWidth">Scale Width (px):</label>
-            <input type="number" id="scaleWidth" name="scaleWidth" min="320" max="3840" value="1280" />
-          </div>
-        </div>
-
-        <div class="button-group">
-          <button type="submit" class="form-button">Compress Video</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="main-content">
-      <div id="videoContainer">
-        <div>
-          <div style="display: flex; align-items: center">
-            <h3 style="margin-right: 10px">Uploaded Video</h3>
-            <span id="uploadedVideoDimensions" class="video-dimensions" style="font-size: 14px; font-weight: normal"></span>
-            <span id="uploadedVideoSize" class="video-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
-          </div>
-          <video id="uploadedVideo" controls width="400">
-            <source src="" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-
-        <div>
-          <div style="display: flex; align-items: center">
-            <h3 style="margin-right: 10px">Compressed Video</h3>
-            <span id="compressedVideoDimensions" class="video-dimensions" style="font-size: 14px; font-weight: normal"></span>
-            <span id="compressedVideoSize" class="video-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
-            <div id="inlineDownloadButtonContainer" class="inline-download-button-container" style="display: none">
-              <a id="inlineDownloadButton" class="inline-download-button">Download</a>
-            </div>
-          </div>
-          <video id="processedVideo" controls width="400">
-            <source src="" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      </div>
-
-      <div id="progressSection" style="display: none; width: 80%; margin-top: 20px">
-        <h3>Compression Progress</h3>
-        <div style="background-color: #ddd; border-radius: 4px; overflow: hidden">
-          <div id="progressBar" style="width: 0%; height: 20px; background-color: #4caf50; text-align: center; line-height: 20px; color: white">0%</div>
-        </div>
-      </div>
-
- 
-      <div id="errorMessage" style="display: none; color: red; margin-top: 20px"></div>
-    </div>
-
-    <div id="processingNotification" style="display: none">Processing your video, please wait...</div>
-
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="video-compression.js"></script>
-  </body>
-</html> -->

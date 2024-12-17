@@ -40,8 +40,9 @@ const app = express();
 const upload = multer({ dest: "uploads/" });
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+app.use(express.json({ limit: "10gb" }));
+app.use(express.urlencoded({ extended: true, limit: "10gb" }));
 
 // Environment Path
 process.env.PATH += ":/usr/bin";
@@ -60,6 +61,62 @@ app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "publi
 
 const server = http.createServer(app);
 const processedDir = path.join(__dirname, "processedDir");
+
+class CustomMulterStorage {
+  constructor(opts) {
+    this.destination = opts.destination;
+    this.filename = opts.filename;
+  }
+
+  _handleFile(req, file, cb) {
+    // Generate a unique filename
+    const uniqueSuffix = `${Date.now()}_${uuidv4()}${path.extname(file.originalname)}`;
+    const finalPath = path.join(this.destination, uniqueSuffix);
+
+    // Create a write stream
+    const outStream = fs.createWriteStream(finalPath);
+
+    // Create a progress stream
+    const progStream = Progress({
+      length: req.headers["content-length"],
+      time: 100 /* ms */,
+    });
+
+    progStream.on("progress", (progress) => {
+      if (req.socketId && req.io) {
+        req.io.to(req.socketId).emit("uploadProgress", {
+          percentage: progress.percentage.toFixed(2),
+          transferred: progress.transferred,
+          length: progress.length,
+          remaining: progress.remaining,
+        });
+      }
+      console.log(`[UPLOAD] ${progress.percentage.toFixed(2)}% uploaded`);
+    });
+
+    // Pipe the file stream through progress and then to the write stream
+    file.stream
+      .pipe(progStream)
+      .pipe(outStream)
+      .on("error", (err) => {
+        cb(err);
+      })
+      .on("finish", () => {
+        cb(null, {
+          path: finalPath,
+          size: progStream.bytesWritten,
+        });
+      });
+  }
+
+  _removeFile(req, file, cb) {
+    const path = file.path;
+
+    fs.unlink(path, cb);
+  }
+}
+
+module.exports = CustomMulterStorage;
 
 // Initialize Socket.io
 const io = new Server(server, {
@@ -94,102 +151,6 @@ const parseTime = (timeStr) => {
   const seconds = parseFloat(parts[2]);
   return hours * 3600 + minutes * 60 + seconds;
 };
-
-// require("dotenv").config();
-
-// const express = require("express");
-
-// const { exec, execFile } = require("child_process");
-// const fs = require("fs");
-// const path = require("path");
-// const axios = require("axios");
-// const FormData = require("form-data");
-// const { v4: uuidv4 } = require("uuid");
-// const cors = require("cors");
-// const { google } = require("googleapis");
-// const { Storage } = require("@google-cloud/storage");
-// const speech = require("@google-cloud/speech");
-// const Vibrant = require("node-vibrant");
-
-// const { spawn } = require("child_process");
-// const os = require("os"); // Ensure this line is present
-
-// const chatbotRoutes = require("./chatbot/routes/chatbotRoutes");
-
-// const sharp = require("sharp");
-
-// const http = require("http"); // Added for Socket.io
-// const { Server } = require("socket.io"); // Added for Socket.io
-
-// // Google Cloud setup
-// google.options({ auth: new google.auth.GoogleAuth({ logLevel: "debug" }) });
-// const speechClient = new speech.SpeechClient();
-// const storage = new Storage({
-//   keyFilename: process.env.GOOGLE_UPLOAD_CREDENTIALS || "/Users/kyle/Desktop/FFMPEG_GIF_Slicer/secure/google-credentials.json",
-// });
-// const bucket = storage.bucket("image-2d-to-3d");
-
-// // Express setup
-// const app = express();
-// const multer = require("multer");
-// const upload = multer({ dest: "uploads/" });
-
-// app.use(cors());
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
-
-// // Environment Path
-// process.env.PATH += ":/usr/bin";
-
-// // Serve general static files (used by the rest of the application)
-// app.use(express.static("public"));
-
-// // Serve static files for specific paths
-// app.use("/videos", express.static(path.join(__dirname, "videos")));
-// app.use("/subtitles", express.static(path.join(__dirname, "subtitles")));
-// app.use("/compressed", express.static(path.join(__dirname, "compressed")));
-
-// // Serve static files for chatbot assets
-// app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
-// app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
-
-// const server = http.createServer(app);
-
-// const processedDir = path.join(__dirname, "processedDir");
-
-// // Initialize Socket.io
-// const io = new Server(server, {
-//   cors: {
-//     origin: "*", // Adjust this as needed for security
-//     methods: ["GET", "POST"],
-//   },
-// });
-
-// // Handle Socket.io connections
-// io.on("connection", (socket) => {
-//   console.log(`Client connected: ${socket.id}`);
-
-//   socket.on("disconnect", () => {
-//     console.log(`Client disconnected: ${socket.id}`);
-//   });
-// });
-
-// // Start the server
-// const PORT = process.env.PORT || 3000;
-// server.listen(PORT, "0.0.0.0", () => {
-//   console.log(`Server running on port ${PORT}`);
-// });
-// server.timeout = 600000; // Increased server timeout
-// server.keepAliveTimeout = 600000;
-
-// // Helper function to parse FFmpeg time format (e.g., "00:00:10.00") to seconds
-// const parseTime = (timeStr) => {
-//   const parts = timeStr.split(":");
-//   const hours = parseFloat(parts[0]);
-//   const minutes = parseFloat(parts[1]);
-//   const seconds = parseFloat(parts[2]);
-//   return hours * 3600 + minutes * 60 + seconds;
-// };
 
 // Function to delete files safely
 const deleteFile = (filePath, description) => {
@@ -541,72 +502,6 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
       } catch (err) {
         console.error(`[ERROR] Failed to delete tempDir: ${err.message}`);
       }
-    }
-  }
-});
-
-// // Use chatbot routes
-// app.use("/chatbot/api", chatbotRoutes);
-
-// // Serve chatbot.html for the chatbot interface
-// app.get("/chatbot", (req, res) => {
-//   res.sendFile(path.join(__dirname, "chatbot", "public", "chatbot.html"));
-// });
-
-// const outputDir = path.join(__dirname, "converted");
-// if (!fs.existsSync(outputDir)) {
-//   fs.mkdirSync(outputDir);
-// }
-
-app.post("/text-to-image", upload.none(), async (req, res) => {
-  const prompt = req.body.prompt;
-
-  // Validate prompt
-  if (!prompt || prompt.length > 1000) {
-    return res.status(400).send("Invalid prompt. Please provide a prompt with up to 1000 characters.");
-  }
-
-  // Prepare form data for Clipdrop API
-  const formData = new FormData();
-  formData.append("prompt", prompt);
-
-  try {
-    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-      },
-      responseType: "arraybuffer",
-    });
-
-    // Check if the response is an image
-    if (response.headers["content-type"] === "image/png") {
-      // Set appropriate headers
-      res.setHeader("Content-Type", "image/png");
-
-      // Optionally, set headers for credits remaining and consumed
-      res.setHeader("x-remaining-credits", response.headers["x-remaining-credits"]);
-      res.setHeader("x-credits-consumed", response.headers["x-credits-consumed"]);
-
-      // Send the image buffer
-      res.send(response.data);
-    } else {
-      // If not an image, it's likely an error in JSON format
-      const errorData = JSON.parse(Buffer.from(response.data).toString("utf-8"));
-      console.error("API Error:", errorData);
-      res.status(response.status).send(errorData.error || "Unknown error from Text to Image API.");
-    }
-  } catch (error) {
-    console.error("Failed to generate image:", error.response ? error.response.data : error.message);
-    if (error.response && error.response.data) {
-      try {
-        const errorData = JSON.parse(Buffer.from(error.response.data).toString("utf-8"));
-        res.status(error.response.status).send(errorData.error || "Unknown error from Text to Image API.");
-      } catch (parseError) {
-        res.status(error.response.status).send("Error generating image.");
-      }
-    } else {
-      res.status(500).send("Failed to generate image.");
     }
   }
 });
@@ -1030,7 +925,7 @@ app.post("/SliceMultiConvertToMp4", upload.single("video"), (req, res) => {
   const outputPath = path.join(outputDir, `converted_${Date.now()}.mp4`); // Output path for MP4
 
   // Convert the video to MP4 format using ffmpeg
-  const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset ultrafast -crf 28 "${outputPath}"`;
+  const convertCommand = `ffmpeg -i "${videoPath}" -vcodec libx264 -preset medium -crf 18 "${outputPath}"`;
 
   exec(convertCommand, (convertError, stdout, stderr) => {
     if (convertError) {
@@ -2318,6 +2213,59 @@ const cleanup = (videoPath, framesDir, outputPath) => {
 // ------ Clipdrop API Effects ------ //
 
 // inpaint
+
+app.post("/text-to-image", upload.none(), async (req, res) => {
+  const prompt = req.body.prompt;
+
+  // Validate prompt
+  if (!prompt || prompt.length > 1000) {
+    return res.status(400).send("Invalid prompt. Please provide a prompt with up to 1000 characters.");
+  }
+
+  // Prepare form data for Clipdrop API
+  const formData = new FormData();
+  formData.append("prompt", prompt);
+
+  try {
+    const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
+      headers: {
+        ...formData.getHeaders(),
+        "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+      },
+      responseType: "arraybuffer",
+    });
+
+    // Check if the response is an image
+    if (response.headers["content-type"] === "image/png") {
+      // Set appropriate headers
+      res.setHeader("Content-Type", "image/png");
+
+      // Optionally, set headers for credits remaining and consumed
+      res.setHeader("x-remaining-credits", response.headers["x-remaining-credits"]);
+      res.setHeader("x-credits-consumed", response.headers["x-credits-consumed"]);
+
+      // Send the image buffer
+      res.send(response.data);
+    } else {
+      // If not an image, it's likely an error in JSON format
+      const errorData = JSON.parse(Buffer.from(response.data).toString("utf-8"));
+      console.error("API Error:", errorData);
+      res.status(response.status).send(errorData.error || "Unknown error from Text to Image API.");
+    }
+  } catch (error) {
+    console.error("Failed to generate image:", error.response ? error.response.data : error.message);
+    if (error.response && error.response.data) {
+      try {
+        const errorData = JSON.parse(Buffer.from(error.response.data).toString("utf-8"));
+        res.status(error.response.status).send(errorData.error || "Unknown error from Text to Image API.");
+      } catch (parseError) {
+        res.status(error.response.status).send("Error generating image.");
+      }
+    } else {
+      res.status(500).send("Failed to generate image.");
+    }
+  }
+});
 
 app.post("/text-inpainting", upload.fields([{ name: "image_file" }, { name: "mask_file" }]), async (req, res) => {
   const imagePath = req.files["image_file"][0].path;

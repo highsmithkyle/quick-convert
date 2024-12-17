@@ -29,6 +29,7 @@
     "openai": "^3.3.0",
     "path": "^0.12.7",
     "pngquant-bin": "^9.0.0",
+    "progress-stream": "^2.0.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.8.1",
     "sortablejs": "^1.15.3",
