@@ -61,7 +61,7 @@ app.use("/processed", express.static(path.join(__dirname, "processed")));
 app.use("/chatbot", express.static(path.join(__dirname, "chatbot", "public")));
 app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "public", "chatbot-videos")));
 
-
+const convertedDir = path.join(__dirname, "converted");
 
 const CLIPDROP_API_KEY = '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e';
 
