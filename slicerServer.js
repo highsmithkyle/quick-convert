@@ -63,9 +63,7 @@ app.use("/chatbot-videos", express.static(path.join(__dirname, "chatbot", "publi
 
 const convertedDir = path.join(__dirname, "converted");
 
-const CLIPDROP_API_KEY = '2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e';
-
-
+const CLIPDROP_API_KEY = "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e";
 
 const server = http.createServer(app);
 const processedDir = path.join(__dirname, "processedDir");
@@ -523,10 +521,8 @@ app.post("/get-suggested-colors", upload.single("image"), async (req, res) => {
     const imagePath = req.file.path;
     // Use Vibrant to get a color palette
     const palette = await Vibrant.from(imagePath).getPalette();
-    // Vibrant can give multiple swatches, e.g. "Vibrant", "Muted", "DarkVibrant", etc.
-    // We'll just collect the hex values from some of them:
-    const swatchKeys = Object.keys(palette); // e.g. ["Vibrant","Muted","DarkVibrant","DarkMuted","LightVibrant","LightMuted"]
-    // Filter out null swatches, grab up to 5 distinct colors
+
+    const swatchKeys = Object.keys(palette);
     const suggestedColors = swatchKeys
       .map((key) => palette[key] && palette[key].getHex())
       .filter(Boolean)
@@ -551,7 +547,7 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     console.log("===== /create-background-image route hit =====");
 
     const imagePath = req.file.path;
-    // [CHANGED CODE] - Destructure targetWidth & targetHeight for resizing/upscaling
+    // Destructure targetWidth & targetHeight for resizing/upscaling
     // Note that color is coming from req.body.color
     const { color, gradientSize, height, targetWidth, targetHeight } = req.body;
 
@@ -566,9 +562,10 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     console.log("Parsed target width:", parsedTargetWidth);
     console.log("Parsed target height:", parsedTargetHeight);
 
-    const validGradientSizes = ["full", "half", "quarter"];
+    // **[UPDATED CODE]** - Include 'eighth' and 'sixteenth' in validGradientSizes
+    const validGradientSizes = ["full", "half", "quarter", "eighth", "sixteenth"];
     if (!validGradientSizes.includes(gradientSize)) {
-      throw new Error("Invalid gradient size. Must be one of: full, half, quarter.");
+      throw new Error("Invalid gradient size. Must be one of: full, half, quarter, eighth, sixteenth.");
     }
 
     const colorBlockHeight = parseInt(height, 10);
@@ -600,7 +597,7 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     // =========================================================================
     let finalWorkingImagePath = imagePath; // The file we will eventually apply gradient to
 
-    // [ADDED CODE] - Only do something if targetWidth is a valid positive number
+    // Only do something if targetWidth is a valid positive number
     if (!isNaN(parsedTargetWidth) && parsedTargetWidth > 0) {
       // -- Case 1: Original is bigger => Downscale
       if (originalWidth > parsedTargetWidth) {
@@ -649,24 +646,20 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
         }
         console.log(`Upscaling to ${parsedTargetWidth}x${finalTargetHeight}`);
 
-        // [ADDED CODE] - Use ClipDrop API
+        // Use ClipDrop API
         const upscaleFormData = new FormData();
         upscaleFormData.append("image_file", fs.createReadStream(imagePath));
         upscaleFormData.append("target_width", parsedTargetWidth);
         upscaleFormData.append("target_height", finalTargetHeight);
 
         try {
-          const response = await axios.post(
-            "https://clipdrop-api.co/image-upscaling/v1/upscale",
-            upscaleFormData,
-            {
-              headers: {
-                ...upscaleFormData.getHeaders(),
-                "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
-              },
-              responseType: "arraybuffer",
-            }
-          );
+          const response = await axios.post("https://clipdrop-api.co/image-upscaling/v1/upscale", upscaleFormData, {
+            headers: {
+              ...upscaleFormData.getHeaders(),
+              "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e",
+            },
+            responseType: "arraybuffer",
+          });
 
           // Delete original local file
           fs.unlinkSync(imagePath);
@@ -705,6 +698,12 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
         break;
       case "quarter":
         gradientHeight = Math.floor(originalHeight / 4);
+        break;
+      case "eighth":
+        gradientHeight = Math.floor(originalHeight / 8);
+        break;
+      case "sixteenth":
+        gradientHeight = Math.floor(originalHeight / 16);
         break;
       default:
         gradientHeight = originalHeight;
@@ -785,7 +784,7 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     fs.unlinkSync(coloredBlockPath);
     fs.unlinkSync(overlayGradientPath);
 
-    // [CHANGED CODE] - Remove finalWorkingImage if it exists (and is not the final image).
+    // Remove finalWorkingImage if it exists (and is not the final image).
     if (fs.existsSync(finalWorkingImagePath)) {
       try {
         if (finalWorkingImagePath !== finalImagePath) {
@@ -811,274 +810,6 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
-
-
-// app.post("/create-background-image", upload.single("image"), async (req, res) => {
-//   try {
-//     console.log("===== /create-background-image route hit =====");
-
-//     const imagePath = req.file.path;
-//     // [CHANGED CODE] - Destructure targetWidth & targetHeight for resizing/upscaling
-//     const { color, gradientSize, height, targetWidth, targetHeight } = req.body;
-
-//     console.log("Received body:", req.body);
-
-//     if (!color || !gradientSize || !height) {
-//       throw new Error("Missing required parameters (color, gradientSize, height).");
-//     }
-
-//     const parsedTargetWidth = parseInt(targetWidth, 10);
-//     const parsedTargetHeight = parseInt(targetHeight, 10);
-//     console.log("Parsed target width:", parsedTargetWidth);
-//     console.log("Parsed target height:", parsedTargetHeight);
-
-//     const validGradientSizes = ["full", "half", "quarter"];
-//     if (!validGradientSizes.includes(gradientSize)) {
-//       throw new Error("Invalid gradient size. Must be one of: full, half, quarter.");
-//     }
-
-//     const colorBlockHeight = parseInt(height, 10);
-//     if (isNaN(colorBlockHeight) || colorBlockHeight <= 0) {
-//       throw new Error("Invalid height value for the colored block.");
-//     }
-
-//     // Identify the original dimensions
-//     const identifyCommand = `identify -format "%w %h" "${imagePath}"`;
-//     const originalDimensions = await new Promise((resolve, reject) => {
-//       exec(identifyCommand, (error, stdout, stderr) => {
-//         if (error) {
-//           console.error("Error getting image dimensions:", stderr);
-//           return reject(new Error("Failed to get image dimensions."));
-//         }
-//         const [w, h] = stdout.trim().split(" ").map(Number);
-//         if (isNaN(w) || isNaN(h)) {
-//           return reject(new Error("Invalid image dimensions."));
-//         }
-//         resolve({ width: w, height: h });
-//       });
-//     });
-
-//     let { width: originalWidth, height: originalHeight } = originalDimensions;
-//     console.log(`Original image dimensions: ${originalWidth}x${originalHeight}`);
-
-//     // =========================================================================
-//     //  1. Decide if we need to resize (downscale) or upscale, or do nothing
-//     // =========================================================================
-//     let finalWorkingImagePath = imagePath; // The file we will eventually apply gradient to
-
-//     // [ADDED CODE] - Only do something if targetWidth is a valid positive number
-//     if (!isNaN(parsedTargetWidth) && parsedTargetWidth > 0) {
-//       // -- Case 1: Original is bigger => Downscale
-//       if (originalWidth > parsedTargetWidth) {
-//         console.log("Resizing (downscaling) needed...");
-
-//         let newHeight;
-//         if (!isNaN(parsedTargetHeight) && parsedTargetHeight > 0) {
-//           newHeight = parsedTargetHeight;
-//         } else {
-//           const aspectRatio = originalHeight / originalWidth;
-//           newHeight = Math.round(parsedTargetWidth * aspectRatio);
-//         }
-//         console.log(`Downscaling to ${parsedTargetWidth}x${newHeight}`);
-
-//         const extension = path.extname(req.file.originalname).toLowerCase();
-//         const resizedImagePath = path.join(__dirname, "processed", `resized_${uuidv4()}${extension}`);
-//         const qualityOption = "-quality 85";
-//         const resizeCommand = `convert "${imagePath}" -resize ${parsedTargetWidth}x${newHeight} ${qualityOption} "${resizedImagePath}"`;
-
-//         await new Promise((resolve, reject) => {
-//           exec(resizeCommand, (error, stdout, stderr) => {
-//             if (error) {
-//               console.error("Error resizing image:", stderr);
-//               return reject(new Error("Failed to resize image."));
-//             }
-//             resolve();
-//           });
-//         });
-
-//         fs.unlinkSync(imagePath); // Remove original
-//         finalWorkingImagePath = resizedImagePath; 
-//         originalWidth = parsedTargetWidth; 
-//         originalHeight = newHeight;
-//       }
-//       // -- Case 2: Original is smaller => Upscale
-//       else if (originalWidth < parsedTargetWidth) {
-//         console.log("Upscaling needed...");
-        
-//         // We'll figure out final target height
-//         let finalTargetHeight;
-//         if (!isNaN(parsedTargetHeight) && parsedTargetHeight > 0) {
-//           finalTargetHeight = parsedTargetHeight;
-//         } else {
-//           const aspectRatio = originalHeight / originalWidth;
-//           finalTargetHeight = Math.round(parsedTargetWidth * aspectRatio);
-//         }
-//         console.log(`Upscaling to ${parsedTargetWidth}x${finalTargetHeight}`);
-
-//         // [ADDED CODE] - Use ClipDrop API
-//         const upscaleFormData = new FormData();
-//         upscaleFormData.append("image_file", fs.createReadStream(imagePath));
-//         upscaleFormData.append("target_width", parsedTargetWidth);
-//         upscaleFormData.append("target_height", finalTargetHeight);
-
-//         try {
-//           const response = await axios.post(
-//             "https://clipdrop-api.co/image-upscaling/v1/upscale",
-//             upscaleFormData,
-//             {
-//               headers: {
-//                 ...upscaleFormData.getHeaders(),
-//                 "x-api-key": "2ebd9993354e21cafafc8daa3f70f514072021319522961c0397c4d2ed7e4228bec2fb0386425febecf0de652aae734e", 
-//               },
-//               responseType: "arraybuffer",
-//             }
-//           );
-
-//           // Delete original local file
-//           fs.unlinkSync(imagePath);
-
-//           // Write the upscaled image to disk
-//           const extension = response.headers["content-type"] === "image/webp" ? ".webp" : ".jpg";
-//           const upscaledPath = path.join(__dirname, "processed", `upscaled_${uuidv4()}${extension}`);
-//           fs.writeFileSync(upscaledPath, response.data);
-
-//           finalWorkingImagePath = upscaledPath;
-//           originalWidth = parsedTargetWidth;
-//           originalHeight = finalTargetHeight;
-//         } catch (error) {
-//           console.error("Failed to upscale image:", error);
-//           throw new Error("Failed to upscale image.");
-//         }
-//       } else {
-//         console.log("No resizing/upscaling needed (image is already about targetWidth).");
-//       }
-//     } else {
-//       console.log("No targetWidth provided or invalid; skipping resize/upscale.");
-//     }
-
-//     console.log(`Final working dimensions: ${originalWidth}x${originalHeight}`);
-
-//     // =========================================================================
-//     //  2. Create the gradient
-//     // =========================================================================
-//     let gradientHeight;
-//     switch (gradientSize) {
-//       case "full":
-//         gradientHeight = originalHeight;
-//         break;
-//       case "half":
-//         gradientHeight = Math.floor(originalHeight / 2);
-//         break;
-//       case "quarter":
-//         gradientHeight = Math.floor(originalHeight / 4);
-//         break;
-//       default:
-//         gradientHeight = originalHeight;
-//     }
-
-//     const gradientImagePath = path.join(__dirname, "processed", `gradient_${uuidv4()}.png`);
-//     const gradientCommand = `convert -size ${originalWidth}x${gradientHeight} gradient:none-${color} "${gradientImagePath}"`;
-
-//     await new Promise((resolve, reject) => {
-//       exec(gradientCommand, (error, stdout, stderr) => {
-//         if (error) {
-//           console.error("Error creating gradient:", stderr);
-//           return reject(new Error("Failed to create gradient."));
-//         }
-//         resolve();
-//       });
-//     });
-
-//     // =========================================================================
-//     //  3. Create the colored block
-//     // =========================================================================
-//     const coloredBlockPath = path.join(__dirname, "processed", `colored_block_${uuidv4()}.png`);
-//     const coloredBlockCommand = `convert -size ${originalWidth}x${colorBlockHeight} canvas:"${color}" "${coloredBlockPath}"`;
-
-//     await new Promise((resolve, reject) => {
-//       exec(coloredBlockCommand, (error, stdout, stderr) => {
-//         if (error) {
-//           console.error("Error creating colored block:", stderr);
-//           return reject(new Error("Failed to create colored block."));
-//         }
-//         resolve();
-//       });
-//     });
-
-//     // =========================================================================
-//     //  4. Overlay the gradient onto the finalWorkingImage
-//     // =========================================================================
-//     const overlayGradientPath = path.join(__dirname, "processed", `overlay_gradient_${uuidv4()}.png`);
-//     const overlayGradientCommand = `convert "${finalWorkingImagePath}" "${gradientImagePath}" -gravity south -composite "${overlayGradientPath}"`;
-
-//     await new Promise((resolve, reject) => {
-//       exec(overlayGradientCommand, (error, stdout, stderr) => {
-//         if (error) {
-//           console.error("Error overlaying gradient:", stderr);
-//           return reject(new Error("Failed to overlay gradient."));
-//         }
-//         resolve();
-//       });
-//     });
-
-//     // =========================================================================
-//     //  5. Append the colored block
-//     // =========================================================================
-//     const finalImagePath = path.join(__dirname, "processed", `final_background_${uuidv4()}.png`);
-//     const appendBlockCommand = `convert "${overlayGradientPath}" "${coloredBlockPath}" -append "${finalImagePath}"`;
-
-//     await new Promise((resolve, reject) => {
-//       exec(appendBlockCommand, (error, stdout, stderr) => {
-//         if (error) {
-//           console.error("Error appending colored block:", stderr);
-//           return reject(new Error("Failed to append colored block."));
-//         }
-//         resolve();
-//       });
-//     });
-
-//     // =========================================================================
-//     //  6. Send results
-//     // =========================================================================
-//     const finalImageStats = fs.statSync(finalImagePath);
-//     const finalImageSizeMB = (finalImageStats.size / (1024 * 1024)).toFixed(2);
-//     const finalDimensions = `${originalWidth}x${originalHeight + colorBlockHeight}px`;
-
-//     console.log(`Final image dimensions: ${finalDimensions} (about ${finalImageSizeMB} MB)`);
-
-//     // Cleanup temp files
-//     fs.unlinkSync(gradientImagePath);
-//     fs.unlinkSync(coloredBlockPath);
-//     fs.unlinkSync(overlayGradientPath);
-
-//     // [CHANGED CODE] - Remove finalWorkingImage if it exists (and is not the final image).
-//     if (fs.existsSync(finalWorkingImagePath)) {
-//       try {
-//         if (finalWorkingImagePath !== finalImagePath) {
-//           fs.unlinkSync(finalWorkingImagePath);
-//         }
-//       } catch (err) {
-//         console.warn("Could not remove finalWorkingImagePath:", err.message);
-//       }
-//     }
-
-//     res.json({
-//       imageUrl: `/processed/${path.basename(finalImagePath)}`,
-//       sizeMB: finalImageSizeMB,
-//       dimensions: finalDimensions,
-//     });
-//   } catch (error) {
-//     console.error("Error in /create-background-image:", error.message);
-
-//     // Clean up if still on disk
-//     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-//       fs.unlinkSync(req.file.path);
-//     }
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-
 
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   console.log("Received /slice-multi POST request");
