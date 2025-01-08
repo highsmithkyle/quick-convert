@@ -12,9 +12,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const gradientPreview = document.getElementById("gradientPreview");
   const helpText = document.getElementById("helpText");
   const tooltip = document.getElementById("tooltip");
-  const showSampleEmailCheckbox = document.getElementById("showSampleEmail");
-  const sampleEmail = document.getElementById("sampleEmail");
   const switchColorsButton = document.getElementById("switchColorsButton");
+
+  // CHANGE: Removed references to showSampleEmailCheckbox and sampleEmail
 
   gradientTypeInput.addEventListener("change", updatePreview);
   topColorInput.addEventListener("input", updatePreview);
@@ -37,13 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
     tooltip.style.display = "none";
   });
 
-  showSampleEmailCheckbox.addEventListener("change", function () {
-    if (showSampleEmailCheckbox.checked) {
-      sampleEmail.style.display = "block";
-    } else {
-      sampleEmail.style.display = "none";
-    }
-  });
+  // CHANGE: Removed event listener for the "Show Sample Email" checkbox
 
   switchColorsButton.addEventListener("click", function () {
     const topColor = topColorInput.value;
@@ -95,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const topColor = topColorInput.value;
     const bottomColor = bottomColorInput.value;
     const size = sizeInput.value;
-  
+
     let dimensions;
     switch (size) {
       case "small":
@@ -110,10 +104,10 @@ document.addEventListener("DOMContentLoaded", function () {
       default:
         dimensions = { width: 600, height: 1000 };
     }
-  
+
     gradientPreview.style.width = `${dimensions.width}px`;
     gradientPreview.style.height = `${dimensions.height}px`;
-  
+
     let gradient;
     switch (gradientType) {
       case "radial":
@@ -129,15 +123,16 @@ document.addEventListener("DOMContentLoaded", function () {
         gradient = `linear-gradient(to bottom left, ${topColor}, ${bottomColor})`;
         break;
       default:
-        gradient = `linear-gradient(${topColor}, ${bottomColor})`; // Explicitly handle top to bottom
+        // Explicitly handle top to bottom
+        gradient = `linear-gradient(${topColor}, ${bottomColor})`;
     }
-  
+
     gradientPreview.style.background = gradient;
   }
 
-  updatePreview();
+  updatePreview(); // Initialize preview on load
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-  updatePreview();  // Initialize preview on load
+  updatePreview(); // Initialize preview on load
 });
