@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Countdown Clock</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* Add any additional styles here or in styles.css */
+      .main-content img {
+        border: 1px solid #ddd;
+        width: 300px;
+        height: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <h2>Countdown Clock</h2>
+      <form id="countdownForm" class="form-group">
+        <div class="form-group">
+          <label for="deadlineInput">Deadline</label>
+          <input type="text" id="deadlineInput" name="deadlineInput" placeholder="e.g., 1735689600000 or 2025-12-31T23:59:59Z" class="sidebar-input" required />
+          <small>Use 2025-12-31T23:59:59Z</small>
+        </div>
+
+        <div class="overlay-group">
+          <div class="button-group">
+            <button type="submit" class="form-button">Generate Countdown Image</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <h3>Countdown Preview</h3>
+      <p>
+        <br />
+        You can copy the image URL to view your clock.
+      </p>
+      <div>
+        <input type="text" id="countdownImageUrl" class="sidebar-input" style="width: 100%" readonly />
+      </div>
+      <div style="margin-top: 20px">
+        <img id="countdownPreview" src="" alt="Countdown Clock Preview" />
+      </div>
+    </div>
+
+    <script>
+      // JavaScript to handle form submission and display the countdown image
+      const form = document.getElementById("countdownForm");
+      const deadlineInput = document.getElementById("deadlineInput");
+      const countdownImageUrl = document.getElementById("countdownImageUrl");
+      const countdownPreview = document.getElementById("countdownPreview");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const val = deadlineInput.value.trim();
+        if (!val) return;
+
+        // Build the final image URL (replace 'localhost:3000' with your server's domain/IP if deployed)
+        const serverDomain = window.location.origin; // Automatically detects current domain
+        const finalUrl = `${serverDomain}/countdown-clock?deadline=${encodeURIComponent(val)}`;
+
+        countdownImageUrl.value = finalUrl;
+        countdownPreview.src = finalUrl;
+      });
+    </script>
+  </body>
+</html>

@@ -124,6 +124,86 @@ class CustomMulterStorage {
 
 module.exports = CustomMulterStorage;
 
+app.get("/countdown-clock", (req, res) => {
+  const { deadline } = req.query;
+
+  if (!deadline) {
+    return res.status(400).send("Missing 'deadline' query parameter.");
+  }
+
+  // Parse the deadline
+  let endTime;
+  if (!isNaN(Number(deadline))) {
+    // Treat as epoch milliseconds
+    endTime = parseInt(deadline, 10);
+  } else {
+    // Treat as ISO date string
+    endTime = new Date(deadline).getTime();
+  }
+
+  const now = Date.now();
+  let distance = endTime - now; // in ms
+
+  if (distance < 0) distance = 0; // If deadline has passed
+
+  // Calculate remaining time components
+  const totalSeconds = Math.floor(distance / 1000);
+  const days = Math.floor(totalSeconds / (3600 * 24));
+  const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  // Construct display string
+  const displayString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+  // Define image parameters
+  const width = 300;
+  const height = 120;
+  const fontSize = 30;
+  const font = "Arial"; // Ensure Arial is installed on the server
+  const textColor = "black";
+  const outputFileName = `countdown_${uuidv4()}.png`;
+  const outputPath = path.join(__dirname, "processed", outputFileName);
+
+  // Ensure the 'processed' directory exists
+  const processedDir = path.join(__dirname, "processed");
+  if (!fs.existsSync(processedDir)) {
+    fs.mkdirSync(processedDir, { recursive: true });
+  }
+
+  // Updated ImageMagick command for transparency
+  const imagemagickCommand = `convert -size ${width}x${height} xc:none -gravity center -font ${font} -fill ${textColor} -pointsize ${fontSize} -annotate +0+0 "${displayString}" PNG32:"${outputPath}"`;
+
+  // Execute the ImageMagick command
+  exec(imagemagickCommand, (error, stdout, stderr) => {
+    if (error) {
+      console.error("ImageMagick Error:", stderr);
+      return res.status(500).send("Failed to generate countdown image.");
+    }
+
+    // Set Cache-Control headers to prevent caching
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    // Send the generated image as a response
+    res.sendFile(outputPath, (err) => {
+      if (err) {
+        console.error("Error sending file:", err);
+        return res.status(500).send("Error sending countdown image.");
+      }
+
+      // Optionally, delete the image after sending to save storage space
+      fs.unlink(outputPath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error("Error deleting temporary image file:", unlinkErr);
+        }
+      });
+    });
+  });
+});
+
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
@@ -140,14 +220,6 @@ io.on("connection", (socket) => {
     console.log(`Client disconnected: ${socket.id}`);
   });
 });
-
-// Start the server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
-server.timeout = 600000; // Increased server timeout
-server.keepAliveTimeout = 600000;
 
 // Helper function to parse FFmpeg time format (e.g., "00:00:10.00") to seconds
 const parseTime = (timeStr) => {
@@ -206,6 +278,39 @@ const getVideoMetadata = (videoPath) => {
         const duration = parseFloat(lines[0]);
         const bitrate = parseInt(lines[1], 10);
         resolve({ duration, bitrate });
+      }
+    });
+  });
+};
+
+// Function to get video streams using FFprobe
+const getVideoStreams = (videoPath) => {
+  return new Promise((resolve, reject) => {
+    const ffprobe = spawn("ffprobe", ["-v", "error", "-show_entries", "stream=index,codec_type", "-of", "json", videoPath]);
+
+    let output = "";
+    let errorOutput = "";
+
+    ffprobe.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    ffprobe.stderr.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
+    ffprobe.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`FFprobe exited with code ${code}: ${errorOutput}`));
+      } else {
+        try {
+          const json = JSON.parse(output);
+          const streams = json.streams || [];
+          const hasAudio = streams.some((stream) => stream.codec_type === "audio");
+          resolve({ hasAudio, streams });
+        } catch (parseError) {
+          reject(new Error("Failed to parse FFprobe output."));
+        }
       }
     });
   });
@@ -282,62 +387,68 @@ const concatenateChunksWithFilter = (chunkPaths, outputPath) => {
       return reject(new Error("No chunks provided for concatenation."));
     }
 
-    // Build the FFmpeg input arguments
-    const ffmpegArgs = [];
-    chunkPaths.forEach((chunkPath, index) => {
-      ffmpegArgs.push("-i", chunkPath);
-    });
-
-    // Construct the filter_complex string for the concat filter
-    const filterComplex = chunkPaths.map((_, index) => `[${index}:v:0][${index}:a:0]`).join("") + `concat=n=${chunkPaths.length}:v=1:a=1[outv][outa]`;
-
-    ffmpegArgs.push("-filter_complex", filterComplex);
-    ffmpegArgs.push("-map", "[outv]");
-    ffmpegArgs.push("-map", "[outa]");
-    ffmpegArgs.push("-c:v", "libx264");
-    ffmpegArgs.push("-c:a", "aac");
-    ffmpegArgs.push("-strict", "experimental"); // Necessary for some FFmpeg versions
-    ffmpegArgs.push("-movflags", "faststart"); // Optimize for web streaming
-    ffmpegArgs.push(outputPath);
-
-    const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(" ")}`;
-
-    // Log the FFmpeg command being executed
-    console.log(`[DEBUG] Executing FFmpeg Concatenation Command with concat filter:\n${ffmpegCommand}`);
-
-    const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
-
-    let ffmpegStdErr = "";
-    let ffmpegStdOut = "";
-
-    ffmpegProcess.stdout.on("data", (data) => {
-      ffmpegStdOut += data.toString();
-
-      console.log(`[FFmpeg STDOUT]: ${data}`);
-    });
-
-    ffmpegProcess.stderr.on("data", (data) => {
-      ffmpegStdErr += data.toString();
-
-      console.error(`[FFmpeg STDERR]: ${data}`);
-    });
-
-    ffmpegProcess.on("close", (code) => {
-      if (code !== 0) {
-        console.error(`[ERROR] FFmpeg Concatenation Process Failed with Exit Code ${code}`);
-        console.error(`[ERROR] FFmpeg STDERR Output:\n${ffmpegStdErr}`);
-        console.error(`[ERROR] FFmpeg STDOUT Output:\n${ffmpegStdOut}`);
-        return reject(new Error(`FFmpeg concatenation exited with code ${code}`));
-      } else {
-        console.log(`[INFO] FFmpeg Concatenation Completed Successfully. Output File: ${outputPath}`);
+    // If there's only one chunk, rename/move it to the output path
+    if (chunkPaths.length === 1) {
+      fs.rename(chunkPaths[0], outputPath, (err) => {
+        if (err) {
+          return reject(new Error(`Failed to rename chunk: ${err.message}`));
+        }
+        console.log(`[INFO] Single chunk moved to output path: ${outputPath}`);
         return resolve();
-      }
-    });
+      });
+    } else {
+      // Existing concatenation logic for multiple chunks
+      const ffmpegArgs = [];
+      chunkPaths.forEach((chunkPath, index) => {
+        ffmpegArgs.push("-i", chunkPath);
+      });
 
-    ffmpegProcess.on("error", (err) => {
-      console.error(`[ERROR] FFmpeg Concatenation Process Encountered an Error: ${err.message}`);
-      return reject(new Error(`FFmpeg concatenation process error: ${err.message}`));
-    });
+      // Construct the filter_complex string for the concat filter (video only)
+      const filterComplex = chunkPaths.map((_, index) => `[${index}:v:0]`).join("") + `concat=n=${chunkPaths.length}:v=1:a=0[outv]`;
+
+      ffmpegArgs.push("-filter_complex", filterComplex);
+      ffmpegArgs.push("-map", "[outv]");
+      ffmpegArgs.push("-c:v", "libx264");
+      ffmpegArgs.push("-movflags", "faststart");
+      ffmpegArgs.push(outputPath);
+
+      const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(" ")}`;
+
+      // Log the FFmpeg command being executed
+      console.log(`[DEBUG] Executing FFmpeg Concatenation Command:\n${ffmpegCommand}`);
+
+      const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
+
+      let ffmpegStdErr = "";
+      let ffmpegStdOut = "";
+
+      ffmpegProcess.stdout.on("data", (data) => {
+        ffmpegStdOut += data.toString();
+        console.log(`[FFmpeg STDOUT]: ${data}`);
+      });
+
+      ffmpegProcess.stderr.on("data", (data) => {
+        ffmpegStdErr += data.toString();
+        console.error(`[FFmpeg STDERR]: ${data}`);
+      });
+
+      ffmpegProcess.on("close", (code) => {
+        if (code !== 0) {
+          console.error(`[ERROR] FFmpeg Concatenation Process Failed with Exit Code ${code}`);
+          console.error(`[ERROR] FFmpeg STDERR Output:\n${ffmpegStdErr}`);
+          console.error(`[ERROR] FFmpeg STDOUT Output:\n${ffmpegStdOut}`);
+          return reject(new Error(`FFmpeg concatenation exited with code ${code}`));
+        } else {
+          console.log(`[INFO] FFmpeg Concatenation Completed Successfully. Output File: ${outputPath}`);
+          return resolve();
+        }
+      });
+
+      ffmpegProcess.on("error", (err) => {
+        console.error(`[ERROR] FFmpeg Concatenation Process Encountered an Error: ${err.message}`);
+        return reject(new Error(`FFmpeg concatenation process error: ${err.message}`));
+      });
+    }
   });
 };
 
@@ -385,6 +496,11 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     const { duration, bitrate } = metadata; // bitrate in bps
     console.log(`[INFO] Video Metadata: Duration = ${duration} seconds, Bitrate = ${bitrate} bps`);
 
+    // Get video streams
+    const streamsInfo = await getVideoStreams(videoPath);
+    const { hasAudio } = streamsInfo;
+    console.log(`[INFO] Video has audio: ${hasAudio}`);
+
     // Calculate total file size in bytes
     const fileSizeInBytes = req.file.size;
     console.log(`[INFO] Video File Size: ${fileSizeInBytes} bytes`);
@@ -415,19 +531,31 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     console.log(`[INFO] Determined number of chunks: ${numberOfChunks}`);
 
     // Calculate chunk duration
-    const chunkSizeBytes = Math.min(300 * 1024 * 1024, fileSizeInBytes / numberOfChunks);
-    const chunkDuration = (chunkSizeBytes * 8) / bitrate; // seconds
+    let chunkDuration = (fileSizeInBytes * 8) / bitrate; // seconds
 
-    console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
+    // Ensure chunkDuration is less than video duration
+    if (chunkDuration >= duration && numberOfChunks > 1) {
+      chunkDuration = duration / numberOfChunks - 0.1; // Subtract a small buffer
+      console.log(`[INFO] Adjusted chunk duration to ${chunkDuration} seconds to be less than video duration.`);
+    }
 
-    // Create a temporary directory for processing
-    tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
-    fs.mkdirSync(tempDir, { recursive: true });
-    console.log(`[INFO] Created temporary directory: ${tempDir}`);
+    console.log(`[INFO] Chunk Duration: ${chunkDuration} seconds`);
 
-    // Split the video into chunks
-    chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
-    console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
+    // Handle splitting based on numberOfChunks
+    if (numberOfChunks > 1) {
+      // Create a temporary directory for processing
+      tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+      console.log(`[INFO] Created temporary directory: ${tempDir}`);
+
+      // Split the video into chunks
+      chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
+      console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
+    } else {
+      // No need to split; use the original video as the single chunk
+      chunkPaths = [videoPath];
+      console.log(`[INFO] Single chunk; skipping split.`);
+    }
 
     // Emit initial progress
     socket.emit("compressionProgress", {
@@ -438,7 +566,7 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     // Compress each chunk
     for (let i = 0; i < chunkPaths.length; i++) {
       const chunkPath = chunkPaths[i];
-      const compressedChunkPath = path.join(tempDir, `compressed_chunk_${i}.mp4`);
+      const compressedChunkPath = path.join(tempDir || path.dirname(chunkPath), `compressed_chunk_${i}.mp4`);
       console.log(`[INFO] Compressing chunk ${i + 1}/${chunkPaths.length}: ${chunkPath}`);
 
       // Emit progress before starting compression of each chunk
@@ -511,6 +639,250 @@ app.post("/compress-video", largeFileUpload.single("video"), async (req, res) =>
     }
   }
 });
+
+// const concatenateChunksWithFilter = (chunkPaths, outputPath) => {
+//   return new Promise((resolve, reject) => {
+//     if (chunkPaths.length === 0) {
+//       return reject(new Error("No chunks provided for concatenation."));
+//     }
+
+//     // If there's only one chunk, rename/move it to the output path
+//     if (chunkPaths.length === 1) {
+//       fs.rename(chunkPaths[0], outputPath, (err) => {
+//         if (err) {
+//           return reject(new Error(`Failed to rename chunk: ${err.message}`));
+//         }
+//         console.log(`[INFO] Single chunk moved to output path: ${outputPath}`);
+//         return resolve();
+//       });
+//     } else {
+//       // Build the FFmpeg input arguments
+//       const ffmpegArgs = [];
+//       chunkPaths.forEach((chunkPath, index) => {
+//         ffmpegArgs.push("-i", chunkPath);
+//       });
+
+//       // Construct the filter_complex string for the concat filter (video only)
+//       const filterComplex = chunkPaths.map((_, index) => `[${index}:v:0]`).join("") + `concat=n=${chunkPaths.length}:v=1:a=0[outv]`;
+
+//       ffmpegArgs.push("-filter_complex", filterComplex);
+//       ffmpegArgs.push("-map", "[outv]");
+//       ffmpegArgs.push("-c:v", "libx264");
+//       ffmpegArgs.push("-movflags", "faststart");
+//       ffmpegArgs.push(outputPath);
+
+//       const ffmpegCommand = `ffmpeg ${ffmpegArgs.join(" ")}`;
+
+//       // Log the FFmpeg command being executed
+//       console.log(`[DEBUG] Executing FFmpeg Concatenation Command:\n${ffmpegCommand}`);
+
+//       const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
+
+//       let ffmpegStdErr = "";
+//       let ffmpegStdOut = "";
+
+//       ffmpegProcess.stdout.on("data", (data) => {
+//         ffmpegStdOut += data.toString();
+//         console.log(`[FFmpeg STDOUT]: ${data}`);
+//       });
+
+//       ffmpegProcess.stderr.on("data", (data) => {
+//         ffmpegStdErr += data.toString();
+//         console.error(`[FFmpeg STDERR]: ${data}`);
+//       });
+
+//       ffmpegProcess.on("close", (code) => {
+//         if (code !== 0) {
+//           console.error(`[ERROR] FFmpeg Concatenation Process Failed with Exit Code ${code}`);
+//           console.error(`[ERROR] FFmpeg STDERR Output:\n${ffmpegStdErr}`);
+//           console.error(`[ERROR] FFmpeg STDOUT Output:\n${ffmpegStdOut}`);
+//           return reject(new Error(`FFmpeg concatenation exited with code ${code}`));
+//         } else {
+//           console.log(`[INFO] FFmpeg Concatenation Completed Successfully. Output File: ${outputPath}`);
+//           return resolve();
+//         }
+//       });
+
+//       ffmpegProcess.on("error", (err) => {
+//         console.error(`[ERROR] FFmpeg Concatenation Process Encountered an Error: ${err.message}`);
+//         return reject(new Error(`FFmpeg concatenation process error: ${err.message}`));
+//       });
+//     }
+//   });
+// };
+
+// app.post("/compress-video", largeFileUpload.single("video"), async (req, res) => {
+//   const videoPath = req.file.path;
+//   const { crf, preset, scaleWidth, socketId } = req.body;
+//   const outputPath = path.join(processedDir, `compressed_${uuidv4()}.mp4`);
+
+//   console.log("[INFO] Received video for compression:", videoPath);
+//   console.log("[INFO] Compression parameters:", { crf, preset, scaleWidth, socketId });
+
+//   // Validate socketId
+//   if (!socketId || !io.sockets.sockets.get(socketId)) {
+//     console.error("[ERROR] Invalid or missing socketId.");
+//     deleteFile(videoPath, "original video");
+//     return res.status(400).send("Invalid socket ID.");
+//   }
+
+//   const socket = io.sockets.sockets.get(socketId);
+//   console.log(`[INFO] Validated socket ID: ${socketId}`);
+
+//   // Initialize tempDir
+//   let tempDir;
+//   let chunkPaths = [];
+//   let compressedChunkPaths = [];
+
+//   try {
+//     // Validate inputs
+//     const crfValue = parseInt(crf, 10);
+//     const presetValue = (preset || "slow").toLowerCase();
+//     const width = parseInt(scaleWidth, 10);
+
+//     const allowedPresets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo"];
+
+//     if (isNaN(crfValue) || crfValue < 0 || crfValue > 51 || isNaN(width) || width < 320 || width > 3840 || !allowedPresets.includes(presetValue)) {
+//       console.error("[ERROR] Invalid compression parameters.");
+//       deleteFile(videoPath, "original video");
+//       return res.status(400).send("Invalid compression parameters.");
+//     }
+
+//     console.log("[INFO] Compression parameters validated successfully.");
+
+//     // Get video metadata
+//     const metadata = await getVideoMetadata(videoPath);
+//     const { duration, bitrate } = metadata; // bitrate in bps
+//     console.log(`[INFO] Video Metadata: Duration = ${duration} seconds, Bitrate = ${bitrate} bps`);
+
+//     // Calculate total file size in bytes
+//     const fileSizeInBytes = req.file.size;
+//     console.log(`[INFO] Video File Size: ${fileSizeInBytes} bytes`);
+
+//     const chunkSizeThresholds = [
+//       { maxSize: 100 * 1024 * 1024, chunks: 1 }, // <=100MB: 1 chunk
+//       { maxSize: 150 * 1024 * 1024, chunks: 2 }, // <=150MB: 2 chunks
+//       { maxSize: 200 * 1024 * 1024, chunks: 2 }, // <=200MB: 2 chunks
+//       { maxSize: 250 * 1024 * 1024, chunks: 3 }, // <=250MB: 3 chunks
+//       { maxSize: 300 * 1024 * 1024, chunks: 4 }, // <=300MB: 4 chunks
+//       { maxSize: 500 * 1024 * 1024, chunks: 5 }, // <=500MB: 5 chunks
+//       { maxSize: 800 * 1024 * 1024, chunks: 6 }, // <=800MB: 6 chunks
+//       { maxSize: 1024 * 1024 * 1024, chunks: 7 }, // <=1GB: 7 chunks
+//     ];
+
+//     // Determine number of chunks
+//     let numberOfChunks = 1;
+//     for (const threshold of chunkSizeThresholds) {
+//       if (fileSizeInBytes <= threshold.maxSize) {
+//         numberOfChunks = threshold.chunks;
+//         break;
+//       }
+//     }
+//     if (fileSizeInBytes > 1024 * 1024 * 1024) {
+//       numberOfChunks = Math.ceil(fileSizeInBytes / (300 * 1024 * 1024));
+//     }
+
+//     console.log(`[INFO] Determined number of chunks: ${numberOfChunks}`);
+
+//     // Calculate chunk duration
+//     const chunkSizeBytes = Math.min(300 * 1024 * 1024, fileSizeInBytes / numberOfChunks);
+//     const chunkDuration = (chunkSizeBytes * 8) / bitrate; // seconds
+
+//     console.log(`[INFO] Chunk Size: ${chunkSizeBytes} bytes, Chunk Duration: ${chunkDuration} seconds`);
+
+//     // Create a temporary directory for processing
+//     tempDir = path.join(os.tmpdir(), `video_compress_${uuidv4()}`);
+//     fs.mkdirSync(tempDir, { recursive: true });
+//     console.log(`[INFO] Created temporary directory: ${tempDir}`);
+
+//     // Split the video into chunks
+//     chunkPaths = await splitVideoIntoChunks(videoPath, chunkDuration, tempDir);
+//     console.log(`[INFO] Split into ${chunkPaths.length} chunks:`, chunkPaths);
+
+//     // Emit initial progress
+//     socket.emit("compressionProgress", {
+//       percentage: "0.00",
+//       message: `Starting compression: ${chunkPaths.length} chunk(s) to process.`,
+//     });
+
+//     // Compress each chunk
+//     for (let i = 0; i < chunkPaths.length; i++) {
+//       const chunkPath = chunkPaths[i];
+//       const compressedChunkPath = path.join(tempDir, `compressed_chunk_${i}.mp4`);
+//       console.log(`[INFO] Compressing chunk ${i + 1}/${chunkPaths.length}: ${chunkPath}`);
+
+//       // Emit progress before starting compression of each chunk
+//       socket.emit("compressionProgress", {
+//         percentage: ((i / (chunkPaths.length + 1)) * 100).toFixed(2),
+//         message: `Processing chunk ${i + 1}/${chunkPaths.length}`,
+//       });
+
+//       await compressChunk(chunkPath, compressedChunkPath, crfValue, presetValue, width, socket, i, chunkPaths.length);
+//       compressedChunkPaths.push(compressedChunkPath);
+//       console.log(`[INFO] Compressed chunk ${i + 1}/${chunkPaths.length}: ${compressedChunkPath}`);
+
+//       // Update progress after compression of each chunk
+//       socket.emit("compressionProgress", {
+//         percentage: (((i + 1) / (chunkPaths.length + 1)) * 100).toFixed(2),
+//         message: `Completed chunk ${i + 1}/${chunkPaths.length}`,
+//       });
+//     }
+
+//     // Concatenate compressed chunks using concat filter
+//     console.log("[INFO] Concatenating compressed chunks.");
+//     socket.emit("compressionProgress", {
+//       percentage: ((chunkPaths.length / (chunkPaths.length + 1)) * 100).toFixed(2),
+//       message: "Concatenating compressed chunks.",
+//     });
+//     await concatenateChunksWithFilter(compressedChunkPaths, outputPath);
+//     console.log(`[INFO] Concatenation complete. Output Path: ${outputPath}`);
+
+//     // Emit progress after concatenation
+//     socket.emit("compressionProgress", {
+//       percentage: "100.00",
+//       message: "Compression completed successfully.",
+//     });
+
+//     // Send the compressed video
+//     socket.emit("compressionComplete", { message: "Compression completed successfully." });
+
+//     res.sendFile(outputPath, (err) => {
+//       if (err) {
+//         console.error("[ERROR] Error sending compressed video:", err.message);
+//         return res.status(500).send("Error sending compressed video.");
+//       } else {
+//         console.log("[INFO] Compressed video sent successfully.");
+//         deleteFile(outputPath, "compressed video");
+//       }
+//     });
+//   } catch (error) {
+//     console.error("[ERROR]", error.message);
+//     socket.emit("compressionError", { message: error.message });
+//     deleteFile(videoPath, "original video");
+//     return res.status(500).send("Failed to compress video.");
+//   } finally {
+//     // Perform cleanup in the finally block to ensure it runs regardless of success or error
+//     if (tempDir && fs.existsSync(tempDir)) {
+//       try {
+//         // Log contents of tempDir before deletion
+//         const remainingFiles = fs.readdirSync(tempDir);
+//         if (remainingFiles.length > 0) {
+//           console.warn(`[WARNING] Temp directory not empty before deletion. Remaining files: ${remainingFiles.join(", ")}`);
+//         } else {
+//           console.log(`[INFO] Temp directory is empty before deletion.`);
+//         }
+
+//         // Attempt to delete tempDir recursively and forcefully
+//         fs.rmSync(tempDir, { recursive: true, force: true });
+//         console.log(`[INFO] Successfully deleted temporary directory: ${tempDir}`);
+//       } catch (err) {
+//         console.error(`[ERROR] Failed to delete tempDir: ${err.message}`);
+//       }
+//     }
+//   }
+// });
+
+// ------- Background Image With Gradient + Color Block ------- //
 
 app.post("/get-suggested-colors", upload.single("image"), async (req, res) => {
   try {
@@ -810,6 +1182,392 @@ app.post("/create-background-image", upload.single("image"), async (req, res) =>
     res.status(500).json({ error: error.message });
   }
 });
+
+// ------- Image Effects ------- //
+
+// ------- Image Resize ------- //
+
+app.post("/resize-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const targetWidth = parseInt(req.body.target_width, 10);
+  const targetHeight = parseInt(req.body.target_height, 10);
+
+  const extension = path.extname(req.file.originalname).toLowerCase();
+  let outputFileName = `resized_${Date.now()}${extension}`;
+  let qualityOption = "-quality 85"; // You can adjust this for better quality.
+
+  let resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} ${qualityOption} "${path.join(__dirname, "processed", outputFileName)}"`;
+
+  exec(resizeCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+
+    if (error) {
+      console.error("Error resizing image:", stderr);
+      return res.status(500).send("Failed to resize image.");
+    }
+
+    const outputFilePath = path.join(__dirname, "processed", outputFileName);
+
+    res.sendFile(outputFilePath, (err) => {
+      if (err) {
+        console.error("Error sending resized image:", err);
+        return res.status(500).send("Error sending resized image.");
+      }
+
+      fs.unlinkSync(outputFilePath);
+    });
+  });
+});
+
+// ------- Image Crop ------- //
+
+app.post("/upload-image", upload.single("media"), (req, res) => {
+  const imagePath = req.file.path;
+  const extension = req.body.extension;
+  const timestamp = Date.now();
+  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.${extension}`);
+
+  const { width, height, left, top } = req.body;
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
+    return res.status(400).send("Invalid crop dimensions");
+  }
+
+  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
+
+  exec(cropCommand, (error, stdout, stderr) => {
+    fs.unlinkSync(imagePath);
+    if (error) {
+      return res.status(500).send("Error processing image");
+    }
+
+    switch (extension) {
+      case "jpeg":
+      case "jpg":
+        compressJpeg(outputPath, res);
+        break;
+      case "png":
+        compressPng(outputPath, res);
+        break;
+      case "webp":
+        compressWebp(outputPath, res);
+        break;
+      case "gif":
+        compressGif(outputPath, res);
+        break;
+      default:
+        res.sendFile(outputPath, (err) => {
+          if (err) {
+            return res.status(500).send("Error sending cropped image");
+          }
+          fs.unlinkSync(outputPath);
+        });
+    }
+  });
+});
+
+// recolor image/logo
+
+app.post("/detectColors", upload.single("image"), async (req, res) => {
+  try {
+    const imagePath = req.file.path;
+
+    // Load image and check for white color with sharp
+    const image = await sharp(imagePath).raw().toBuffer({ resolveWithObject: true });
+    const whiteThreshold = { r: 230, g: 230, b: 230 };
+    let containsWhite = false;
+
+    for (let i = 0; i < image.data.length; i += 3) {
+      const red = image.data[i];
+      const green = image.data[i + 1];
+      const blue = image.data[i + 2];
+
+      if (red >= whiteThreshold.r && green >= whiteThreshold.g && blue >= whiteThreshold.b) {
+        containsWhite = true;
+        break;
+      }
+    }
+
+    const palette = await Vibrant.from(imagePath).getPalette();
+    const vibrantColors = [];
+
+    for (const swatch in palette) {
+      if (palette[swatch]) {
+        vibrantColors.push(palette[swatch].getHex());
+      }
+    }
+
+    const detectedColors = [];
+    if (containsWhite) {
+      detectedColors.push("#FFFFFF");
+    }
+    detectedColors.push(...vibrantColors.slice(0, 3));
+
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+
+    res.json({ colors: detectedColors });
+  } catch (error) {
+    console.error("Error detecting colors:", error);
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).send("Failed to detect colors.");
+  }
+});
+
+app.post("/recolorImage", upload.single("image"), (req, res) => {
+  const targetColors = JSON.parse(req.body.targetColors);
+  const sourceColors = JSON.parse(req.body.sourceColors);
+  const fuzzPercentage = parseFloat(req.body.fuzz) || 10;
+  const inputPath = req.file.path;
+  const outputPath = `uploads/recolored-${uuidv4()}.png`;
+
+  if (!sourceColors || !targetColors || sourceColors.length !== targetColors.length) {
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+    return res.status(400).send("Source and target colors must be provided and match in length.");
+  }
+
+  let command = `convert "${inputPath}"`;
+
+  sourceColors.forEach((srcColor, index) => {
+    const tgtColor = targetColors[index];
+    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
+    const tgtColorFormatted = `#${tgtColor}`;
+
+    if (srcColorFormatted.toUpperCase() === "#FFFFFF") {
+      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
+    }
+  });
+
+  sourceColors.forEach((srcColor, index) => {
+    const tgtColor = targetColors[index];
+    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
+    const tgtColorFormatted = `#${tgtColor}`;
+
+    if (srcColorFormatted.toUpperCase() !== "#FFFFFF") {
+      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
+    }
+  });
+
+  command += ` "${outputPath}"`;
+
+  exec(command, (err, stdout, stderr) => {
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+
+    if (err) {
+      console.error("Error processing image:", stderr);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      return res.status(500).send("Error processing image.");
+    }
+
+    res.sendFile(path.resolve(outputPath), (err) => {
+      if (err) {
+        console.error("Error sending recolored image:", err);
+        return res.status(500).send("Error sending recolored image.");
+      }
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    });
+  });
+});
+
+// Image-slideshow
+
+app.post("/create-video", upload.array("images"), async (req, res) => {
+  const files = req.files;
+  const durations = JSON.parse(req.body.durations);
+  const handlingOption = req.body.handlingOption;
+  const transitionOption = req.body.transitionOption || "none";
+
+  console.log("Received durations:", durations);
+  console.log(`Handling option: ${handlingOption}`);
+  console.log(`Transition option: ${transitionOption}`);
+
+  if (!files || files.length === 0) {
+    return res.status(400).send("No images provided or empty request.");
+  }
+
+  if (files.length !== durations.length) {
+    console.error("Mismatch between images and durations.");
+    return res.status(400).send("Mismatch between images and durations.");
+  }
+
+  const fps = 25;
+  const fadeDuration = transitionOption === "fade" ? 0.5 : 0;
+  const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
+
+  const tempVideoPaths = [];
+  const tempVideoDurations = [];
+
+  try {
+    let outputWidth, outputHeight;
+    if (handlingOption === "headerBackground") {
+      outputWidth = 1000;
+      outputHeight = 400;
+    } else if (handlingOption === "square") {
+      outputWidth = 500;
+      outputHeight = 500;
+    }
+
+    console.log(`Output dimensions: ${outputWidth}x${outputHeight}`);
+
+    const allFiles = [...files];
+    const allDurations = [...durations];
+
+    if (transitionOption === "fade") {
+      allFiles.push(files[0]);
+      allDurations.push(fadeDuration);
+    }
+
+    for (let i = 0; i < allFiles.length; i++) {
+      const file = allFiles[i];
+      let duration;
+
+      if (i === allFiles.length - 1) {
+        duration = transitionOption === "fade" ? fadeDuration * 2 : allDurations[i];
+      } else {
+        duration = allDurations[i] + (transitionOption === "fade" ? fadeDuration : 0);
+      }
+      tempVideoDurations.push(duration);
+
+      const inputImagePath = file.path;
+      const tempVideoPath = path.join(__dirname, "uploads", `temp_video_${i}.mp4`);
+      tempVideoPaths.push(tempVideoPath);
+
+      const ffmpegCommand = `ffmpeg -y -loop 1 -i "${inputImagePath}" -c:v libx264 -t ${duration} -r ${fps} -vsync 1 -pix_fmt yuv420p -vf "fps=${fps},format=yuv420p,scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2" "${tempVideoPath}"`;
+
+      await new Promise((resolve, reject) => {
+        console.log(`Creating video from image ${i + 1}:`, ffmpegCommand);
+        exec(ffmpegCommand, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error creating video from image ${i + 1}:`, stderr);
+            return reject(`Failed to create video from image ${i + 1}.`);
+          }
+          resolve();
+        });
+      });
+    }
+
+    let filterComplex = "";
+    let inputs = "";
+    let lastOutput = "";
+
+    for (let i = 0; i < tempVideoPaths.length; i++) {
+      inputs += `-i "${tempVideoPaths[i]}" `;
+    }
+
+    const cumulativeDurations = [];
+    let cumulative = 0;
+    for (let i = 0; i < tempVideoDurations.length; i++) {
+      cumulativeDurations.push(cumulative);
+      cumulative += tempVideoDurations[i] - (i < tempVideoDurations.length - 1 && transitionOption === "fade" ? fadeDuration : 0);
+    }
+
+    for (let i = 0; i < tempVideoPaths.length; i++) {
+      filterComplex += `[${i}:v]fps=${fps},format=yuv420p,setsar=1[v${i}];`;
+    }
+
+    if (transitionOption === "fade") {
+      for (let i = 0; i < tempVideoPaths.length - 1; i++) {
+        const offset = cumulativeDurations[i + 1];
+        if (i === 0) {
+          filterComplex += `[v${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
+        } else {
+          filterComplex += `[vxf${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
+        }
+        lastOutput = `[vxf${i + 1}]`;
+      }
+    } else {
+      let concatInputs = "";
+      for (let i = 0; i < tempVideoPaths.length; i++) {
+        concatInputs += `[v${i}]`;
+      }
+      filterComplex += `${concatInputs}concat=n=${tempVideoPaths.length}:v=1:a=0[outv];`;
+      lastOutput = "[outv]";
+    }
+
+    const finalFFmpegCommand = `ffmpeg -y ${inputs} -filter_complex "${filterComplex}" -map "${lastOutput}" -c:v libx264 -pix_fmt yuv420p "${outputVideoPath}"`;
+
+    await new Promise((resolve, reject) => {
+      console.log("Executing FFmpeg command for concatenation:", finalFFmpegCommand);
+      exec(finalFFmpegCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error("Error executing FFmpeg command:", stderr);
+          return reject("Failed to create slideshow.");
+        }
+        resolve();
+      });
+    });
+
+    console.log("Slideshow created successfully.");
+    res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
+
+    try {
+      files.forEach((file) => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+      tempVideoPaths.forEach((videoPath) => {
+        if (fs.existsSync(videoPath)) {
+          fs.unlinkSync(videoPath);
+        }
+      });
+    } catch (cleanupErr) {
+      console.error("Error cleaning up files:", cleanupErr);
+    }
+  } catch (err) {
+    console.error("Error processing videos:", err);
+    res.status(500).send(`Error processing videos: ${err}`);
+  }
+});
+
+app.post("/crop-image", upload.single("image"), (req, res) => {
+  const imagePath = req.file.path;
+  const outputPath = path.join(__dirname, "videos", `cropped_${Date.now()}.jpg`);
+  const { width, height, left, top } = req.body;
+
+  const safeWidth = parseInt(width, 10);
+  const safeHeight = parseInt(height, 10);
+  const safeLeft = parseInt(left, 10);
+  const safeTop = parseInt(top, 10);
+
+  exec(`ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x ${imagePath}`, (err, stdout) => {
+    if (err) {
+      console.error("Error getting image dimensions:", err);
+      return res.status(500).send("Error processing image");
+    }
+
+    const [imageWidth, imageHeight] = stdout.split("x").map(Number);
+
+    if (safeWidth <= 0 || safeHeight <= 0 || safeLeft < 0 || safeTop < 0 || safeWidth + safeLeft > imageWidth || safeHeight + safeTop > imageHeight) {
+      return res.status(400).send("Invalid crop dimensions");
+    }
+
+    const cropCommand = `ffmpeg -i "${imagePath}" -vf "crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}" -y "${outputPath}"`;
+
+    exec(cropCommand, (error) => {
+      fs.unlinkSync(imagePath);
+      if (error) {
+        console.error(`Error cropping image ${imagePath}:`, error);
+        return res.status(500).send("Error processing image");
+      }
+
+      res.sendFile(outputPath, (err) => {
+        if (err) {
+          console.error(`SendFile Error: ${err.message}`);
+          return res.status(500).send("Error sending cropped image");
+        }
+        fs.unlinkSync(outputPath);
+      });
+    });
+  });
+});
+
+// ----- Video Effects ---- //
 
 app.post("/slice-multi", upload.fields([{ name: "video1" }, { name: "video2" }, { name: "video3" }]), (req, res) => {
   console.log("Received /slice-multi POST request");
@@ -1253,392 +2011,6 @@ app.post("/SliceMultiConvertToMp4", upload.single("video"), (req, res) => {
   });
 });
 
-// ------- Image Effects ------- //
-
-// image resize
-
-app.post("/resize-image", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const targetWidth = parseInt(req.body.target_width, 10);
-  const targetHeight = parseInt(req.body.target_height, 10);
-
-  const extension = path.extname(req.file.originalname).toLowerCase();
-  let outputFileName = `resized_${Date.now()}${extension}`;
-  let qualityOption = "-quality 85"; // You can adjust this for better quality.
-
-  let resizeCommand = `convert "${imagePath}" -resize ${targetWidth}x${targetHeight} ${qualityOption} "${path.join(__dirname, "processed", outputFileName)}"`;
-
-  exec(resizeCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-
-    if (error) {
-      console.error("Error resizing image:", stderr);
-      return res.status(500).send("Failed to resize image.");
-    }
-
-    const outputFilePath = path.join(__dirname, "processed", outputFileName);
-
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error("Error sending resized image:", err);
-        return res.status(500).send("Error sending resized image.");
-      }
-
-      fs.unlinkSync(outputFilePath);
-    });
-  });
-});
-
-// image crop
-
-app.post("/upload-image", upload.single("media"), (req, res) => {
-  const imagePath = req.file.path;
-  const extension = req.body.extension;
-  const timestamp = Date.now();
-  const outputPath = path.join(__dirname, "processed", `cropped_image_${timestamp}.${extension}`);
-
-  const { width, height, left, top } = req.body;
-  const safeWidth = parseInt(width, 10);
-  const safeHeight = parseInt(height, 10);
-  const safeLeft = parseInt(left, 10);
-  const safeTop = parseInt(top, 10);
-
-  if (isNaN(safeWidth) || isNaN(safeHeight) || isNaN(safeLeft) || isNaN(safeTop)) {
-    return res.status(400).send("Invalid crop dimensions");
-  }
-
-  const cropCommand = `convert "${imagePath}" -crop ${safeWidth}x${safeHeight}+${safeLeft}+${safeTop} "${outputPath}"`;
-
-  exec(cropCommand, (error, stdout, stderr) => {
-    fs.unlinkSync(imagePath);
-    if (error) {
-      return res.status(500).send("Error processing image");
-    }
-
-    switch (extension) {
-      case "jpeg":
-      case "jpg":
-        compressJpeg(outputPath, res);
-        break;
-      case "png":
-        compressPng(outputPath, res);
-        break;
-      case "webp":
-        compressWebp(outputPath, res);
-        break;
-      case "gif":
-        compressGif(outputPath, res);
-        break;
-      default:
-        res.sendFile(outputPath, (err) => {
-          if (err) {
-            return res.status(500).send("Error sending cropped image");
-          }
-          fs.unlinkSync(outputPath);
-        });
-    }
-  });
-});
-
-// recolor image/logo
-
-app.post("/detectColors", upload.single("image"), async (req, res) => {
-  try {
-    const imagePath = req.file.path;
-
-    // Load image and check for white color with sharp
-    const image = await sharp(imagePath).raw().toBuffer({ resolveWithObject: true });
-    const whiteThreshold = { r: 230, g: 230, b: 230 };
-    let containsWhite = false;
-
-    for (let i = 0; i < image.data.length; i += 3) {
-      const red = image.data[i];
-      const green = image.data[i + 1];
-      const blue = image.data[i + 2];
-
-      if (red >= whiteThreshold.r && green >= whiteThreshold.g && blue >= whiteThreshold.b) {
-        containsWhite = true;
-        break;
-      }
-    }
-
-    const palette = await Vibrant.from(imagePath).getPalette();
-    const vibrantColors = [];
-
-    for (const swatch in palette) {
-      if (palette[swatch]) {
-        vibrantColors.push(palette[swatch].getHex());
-      }
-    }
-
-    const detectedColors = [];
-    if (containsWhite) {
-      detectedColors.push("#FFFFFF");
-    }
-    detectedColors.push(...vibrantColors.slice(0, 3));
-
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-
-    res.json({ colors: detectedColors });
-  } catch (error) {
-    console.error("Error detecting colors:", error);
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    res.status(500).send("Failed to detect colors.");
-  }
-});
-
-app.post("/recolorImage", upload.single("image"), (req, res) => {
-  const targetColors = JSON.parse(req.body.targetColors);
-  const sourceColors = JSON.parse(req.body.sourceColors);
-  const fuzzPercentage = parseFloat(req.body.fuzz) || 10;
-  const inputPath = req.file.path;
-  const outputPath = `uploads/recolored-${uuidv4()}.png`;
-
-  if (!sourceColors || !targetColors || sourceColors.length !== targetColors.length) {
-    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-    return res.status(400).send("Source and target colors must be provided and match in length.");
-  }
-
-  let command = `convert "${inputPath}"`;
-
-  sourceColors.forEach((srcColor, index) => {
-    const tgtColor = targetColors[index];
-    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
-    const tgtColorFormatted = `#${tgtColor}`;
-
-    if (srcColorFormatted.toUpperCase() === "#FFFFFF") {
-      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
-    }
-  });
-
-  sourceColors.forEach((srcColor, index) => {
-    const tgtColor = targetColors[index];
-    const srcColorFormatted = srcColor.startsWith("#") ? srcColor : `#${srcColor}`;
-    const tgtColorFormatted = `#${tgtColor}`;
-
-    if (srcColorFormatted.toUpperCase() !== "#FFFFFF") {
-      command += ` -fuzz ${fuzzPercentage}% -fill "${tgtColorFormatted}" -opaque "${srcColorFormatted}"`;
-    }
-  });
-
-  command += ` "${outputPath}"`;
-
-  exec(command, (err, stdout, stderr) => {
-    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-
-    if (err) {
-      console.error("Error processing image:", stderr);
-      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      return res.status(500).send("Error processing image.");
-    }
-
-    res.sendFile(path.resolve(outputPath), (err) => {
-      if (err) {
-        console.error("Error sending recolored image:", err);
-        return res.status(500).send("Error sending recolored image.");
-      }
-      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-    });
-  });
-});
-
-// Image-slideshow
-
-app.post("/create-video", upload.array("images"), async (req, res) => {
-  const files = req.files;
-  const durations = JSON.parse(req.body.durations);
-  const handlingOption = req.body.handlingOption;
-  const transitionOption = req.body.transitionOption || "none";
-
-  console.log("Received durations:", durations);
-  console.log(`Handling option: ${handlingOption}`);
-  console.log(`Transition option: ${transitionOption}`);
-
-  if (!files || files.length === 0) {
-    return res.status(400).send("No images provided or empty request.");
-  }
-
-  if (files.length !== durations.length) {
-    console.error("Mismatch between images and durations.");
-    return res.status(400).send("Mismatch between images and durations.");
-  }
-
-  const fps = 25;
-  const fadeDuration = transitionOption === "fade" ? 0.5 : 0;
-  const outputVideoPath = path.join(__dirname, "videos", `slideshow_${Date.now()}.mp4`);
-
-  const tempVideoPaths = [];
-  const tempVideoDurations = [];
-
-  try {
-    let outputWidth, outputHeight;
-    if (handlingOption === "headerBackground") {
-      outputWidth = 1000;
-      outputHeight = 400;
-    } else if (handlingOption === "square") {
-      outputWidth = 500;
-      outputHeight = 500;
-    }
-
-    console.log(`Output dimensions: ${outputWidth}x${outputHeight}`);
-
-    const allFiles = [...files];
-    const allDurations = [...durations];
-
-    if (transitionOption === "fade") {
-      allFiles.push(files[0]);
-      allDurations.push(fadeDuration);
-    }
-
-    for (let i = 0; i < allFiles.length; i++) {
-      const file = allFiles[i];
-      let duration;
-
-      if (i === allFiles.length - 1) {
-        duration = transitionOption === "fade" ? fadeDuration * 2 : allDurations[i];
-      } else {
-        duration = allDurations[i] + (transitionOption === "fade" ? fadeDuration : 0);
-      }
-      tempVideoDurations.push(duration);
-
-      const inputImagePath = file.path;
-      const tempVideoPath = path.join(__dirname, "uploads", `temp_video_${i}.mp4`);
-      tempVideoPaths.push(tempVideoPath);
-
-      const ffmpegCommand = `ffmpeg -y -loop 1 -i "${inputImagePath}" -c:v libx264 -t ${duration} -r ${fps} -vsync 1 -pix_fmt yuv420p -vf "fps=${fps},format=yuv420p,scale=${outputWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${outputWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2" "${tempVideoPath}"`;
-
-      await new Promise((resolve, reject) => {
-        console.log(`Creating video from image ${i + 1}:`, ffmpegCommand);
-        exec(ffmpegCommand, (error, stdout, stderr) => {
-          if (error) {
-            console.error(`Error creating video from image ${i + 1}:`, stderr);
-            return reject(`Failed to create video from image ${i + 1}.`);
-          }
-          resolve();
-        });
-      });
-    }
-
-    let filterComplex = "";
-    let inputs = "";
-    let lastOutput = "";
-
-    for (let i = 0; i < tempVideoPaths.length; i++) {
-      inputs += `-i "${tempVideoPaths[i]}" `;
-    }
-
-    const cumulativeDurations = [];
-    let cumulative = 0;
-    for (let i = 0; i < tempVideoDurations.length; i++) {
-      cumulativeDurations.push(cumulative);
-      cumulative += tempVideoDurations[i] - (i < tempVideoDurations.length - 1 && transitionOption === "fade" ? fadeDuration : 0);
-    }
-
-    for (let i = 0; i < tempVideoPaths.length; i++) {
-      filterComplex += `[${i}:v]fps=${fps},format=yuv420p,setsar=1[v${i}];`;
-    }
-
-    if (transitionOption === "fade") {
-      for (let i = 0; i < tempVideoPaths.length - 1; i++) {
-        const offset = cumulativeDurations[i + 1];
-        if (i === 0) {
-          filterComplex += `[v${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
-        } else {
-          filterComplex += `[vxf${i}][v${i + 1}]xfade=transition=fade:duration=${fadeDuration}:offset=${offset}[vxf${i + 1}];`;
-        }
-        lastOutput = `[vxf${i + 1}]`;
-      }
-    } else {
-      let concatInputs = "";
-      for (let i = 0; i < tempVideoPaths.length; i++) {
-        concatInputs += `[v${i}]`;
-      }
-      filterComplex += `${concatInputs}concat=n=${tempVideoPaths.length}:v=1:a=0[outv];`;
-      lastOutput = "[outv]";
-    }
-
-    const finalFFmpegCommand = `ffmpeg -y ${inputs} -filter_complex "${filterComplex}" -map "${lastOutput}" -c:v libx264 -pix_fmt yuv420p "${outputVideoPath}"`;
-
-    await new Promise((resolve, reject) => {
-      console.log("Executing FFmpeg command for concatenation:", finalFFmpegCommand);
-      exec(finalFFmpegCommand, (error, stdout, stderr) => {
-        if (error) {
-          console.error("Error executing FFmpeg command:", stderr);
-          return reject("Failed to create slideshow.");
-        }
-        resolve();
-      });
-    });
-
-    console.log("Slideshow created successfully.");
-    res.json({ videoPath: `/videos/${path.basename(outputVideoPath)}` });
-
-    try {
-      files.forEach((file) => {
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-      });
-      tempVideoPaths.forEach((videoPath) => {
-        if (fs.existsSync(videoPath)) {
-          fs.unlinkSync(videoPath);
-        }
-      });
-    } catch (cleanupErr) {
-      console.error("Error cleaning up files:", cleanupErr);
-    }
-  } catch (err) {
-    console.error("Error processing videos:", err);
-    res.status(500).send(`Error processing videos: ${err}`);
-  }
-});
-
-app.post("/crop-image", upload.single("image"), (req, res) => {
-  const imagePath = req.file.path;
-  const outputPath = path.join(__dirname, "videos", `cropped_${Date.now()}.jpg`);
-  const { width, height, left, top } = req.body;
-
-  const safeWidth = parseInt(width, 10);
-  const safeHeight = parseInt(height, 10);
-  const safeLeft = parseInt(left, 10);
-  const safeTop = parseInt(top, 10);
-
-  exec(`ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x ${imagePath}`, (err, stdout) => {
-    if (err) {
-      console.error("Error getting image dimensions:", err);
-      return res.status(500).send("Error processing image");
-    }
-
-    const [imageWidth, imageHeight] = stdout.split("x").map(Number);
-
-    if (safeWidth <= 0 || safeHeight <= 0 || safeLeft < 0 || safeTop < 0 || safeWidth + safeLeft > imageWidth || safeHeight + safeTop > imageHeight) {
-      return res.status(400).send("Invalid crop dimensions");
-    }
-
-    const cropCommand = `ffmpeg -i "${imagePath}" -vf "crop=${safeWidth}:${safeHeight}:${safeLeft}:${safeTop}" -y "${outputPath}"`;
-
-    exec(cropCommand, (error) => {
-      fs.unlinkSync(imagePath);
-      if (error) {
-        console.error(`Error cropping image ${imagePath}:`, error);
-        return res.status(500).send("Error processing image");
-      }
-
-      res.sendFile(outputPath, (err) => {
-        if (err) {
-          console.error(`SendFile Error: ${err.message}`);
-          return res.status(500).send("Error sending cropped image");
-        }
-        fs.unlinkSync(outputPath);
-      });
-    });
-  });
-});
-
-// ----- Video Effects ---- //
-
 // video-crop
 app.post("/upload", upload.single("video"), (req, res) => {
   if (!fs.existsSync("processed")) {
@@ -1832,7 +2204,9 @@ app.post("/slowVideo", upload.single("video"), (req, res) => {
   });
 });
 
-// ------- Compression ------- //
+// ------- Video Compression ------- //
+
+// ------- Image Compression ------- //
 
 // ------- Compress WebP Image ------- //
 app.post("/compress-webp", upload.single("image"), (req, res) => {
@@ -3076,3 +3450,11 @@ const clearFolders = () => {
 clearFolders(); // clear folders on server startup
 
 setInterval(clearFolders, 6 * 60 * 60 * 1000); // clear folders every 6 hours
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+});
+server.timeout = 600000; // Increased server timeout
+server.keepAliveTimeout = 600000;

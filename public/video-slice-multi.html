@@ -16,6 +16,23 @@
         font-weight: normal;
         color: #555;
       }
+      .inline-download-button-container {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+      }
+      .inline-download-button {
+        margin-left: 10px;
+        padding: 6px 12px;
+        background-color: #4caf50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .inline-download-button:hover {
+        background-color: #45a049;
+      }
     </style>
   </head>
   <body>
@@ -221,10 +238,18 @@
           </div>
         </div>
 
-        <div style="margin-top: 20px; width: 600px">
-          <h3>Final Video</h3>
-          <video id="processedVideo" controls style="width: 100%"></video>
-          <img id="processedGif" style="width: 100%; display: none" />
+        <!-- Updated Final Video Section -->
+        <div style="margin-top: 20px; width: 600px; max-width: 100%;">
+          <h3>Final Output</h3>
+          <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <span id="finalOutputDimensions" class="video-info"></span>
+            <span id="finalOutputSize" class="video-info" style="margin-left: 10px;"></span>
+            <div id="finalDownloadButtonContainer" class="inline-download-button-container" style="display: none;">
+              <a id="finalDownloadButton" class="inline-download-button">Download</a>
+            </div>
+          </div>
+          <video id="processedVideo" controls style="width: 100%; max-width: 600px;"></video>
+          <img id="processedGif" style="width: 100%; max-width: 600px; display: none;" />
         </div>
       </div>
     </div>
@@ -234,7 +259,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <span class="modal-title">Convert to MP4</span>
-          <button id="closeMp4Modal" class="close-button"></button>
+          <button id="closeMp4Modal" class="close-button">&times;</button>
         </div>
         <div class="modal-body">
           <p>This feature requires MP4 format. Would you like to convert your file?</p>
@@ -246,13 +271,12 @@
       </div>
     </div>
 
-    <div id="processingNotification">Processing your videos, please wait...</div>
+    <div id="processingNotification" style="display: none;">Processing your videos, please wait...</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
     <script src="video-slice-multi.js"></script>
   </body>
 </html>
-
 
 <!-- <!DOCTYPE html>
 <html lang="en">
@@ -261,6 +285,18 @@
     <title>Video Processing Tool</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" />
+    <style>
+      .video-display h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .video-display .video-info {
+        font-size: 14px;
+        font-weight: normal;
+        color: #555;
+      }
+    </style>
   </head>
   <body>
     <div class="sidebar scrollable-sidebar">
@@ -405,7 +441,11 @@
       <div id="videoContainer" style="display: flex; flex-direction: column; align-items: center;">
         <div style="display: flex; justify-content: space-evenly; align-items: flex-start; width: 100%;  max-width: 1200px ;background-color: transparent; box-shadow: none;">
           <div id="uploadedVideoSection1" class="video-display">
-            <h3>Video 1</h3>
+            <h3>
+              Video 1
+              <span id="video1Dimensions" class="video-info"></span>
+              <span id="video1Size" class="video-info"></span>
+            </h3>
             <video id="displayedVideo1" controls></video>
             <div class="video-slider-container">
               <div id="slider1" class="video-slider"></div>
@@ -421,7 +461,11 @@
           </div>
 
           <div id="uploadedVideoSection2" class="video-display" style="display: none;">
-            <h3>Video 2</h3>
+            <h3>
+              Video 2
+              <span id="video2Dimensions" class="video-info"></span>
+              <span id="video2Size" class="video-info"></span>
+            </h3>
             <video id="displayedVideo2" controls></video>
             <div class="video-slider-container">
               <div id="slider2" class="video-slider"></div>
@@ -437,7 +481,11 @@
           </div>
 
           <div id="uploadedVideoSection3" class="video-display" style="display: none">
-            <h3>Video 3</h3>
+            <h3>
+              Video 3
+              <span id="video3Dimensions" class="video-info"></span>
+              <span id="video3Size" class="video-info"></span>
+            </h3>
             <video id="displayedVideo3" controls></video>
             <div class="video-slider-container">
               <div id="slider3" class="video-slider"></div>

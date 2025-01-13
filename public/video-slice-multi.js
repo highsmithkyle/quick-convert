@@ -36,6 +36,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const gifFps = document.getElementById("gifFps");
   const gifQuality = document.getElementById("gifQuality");
 
+  // New elements for final output
+  const finalOutputDimensions = document.getElementById("finalOutputDimensions");
+  const finalOutputSize = document.getElementById("finalOutputSize");
+  const finalDownloadButtonContainer = document.getElementById("finalDownloadButtonContainer");
+  const finalDownloadButton = document.getElementById("finalDownloadButton");
+
   const mp4ConversionModal = document.getElementById("mp4ConversionModal");
   const modalOverlay = document.getElementById("modalOverlay");
   const confirmMp4Convert = document.getElementById("confirmMp4Convert");
@@ -50,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let minHeight = Infinity;
 
   const formatBytes = (bytes) => {
-    return (bytes / (1024 * 1024)).toFixed(2) + "mb";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
   };
 
   const updateDimensions = () => {
@@ -217,110 +223,6 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   };
 
-  function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  }
-
-  const handleInputStart = (slider, displayStartId, sliceStartId, e) => {
-    let newStart = parseFloat(e.target.value);
-    let currentEnd = parseFloat(slider.noUiSlider.get()[1]);
-
-    if (isNaN(newStart)) newStart = 0;
-    newStart = Math.max(0, Math.min(newStart, currentEnd - 0.1));
-    newStart = parseFloat(newStart.toFixed(1));
-
-    slider.noUiSlider.set([newStart, null]);
-  };
-
-  const handleInputEnd = (slider, displayEndId, sliceEndId, e) => {
-    let newEnd = parseFloat(e.target.value);
-    let currentStart = parseFloat(slider.noUiSlider.get()[0]);
-
-    if (isNaN(newEnd)) newEnd = slider.noUiSlider.options.range.max;
-    newEnd = Math.min(slider.noUiSlider.options.range.max, Math.max(newEnd, currentStart + 0.1));
-    newEnd = parseFloat(newEnd.toFixed(1));
-
-    slider.noUiSlider.set([null, newEnd]);
-  };
-
-  const loadVideo = (event, videoElement, sliderId, sliceStartId, sliceEndId, displayStartId, displayEndId) => {
-    const file = event.target.files[0];
-    if (file) {
-      const fileExtension = file.name.split(".").pop().toLowerCase();
-      if (fileExtension !== "mp4") {
-        showMp4ConversionModal(file, videoElement, event.target);
-      } else {
-        videoElement.src = URL.createObjectURL(file);
-        videoElement.parentElement.style.display = "block";
-        videoElement.dataset.fileSize = file.size;
-
-        videoElement.onloadedmetadata = () => {
-          updateDimensions();
-          updateVideoInfo(videoElement, file.size);
-
-          const duration = videoElement.duration;
-          const slider = document.getElementById(sliderId);
-          const displayStart = document.getElementById(displayStartId);
-          const displayEnd = document.getElementById(displayEndId);
-
-          if (!slider.noUiSlider) {
-            noUiSlider.create(slider, {
-              start: [0, duration],
-              connect: true,
-              range: {
-                min: 0,
-                max: duration,
-              },
-              step: 0.1,
-              tooltips: [true, true],
-              format: {
-                to: (value) => value.toFixed(1),
-                from: (value) => Number(value),
-              },
-            });
-
-            slider.noUiSlider.on("update", (values) => {
-              const start = parseFloat(values[0]);
-              const end = parseFloat(values[1]);
-              document.getElementById(sliceStartId).value = start;
-              document.getElementById(sliceEndId).value = end;
-              displayStart.value = start.toFixed(1);
-              displayEnd.value = end.toFixed(1);
-              if (videoElement.paused) {
-                videoElement.currentTime = start;
-              }
-            });
-          } else {
-            slider.noUiSlider.updateOptions({
-              range: {
-                min: 0,
-                max: duration,
-              },
-              start: [0, duration],
-            });
-          }
-
-          displayStart.removeEventListener("input", displayStart._debouncedHandler);
-          displayEnd.removeEventListener("input", displayEnd._debouncedHandler);
-
-          displayStart._debouncedHandler = debounce(handleInputStart.bind(null, slider, displayStartId, sliceStartId), 300);
-          displayEnd._debouncedHandler = debounce(handleInputEnd.bind(null, slider, displayEndId, sliceEndId), 300);
-
-          displayStart.addEventListener("input", displayStart._debouncedHandler);
-          displayEnd.addEventListener("input", displayEnd._debouncedHandler);
-        };
-      }
-    }
-  };
-
   const updateVideoInfo = (videoElement, fileSize = null) => {
     const videoId = videoElement.id;
     let videoNumber = "";
@@ -454,10 +356,16 @@ document.addEventListener("DOMContentLoaded", function () {
           processedVideo.style.display = "none";
           processedGif.src = URL.createObjectURL(blob);
           processedGif.style.display = "block";
+
+          // Update Final Output Info for GIF
+          updateFinalOutputInfo(processedGif, blob, "gif");
         } else {
           processedGif.style.display = "none";
           processedVideo.src = URL.createObjectURL(blob);
           processedVideo.style.display = "block";
+
+          // Update Final Output Info for Video
+          updateFinalOutputInfo(processedVideo, blob, "video");
         }
       })
       .catch((error) => {
@@ -502,6 +410,155 @@ document.addEventListener("DOMContentLoaded", function () {
   synchronizeVideoWithSlider(displayedVideo1, "slice1Start1", "slice1End1");
   synchronizeVideoWithSlider(displayedVideo2, "slice1Start2", "slice1End2");
   synchronizeVideoWithSlider(displayedVideo3, "slice1Start3", "slice1End3");
+
+  // Function to update final output information
+  const updateFinalOutputInfo = (element, blob, type) => {
+    const objectURL = URL.createObjectURL(blob);
+    const downloadFilename = type === "video" ? "final_output.mp4" : "final_output.gif";
+
+    // Create a temporary video element to get dimensions if it's a video
+    if (type === "video") {
+      const tempVideo = document.createElement("video");
+      tempVideo.src = objectURL;
+      tempVideo.addEventListener("loadedmetadata", () => {
+        const width = tempVideo.videoWidth;
+        const height = tempVideo.videoHeight;
+        finalOutputDimensions.textContent = `${width}x${height}`;
+        finalOutputSize.textContent = `(${formatBytes(blob.size)})`;
+
+        // Set up download button
+        finalDownloadButton.href = objectURL;
+        finalDownloadButton.download = downloadFilename;
+        finalDownloadButtonContainer.style.display = "flex";
+      });
+    } else if (type === "gif") {
+      // For GIFs, create an image element to get dimensions
+      const tempImg = new Image();
+      tempImg.src = objectURL;
+      tempImg.onload = () => {
+        const width = tempImg.width;
+        const height = tempImg.height;
+        finalOutputDimensions.textContent = `${width}x${height}`;
+        finalOutputSize.textContent = `(${formatBytes(blob.size)})`;
+
+        // Set up download button
+        finalDownloadButton.href = objectURL;
+        finalDownloadButton.download = downloadFilename;
+        finalDownloadButtonContainer.style.display = "flex";
+      };
+    }
+  };
+
+  // Function to process uploaded videos
+  const loadVideo = (event, videoElement, sliderId, sliceStartId, sliceEndId, displayStartId, displayEndId) => {
+    const file = event.target.files[0];
+    if (file) {
+      const fileExtension = file.name.split(".").pop().toLowerCase();
+      if (fileExtension !== "mp4") {
+        showMp4ConversionModal(file, videoElement, event.target);
+      } else {
+        videoElement.src = URL.createObjectURL(file);
+        videoElement.parentElement.style.display = "block";
+        videoElement.dataset.fileSize = file.size;
+
+        videoElement.onloadedmetadata = () => {
+          updateDimensions();
+          updateVideoInfo(videoElement, file.size);
+
+          const duration = videoElement.duration;
+          const sliderId = videoElement.id === "displayedVideo1" ? "slider1" : videoElement.id === "displayedVideo2" ? "slider2" : "slider3";
+          const sliceStartId = videoElement.id === "displayedVideo1" ? "slice1Start1" : videoElement.id === "displayedVideo2" ? "slice1Start2" : "slice1Start3";
+          const sliceEndId = videoElement.id === "displayedVideo1" ? "slice1End1" : videoElement.id === "displayedVideo2" ? "slice1End2" : "slice1End3";
+          const displayStartId = videoElement.id === "displayedVideo1" ? "displayStart1" : videoElement.id === "displayedVideo2" ? "displayStart2" : "displayStart3";
+          const displayEndId = videoElement.id === "displayedVideo1" ? "displayEnd1" : videoElement.id === "displayedVideo2" ? "displayEnd2" : "displayEnd3";
+
+          const slider = document.getElementById(sliderId);
+          const displayStart = document.getElementById(displayStartId);
+          const displayEnd = document.getElementById(displayEndId);
+
+          if (!slider.noUiSlider) {
+            noUiSlider.create(slider, {
+              start: [0, duration],
+              connect: true,
+              range: {
+                min: 0,
+                max: duration,
+              },
+              step: 0.1,
+              tooltips: [true, true],
+              format: {
+                to: (value) => value.toFixed(1),
+                from: (value) => Number(value),
+              },
+            });
+
+            slider.noUiSlider.on("update", (values) => {
+              const start = parseFloat(values[0]);
+              const end = parseFloat(values[1]);
+              document.getElementById(sliceStartId).value = start;
+              document.getElementById(sliceEndId).value = end;
+              displayStart.value = start.toFixed(1);
+              displayEnd.value = end.toFixed(1);
+              if (videoElement.paused) {
+                videoElement.currentTime = start;
+              }
+            });
+          } else {
+            slider.noUiSlider.updateOptions({
+              range: {
+                min: 0,
+                max: duration,
+              },
+              start: [0, duration],
+            });
+          }
+
+          displayStart.removeEventListener("input", displayStart._debouncedHandler);
+          displayEnd.removeEventListener("input", displayEnd._debouncedHandler);
+
+          displayStart._debouncedHandler = debounce(handleInputStart.bind(null, slider, displayStartId, sliceStartId), 300);
+          displayEnd._debouncedHandler = debounce(handleInputEnd.bind(null, slider, displayEndId, sliceEndId), 300);
+
+          displayStart.addEventListener("input", displayStart._debouncedHandler);
+          displayEnd.addEventListener("input", displayEnd._debouncedHandler);
+        };
+      }
+    }
+  };
+
+  function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  const handleInputStart = (slider, displayStartId, sliceStartId, e) => {
+    let newStart = parseFloat(e.target.value);
+    let currentEnd = parseFloat(slider.noUiSlider.get()[1]);
+
+    if (isNaN(newStart)) newStart = 0;
+    newStart = Math.max(0, Math.min(newStart, currentEnd - 0.1));
+    newStart = parseFloat(newStart.toFixed(1));
+
+    slider.noUiSlider.set([newStart, null]);
+  };
+
+  const handleInputEnd = (slider, displayEndId, sliceEndId, e) => {
+    let newEnd = parseFloat(e.target.value);
+    let currentStart = parseFloat(slider.noUiSlider.get()[0]);
+
+    if (isNaN(newEnd)) newEnd = slider.noUiSlider.options.range.max;
+    newEnd = Math.min(slider.noUiSlider.options.range.max, Math.max(newEnd, currentStart + 0.1));
+    newEnd = parseFloat(newEnd.toFixed(1));
+
+    slider.noUiSlider.set([null, newEnd]);
+  };
 });
 
 // document.addEventListener("DOMContentLoaded", function () {
@@ -554,6 +611,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //   let minWidth = Infinity;
 //   let minHeight = Infinity;
+
+//   const formatBytes = (bytes) => {
+//     return (bytes / (1024 * 1024)).toFixed(2) + "mb";
+//   };
 
 //   const updateDimensions = () => {
 //     minWidth = Infinity;
@@ -619,7 +680,7 @@ document.addEventListener("DOMContentLoaded", function () {
 //       return;
 //     }
 
-//     notification.style.display = "block"; // Show the processing notification
+//     notification.style.display = "block";
 
 //     const formData = new FormData();
 //     formData.append("video", file, file.name);
@@ -635,11 +696,12 @@ document.addEventListener("DOMContentLoaded", function () {
 //         return response.blob();
 //       })
 //       .then((convertedBlob) => {
-//         notification.style.display = "none"; // Hide the notification
+//         notification.style.display = "none";
 
 //         const convertedUrl = URL.createObjectURL(convertedBlob);
 //         videoElement.src = convertedUrl;
 //         videoElement.parentElement.style.display = "block";
+//         videoElement.dataset.fileSize = convertedBlob.size;
 
 //         const convertedFile = new File([convertedBlob], "converted.mp4", {
 //           type: "video/mp4",
@@ -651,6 +713,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //         videoElement.onloadedmetadata = () => {
 //           updateDimensions();
+//           updateVideoInfo(videoElement);
+
 //           const duration = videoElement.duration;
 //           const sliderId = videoElement.id === "displayedVideo1" ? "slider1" : videoElement.id === "displayedVideo2" ? "slider2" : "slider3";
 //           const sliceStartId = videoElement.id === "displayedVideo1" ? "slice1Start1" : videoElement.id === "displayedVideo2" ? "slice1Start2" : "slice1Start3";
@@ -699,11 +763,9 @@ document.addEventListener("DOMContentLoaded", function () {
 //             });
 //           }
 
-//           // Remove existing event listeners to prevent duplication
 //           displayStart.removeEventListener("input", displayStart._debouncedHandler);
 //           displayEnd.removeEventListener("input", displayEnd._debouncedHandler);
 
-//           // Add debounced input event listeners
 //           displayStart._debouncedHandler = debounce(handleInputStart.bind(null, slider, displayStartId, sliceStartId), 300);
 //           displayEnd._debouncedHandler = debounce(handleInputEnd.bind(null, slider, displayEndId, sliceEndId), 300);
 
@@ -712,13 +774,12 @@ document.addEventListener("DOMContentLoaded", function () {
 //         };
 //       })
 //       .catch((error) => {
-//         notification.style.display = "none"; // Hide the notification
+//         notification.style.display = "none";
 //         console.error("Error converting video:", error);
 //         alert("Error converting video. Please try again.");
 //       });
 //   };
 
-//   // Debounce function to limit the rate of function execution
 //   function debounce(func, wait) {
 //     let timeout;
 //     return function (...args) {
@@ -762,8 +823,12 @@ document.addEventListener("DOMContentLoaded", function () {
 //       } else {
 //         videoElement.src = URL.createObjectURL(file);
 //         videoElement.parentElement.style.display = "block";
+//         videoElement.dataset.fileSize = file.size;
+
 //         videoElement.onloadedmetadata = () => {
 //           updateDimensions();
+//           updateVideoInfo(videoElement, file.size);
+
 //           const duration = videoElement.duration;
 //           const slider = document.getElementById(sliderId);
 //           const displayStart = document.getElementById(displayStartId);
@@ -806,11 +871,9 @@ document.addEventListener("DOMContentLoaded", function () {
 //             });
 //           }
 
-//           // Remove existing event listeners to prevent duplication
 //           displayStart.removeEventListener("input", displayStart._debouncedHandler);
 //           displayEnd.removeEventListener("input", displayEnd._debouncedHandler);
 
-//           // Add debounced input event listeners
 //           displayStart._debouncedHandler = debounce(handleInputStart.bind(null, slider, displayStartId, sliceStartId), 300);
 //           displayEnd._debouncedHandler = debounce(handleInputEnd.bind(null, slider, displayEndId, sliceEndId), 300);
 
@@ -818,6 +881,30 @@ document.addEventListener("DOMContentLoaded", function () {
 //           displayEnd.addEventListener("input", displayEnd._debouncedHandler);
 //         };
 //       }
+//     }
+//   };
+
+//   const updateVideoInfo = (videoElement, fileSize = null) => {
+//     const videoId = videoElement.id;
+//     let videoNumber = "";
+//     if (videoId === "displayedVideo1") videoNumber = "1";
+//     else if (videoId === "displayedVideo2") videoNumber = "2";
+//     else if (videoId === "displayedVideo3") videoNumber = "3";
+
+//     const dimensionsSpan = document.getElementById(`video${videoNumber}Dimensions`);
+//     const sizeSpan = document.getElementById(`video${videoNumber}Size`);
+
+//     if (videoElement.readyState >= 1) {
+//       const width = videoElement.videoWidth;
+//       const height = videoElement.videoHeight;
+//       dimensionsSpan.textContent = `${width}x${height}`;
+
+//       let sizeInBytes = fileSize ? fileSize : videoElement.dataset.fileSize ? parseInt(videoElement.dataset.fileSize) : 0;
+//       const sizeInMB = formatBytes(sizeInBytes);
+//       sizeSpan.textContent = `(${sizeInMB})`;
+//     } else {
+//       dimensionsSpan.textContent = "";
+//       sizeSpan.textContent = "";
 //     }
 //   };
 
@@ -832,12 +919,10 @@ document.addEventListener("DOMContentLoaded", function () {
 //   numVideos.addEventListener("change", updateVideoSections);
 //   updateVideoSections();
 
-//   // Initial Event Listeners with Debounced Inputs
 //   videoInput1.addEventListener("change", (event) => loadVideo(event, displayedVideo1, "slider1", "slice1Start1", "slice1End1", "displayStart1", "displayEnd1"));
 //   videoInput2.addEventListener("change", (event) => loadVideo(event, displayedVideo2, "slider2", "slice1Start2", "slice1End2", "displayStart2", "displayEnd2"));
 //   videoInput3.addEventListener("change", (event) => loadVideo(event, displayedVideo3, "slider3", "slice1Start3", "slice1End3", "displayStart3", "displayEnd3"));
 
-//   // Overlay and Other Controls Event Listeners (No changes needed here)
 //   overlayColor.addEventListener("input", () => {
 //     colorValue.textContent = overlayColor.value.toUpperCase();
 //   });
