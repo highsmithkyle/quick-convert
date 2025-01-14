@@ -5,6 +5,134 @@
     <title>Countdown Clock</title>
     <link rel="stylesheet" href="styles.css" />
     <style>
+      /* Code changed: Adjusted styling for multiple image previews and URL display */
+      .main-content img {
+        border: 1px solid #ddd;
+        width: 300px;
+        height: 120px;
+        margin-bottom: 10px;
+      }
+      .style-row {
+        margin-bottom: 30px;
+      }
+      .style-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .image-url {
+        font-size: 0.9em;
+        margin-bottom: 5px;
+      }
+      .image-url input {
+        width: 100%;
+        padding: 4px;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <h2>Countdown Clock</h2>
+      <form id="countdownForm" class="form-group">
+        <div class="form-group">
+          <label for="deadlineInput">Deadline</label>
+          <input type="text" id="deadlineInput" name="deadlineInput" placeholder="e.g., 1735689600000 or 2025-12-31T23:59:59Z" class="sidebar-input" required />
+          <small>Use 2025-12-31T23:59:59Z</small>
+        </div>
+
+        <div class="overlay-group">
+          <div class="button-group">
+            <button type="submit" class="form-button">Generate Countdown Images</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <h3>Countdown Preview</h3>
+      <p>Enter a deadline to see the countdown clocks in different styles.</p>
+      <div id="stylePreview">
+        <!-- Dynamically added style rows will appear here -->
+      </div>
+    </div>
+
+    <script>
+      // Code changed: Removed unsupported "semi" style.
+      const styles = ["transparent", "light", "dark"]; // Supported styles
+
+      const form = document.getElementById("countdownForm");
+      const deadlineInput = document.getElementById("deadlineInput");
+      const stylePreview = document.getElementById("stylePreview");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const deadline = deadlineInput.value.trim();
+        if (!deadline) return;
+
+        // Clear previous previews
+        stylePreview.innerHTML = "";
+
+        // Get current server domain
+        const serverDomain = window.location.origin;
+
+        styles.forEach((style) => {
+          // Create a row container for each style
+          const styleRow = document.createElement("div");
+          styleRow.className = "style-row";
+
+          // Create a label for the style
+          const label = document.createElement("div");
+          label.className = "style-label";
+          label.textContent = `Style: ${style.charAt(0).toUpperCase() + style.slice(1)}`;
+
+          // Code changed: Create a container to display the image URL next to the title
+          const urlContainer = document.createElement("div");
+          urlContainer.className = "image-url";
+
+          const baseUrl = `${serverDomain}/countdown-clock?deadline=${encodeURIComponent(deadline)}&style=${style}`;
+          const urlInput = document.createElement("input");
+          urlInput.type = "text";
+          urlInput.readOnly = true;
+          urlInput.value = baseUrl;
+          urlContainer.appendChild(urlInput);
+
+          // Create an image element to display the countdown
+          const img = document.createElement("img");
+          img.alt = `Countdown Clock (${style} style)`;
+          img.src = `${baseUrl}&_=${new Date().getTime()}`;
+
+          // Code changed: Use setInterval to refresh image every second with a cache-busting timestamp
+          setInterval(() => {
+            const newImg = new Image();
+            newImg.src = `${baseUrl}&_=${new Date().getTime()}`;
+            newImg.onload = () => {
+              img.src = newImg.src;
+            };
+          }, 1000);
+
+          // Assemble the style row
+          styleRow.appendChild(label);
+          styleRow.appendChild(urlContainer);
+          styleRow.appendChild(img);
+          stylePreview.appendChild(styleRow);
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Countdown Clock</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
       /* Add any additional styles here or in styles.css */
       .main-content img {
         border: 1px solid #ddd;
@@ -56,6 +184,7 @@
       const deadlineInput = document.getElementById("deadlineInput");
       const countdownImageUrl = document.getElementById("countdownImageUrl");
       const countdownPreview = document.getElementById("countdownPreview");
+      let refreshIntervalId; // Code changed: declare variable to hold interval id
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -64,11 +193,23 @@
 
         // Build the final image URL (replace 'localhost:3000' with your server's domain/IP if deployed)
         const serverDomain = window.location.origin; // Automatically detects current domain
-        const finalUrl = `${serverDomain}/countdown-clock?deadline=${encodeURIComponent(val)}`;
+        // Code changed: Store base URL without refresh parameter
+        const baseUrl = `${serverDomain}/countdown-clock?deadline=${encodeURIComponent(val)}`;
 
-        countdownImageUrl.value = finalUrl;
-        countdownPreview.src = finalUrl;
+        countdownImageUrl.value = baseUrl;
+        countdownPreview.src = baseUrl;
+
+        // Clear any existing intervals so we don't stack up refresh intervals.
+        if (refreshIntervalId) {
+          clearInterval(refreshIntervalId);
+        }
+
+        // Code changed: Refresh the countdown image every second using a cache-buster query parameter
+        refreshIntervalId = setInterval(() => {
+          // Append a timestamp to force a fresh request every second
+          countdownPreview.src = `${baseUrl}&_=${new Date().getTime()}`;
+        }, 1000);
       });
     </script>
   </body>
-</html>
+</html> -->

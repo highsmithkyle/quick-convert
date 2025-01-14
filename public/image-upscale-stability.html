@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Upscale Stability</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <!-- CHANGED: Updated title -->
+      <h2>Upscale Stability</h2>
+      <form id="uploadFormUpscaleStability" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="image">Upload your image:</label>
+          <input type="file" id="image" name="image" accept="image/*" class="sidebar-input" required />
+        </div>
+        <div class="form-group">
+          <label for="output_format">Output Format (optional):</label>
+          <select id="output_format" name="output_format" class="sidebar-input">
+            <!-- CHANGED: Default to JPEG -->
+            <option value="jpeg" selected>JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </div>
+        <!-- NEW: Added target final width input field -->
+        <div class="form-group">
+          <label for="desired_width">Target Final Width (px):</label>
+          <input type="number" id="desired_width" name="desired_width" class="sidebar-input" placeholder="Optional" />
+        </div>
+        <div class="button-group">
+          <button type="submit" class="form-button">Upscale Image</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
+        </div>
+        <div>
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Upscaled Image</h3>
+            <span id="upscaledImageDimensions" class="image-dimensions" style="font-size: 14px; font-weight: normal"></span>
+            <span id="upscaledImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="processedImage" src="" alt="Upscaled Image" />
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
+
+    <script src="image-upscale-stability.js"></script>
+  </body>
+</html>
