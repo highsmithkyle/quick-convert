@@ -194,7 +194,7 @@ app.post("/upscale-image-stability", upload.single("image"), async (req, res) =>
     const apiResponse = await axios.post("https://api.stability.ai/v2beta/stable-image/upscale/fast", formData, {
       headers: {
         ...formData.getHeaders(), // include multipart boundary etc.
-        Authorization: `Bearer sk-T0U1Y5Di732xMMvcH8QD1tujf8nn0QdHPNckdwLsoayNXKl8`, // <<-- Change: Insert your API key here (with Bearer)
+        Authorization: `Bearer sk-hcrGaCSeWwwUKNTxIASC1MKH4SbWvZ9VjSTogup2NJZaMml8`, // <<-- Change: Insert your API key here (with Bearer)
         Accept: "image/*",
         // Optionally, add additional headers such as stability-client-id, etc.
       },
