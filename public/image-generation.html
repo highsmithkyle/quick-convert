@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stable Image Ultra</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+      <h2>Stable Image Ultra</h2>
+      <form id="uploadFormGenerationUltra" enctype="multipart/form-data" class="form-group">
+        <!-- Prompt field (required) -->
+        <div class="form-group">
+          <label for="prompt">Enter your prompt:</label>
+          <textarea id="prompt" name="prompt" rows="3" class="sidebar-input" placeholder="Describe what you want to see" required></textarea>
+        </div>
+
+        <!-- Negative prompt (optional) -->
+        <div class="form-group">
+          <label for="negative_prompt">Negative Prompt (optional):</label>
+          <textarea id="negative_prompt" name="negative_prompt" rows="2" class="sidebar-input" placeholder="What to avoid?"></textarea>
+        </div>
+
+        <!-- Aspect ratio (optional) -->
+        <div class="form-group">
+          <label for="aspect_ratio">Aspect Ratio (optional):</label>
+          <select id="aspect_ratio" name="aspect_ratio" class="sidebar-input">
+            <option value="1:1" selected>1:1</option>
+            <option value="16:9">16:9</option>
+            <option value="21:9">21:9</option>
+            <option value="2:3">2:3</option>
+            <option value="3:2">3:2</option>
+            <option value="4:5">4:5</option>
+            <option value="5:4">5:4</option>
+            <option value="9:16">9:16</option>
+            <option value="9:21">9:21</option>
+          </select>
+        </div>
+
+        <!-- Output Format (optional) -->
+        <div class="form-group">
+          <label for="output_format">Output Format (optional):</label>
+          <select id="output_format" name="output_format" class="sidebar-input">
+            <option value="png" selected>PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="form-button">Generate Image</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Layout for displaying the generated image -->
+    <div class="main-content">
+      <div id="videoContainer">
+        <div id="generatedImageContainer">
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Generated Image</h3>
+            <span id="generatedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="generatedImage" src="" alt="Generated Image" />
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
+
+    <script src="image-generation.js"></script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stable Image Ultra</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sidebar">
+      <a href="index.html" class="home-button">
+        <img src="./images/home-icon-black.png" alt="Home" class="home-icon" />
+        <span>Home</span>
+      </a>
+
+      <h2>Stable Image Ultra</h2>
+      <form id="uploadFormGenerationUltra" enctype="multipart/form-data" class="form-group">
+        <div class="form-group">
+          <label for="prompt">Enter your prompt:</label>
+          <textarea id="prompt" name="prompt" rows="3" class="sidebar-input" placeholder="Describe what you want to see" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="negative_prompt">Negative Prompt (optional):</label>
+          <textarea id="negative_prompt" name="negative_prompt" rows="2" class="sidebar-input" placeholder="What to avoid?"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="aspect_ratio">Aspect Ratio (optional):</label>
+          <select id="aspect_ratio" name="aspect_ratio" class="sidebar-input">
+            <option value="1:1" selected>1:1</option>
+            <option value="16:9">16:9</option>
+            <option value="21:9">21:9</option>
+            <option value="2:3">2:3</option>
+            <option value="3:2">3:2</option>
+            <option value="4:5">4:5</option>
+            <option value="5:4">5:4</option>
+            <option value="9:16">9:16</option>
+            <option value="9:21">9:21</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="seed">Seed (optional):</label>
+          <input type="number" id="seed" name="seed" class="sidebar-input" placeholder="Leave 0 for random" />
+        </div>
+
+        <div class="form-group">
+          <label for="output_format">Output Format (optional):</label>
+          <select id="output_format" name="output_format" class="sidebar-input">
+            <option value="png" selected>PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="image">Optional starting image:</label>
+          <input type="file" id="image" name="image" accept="image/*" class="sidebar-input" />
+        </div>
+
+        <div class="form-group">
+          <label for="strength">Strength (0 - 1, required if using an image):</label>
+          <input type="number" id="strength" name="strength" step="0.01" min="0" max="1" class="sidebar-input" placeholder="e.g., 0.5" />
+        </div>
+        <div class="button-group">
+          <button type="submit" class="form-button">Generate Image</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="main-content">
+      <div id="videoContainer">
+        <div id="uploadedImageContainer">
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Uploaded Image</h3>
+            <span id="uploadedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="uploadedImage" src="" alt="Uploaded Image" />
+        </div>
+
+        <div id="generatedImageContainer">
+          <div style="display: flex; align-items: center">
+            <h3 style="margin-right: 10px">Generated Image</h3>
+            <span id="generatedImageSize" class="image-size" style="font-size: 14px; font-weight: normal; margin-left: 10px"></span>
+          </div>
+          <img id="generatedImage" src="" alt="Generated Image" />
+        </div>
+      </div>
+    </div>
+
+    <div id="processingNotification" class="processing-notification">Processing your image, please wait...</div>
+
+    <script src="image-generation.js"></script>
+  </body>
+</html> -->

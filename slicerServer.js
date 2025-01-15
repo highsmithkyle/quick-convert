@@ -124,6 +124,156 @@ class CustomMulterStorage {
 
 module.exports = CustomMulterStorage;
 
+const ULTRA_API_URL = "https://api.stability.ai/v2beta/stable-image/generate/ultra";
+
+// POST route for Stable Image Ultra generation (text-only)
+app.post("/generate-image-ultra", upload.none(), async (req, res) => {
+  const { prompt, negative_prompt, aspect_ratio, output_format } = req.body;
+  console.log("Received parameters:", req.body);
+
+  // Validate required field 'prompt'
+  if (!prompt || prompt.trim() === "") {
+    console.error("No prompt provided.");
+    return res.status(400).send("The 'prompt' field is required.");
+  }
+
+  try {
+    // Build the form data for the Stability API request
+    const formData = new FormData();
+    formData.append("prompt", prompt); // Required
+
+    if (negative_prompt) {
+      formData.append("negative_prompt", negative_prompt);
+      console.log("Using negative_prompt:", negative_prompt);
+    }
+    if (aspect_ratio) {
+      formData.append("aspect_ratio", aspect_ratio);
+      console.log("Using aspect_ratio:", aspect_ratio);
+    }
+    // Default output_format to png if not provided
+    const finalOutputFormat = output_format ? output_format : "png";
+    formData.append("output_format", finalOutputFormat);
+    console.log("Using output_format:", finalOutputFormat);
+
+    console.log("Sending request to Stability Ultra API using URL:", ULTRA_API_URL);
+
+    // Send the request using axios to the Stability Ultra API
+    const apiResponse = await axios.post(ULTRA_API_URL, formData, {
+      headers: {
+        ...formData.getHeaders(),
+        Authorization: `Bearer sk-hcrGaCSeWwwUKNTxIASC1MKH4SbWvZ9VjSTogup2NJZaMml8`, // <<-- Replace with your API key
+        Accept: "image/*", // Use "image/*" to receive raw image data
+      },
+      responseType: "arraybuffer",
+    });
+
+    console.log("Stability Ultra API responded with status:", apiResponse.status);
+
+    // Return the generated image with the appropriate content type
+    const contentType = apiResponse.headers["content-type"] || "image/png";
+    res.setHeader("Content-Type", contentType);
+    res.send(apiResponse.data);
+  } catch (error) {
+    console.error("Failed to generate image with Stability Ultra API:", error.message);
+    if (error.response) {
+      console.error("Error response data:", error.response.data.toString());
+    }
+    res.status(500).send("Failed to generate image.");
+  }
+});
+
+// const ULTRA_API_URL = "https://api.stability.ai/v2beta/stable-image/generate/ultra";
+
+// app.post("/generate-image-ultra", upload.single("image"), async (req, res) => {
+//   // Destructure required and optional parameters from req.body
+//   const { prompt, negative_prompt, aspect_ratio, seed, output_format, strength } = req.body;
+//   console.log("Received parameters:", req.body);
+
+//   // Validate required field 'prompt'
+//   if (!prompt || prompt.trim() === "") {
+//     console.error("No prompt provided.");
+//     return res.status(400).send("The 'prompt' field is required.");
+//   }
+
+//   // If an image is provided, ensure the strength parameter is provided
+//   let imageFilePath = null;
+//   if (req.file) {
+//     imageFilePath = req.file.path;
+//     if (!strength || strength.trim() === "") {
+//       console.error("Image provided but no strength parameter.");
+//       return res.status(400).send("When providing an image, the 'strength' parameter is required.");
+//     }
+//     console.log("Image file uploaded:", imageFilePath);
+//   }
+
+//   try {
+//     // Build the form data for the Stability API request
+//     const formData = new FormData();
+//     formData.append("prompt", prompt); // Required
+
+//     // Append optional parameters if provided
+//     if (negative_prompt) {
+//       formData.append("negative_prompt", negative_prompt);
+//       console.log("Using negative_prompt:", negative_prompt);
+//     }
+//     if (aspect_ratio) {
+//       formData.append("aspect_ratio", aspect_ratio);
+//       console.log("Using aspect_ratio:", aspect_ratio);
+//     }
+//     if (seed) {
+//       formData.append("seed", seed);
+//       console.log("Using seed:", seed);
+//     }
+//     // Default output_format to png if not provided
+//     const finalOutputFormat = output_format ? output_format : "png";
+//     formData.append("output_format", finalOutputFormat);
+//     console.log("Using output_format:", finalOutputFormat);
+
+//     // If an image is provided, attach it along with strength
+//     if (imageFilePath) {
+//       formData.append("image", fs.createReadStream(imageFilePath));
+//       formData.append("strength", strength);
+//       console.log("Using image and strength:", strength);
+//     }
+
+//     console.log("Sending request to Stability Ultra API using URL:", ULTRA_API_URL);
+
+//     // Send the request using the correct Ultra API endpoint
+//     const apiResponse = await axios.post(ULTRA_API_URL, formData, {
+//       headers: {
+//         ...formData.getHeaders(), // include multipart boundary etc.
+//         Authorization: `Bearer sk-hcrGaCSeWwwUKNTxIASC1MKH4SbWvZ9VjSTogup2NJZaMml8`, // <<-- Replace with your API key
+//         Accept: "image/*", // or "application/json" if you prefer a JSON response with base64 encoding
+//       },
+//       responseType: "arraybuffer", // expect binary image data in response
+//     });
+
+//     console.log("Stability Ultra API responded with status:", apiResponse.status);
+
+//     // Clean up: delete the temporary image file if it exists
+//     if (imageFilePath && fs.existsSync(imageFilePath)) {
+//       fs.unlinkSync(imageFilePath);
+//       console.log("Temporary image file deleted.");
+//     }
+
+//     // Return the generated image with the appropriate content type
+//     const contentType = apiResponse.headers["content-type"] || "image/png";
+//     res.setHeader("Content-Type", contentType);
+//     res.send(apiResponse.data);
+//   } catch (error) {
+//     console.error("Failed to generate image with Stability Ultra API:", error.message);
+//     try {
+//       if (imageFilePath && fs.existsSync(imageFilePath)) {
+//         fs.unlinkSync(imageFilePath);
+//         console.log("Temporary image file deleted after error.");
+//       }
+//     } catch (cleanupError) {
+//       console.error("Error cleaning up temporary image file:", cleanupError.message);
+//     }
+//     res.status(500).send("Failed to generate image.");
+//   }
+// });
+
 app.post("/upscale-image-stability", upload.single("image"), async (req, res) => {
   // Check if an image file was uploaded
   if (!req.file) {
@@ -225,51 +375,6 @@ app.post("/upscale-image-stability", upload.single("image"), async (req, res) =>
     res.status(500).send("Failed to upscale image.");
   }
 });
-
-// app.post("/upscale-image-stability", upload.single("image"), async (req, res) => {
-//   // Check if an image file was uploaded
-//   if (!req.file) {
-//     return res.status(400).send("No image file uploaded.");
-//   }
-
-//   // The image file path from multer
-//   const imagePath = req.file.path;
-
-//   // Read the optional output format sent from the client; default to png if not provided
-//   const { output_format } = req.body; // e.g., "png", "jpeg", "webp"
-//   // Create a FormData instance for the Stability API request
-//   const formData = new FormData();
-//   formData.append("image", fs.createReadStream(imagePath));
-//   if (output_format) {
-//     formData.append("output_format", output_format);
-//   }
-
-//   try {
-//     // Send the image to the Stability Fast Upscaler API.
-//     const response = await axios.post("https://api.stability.ai/v2beta/stable-image/upscale/fast", formData, {
-//       headers: {
-//         ...formData.getHeaders(), // include multipart boundary etc.
-//         // NEW: Set the API Key for Stability; replace YOUR_STABILITY_API_KEY with your actual key.
-//         Authorization: `Bearer sk-T0U1Y5Di732xMMvcH8QD1tujf8nn0QdHPNckdwLsoayNXKl8`, // <<-- Change: Insert your API key here
-//         Accept: "image/*",
-//       },
-//       responseType: "arraybuffer", // we expect binary image data in response
-//     });
-
-//     // Remove the temporary uploaded file after sending to the API
-//     fs.unlinkSync(imagePath);
-
-//     // Set the correct content type from the response
-//     const contentType = response.headers["content-type"] || "image/png";
-//     res.setHeader("Content-Type", contentType);
-//     res.send(response.data);
-//   } catch (error) {
-//     console.error("Failed to upscale image with Stability API:", error.message);
-//     // Remove the temporary file in case of error
-//     fs.unlinkSync(imagePath);
-//     res.status(500).send("Failed to upscale image.");
-//   }
-// });
 
 app.get("/countdown-clock", (req, res) => {
   const { deadline, style = "transparent" } = req.query;
